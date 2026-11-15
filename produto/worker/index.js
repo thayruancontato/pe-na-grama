@@ -1,4 +1,4 @@
-import { rotaSistema, servirSistema, importarSistema, tokenParaDono, revogar, auditar } from './sistema.js';
+import { rotaSistema, servirSistema, importarSistema, tokenParaDono, revogar, auditar, confereSenha } from './sistema.js';
 import { CATALOGO, INTERNO, limparControle, limparInterno, controleDe, esquecerControle } from './controle.js';
 // Worker do Pé na Grama: recebe os pedidos do formulário, gera proposta e contrato, cobra por Pix e alimenta a Central do dono.
 // Tudo no mesmo domínio: /api/* cai aqui; o resto é servido como arquivo estático.
@@ -47,6 +47,13 @@ async function novoSubdominio(env, escola) {
     if (!(await env.DB.prepare('SELECT 1 x FROM clientes WHERE url_sistema=?').bind(u).first())) return u;
   }
   return 'https://escola-' + Date.now().toString(36) + '.' + DOMINIO;
+}
+// Senhas definidas pela Central (criar usuário, nova senha, acesso do administrador): ficam guardadas para o dono ver no painel.
+// Se o usuário trocar a própria senha depois, a guardada deixa de conferir com a atual e some da tela.
+async function guardaSenha(env, tenant, email, senha) {
+  const x = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_owner' AND id='senhas'").bind(tenant).first(), v = x ? JSON.parse(x.data) : {};
+  if (senha == null) delete v[email]; else v[email] = senha;
+  await env.DB.prepare('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data').bind(tenant, 'sys_owner', 'senhas', JSON.stringify(v)).run();
 }
 const escHtml = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SITUACAO = { implantando: ['Estamos preparando tudo', 'O sistema da sua escola está sendo montado com carinho. Em breve este endereço abre o seu painel, é só voltar daqui a pouco.'], ativo: ['Sistema ativo', 'O sistema da escola está ativo neste endereço.'], pausado: ['Temporariamente pausado', 'O sistema desta escola está pausado por enquanto. Fale com a escola para saber mais.'], cancelado: ['Contrato encerrado', 'O contrato desta escola foi encerrado.'] };
@@ -438,7 +445,7 @@ async function rotaAdmin(req, env, url, caminho) {
       const t = new URL(c.url_sistema).host, ja = await env.DB.prepare("SELECT email FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1").bind(t).first();
       const email = ja ? ja.email : /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.contato_email || '') ? c.contato_email.toLowerCase() : 'admin@' + t;
       const senha = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'[b % 54]).join('');
-      await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: 'admin' }] });
+      await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: 'admin' }] }); await guardaSenha(env, t, email, senha);
       await log(env, 'sistema', 'Acesso do administrador gerado para ' + c.escola);
       return J({ email, senha, url: c.url_sistema + '/admin/login' });
     }
@@ -461,9 +468,13 @@ async function rotaAdmin(req, env, url, caminho) {
         return J({ ok: true, valores: await controleDe(env, t) });
       }
       if (acao === 'usuarios' && m === 'GET') {
-        const r = await q('SELECT email,role,uid,rowid FROM sys_users WHERE tenant=? ORDER BY rowid', t).all(), fl = await q("SELECT id,data FROM sys_docs WHERE tenant=? AND col='sys_flags'", t).all();
+        const r = await q('SELECT email,role,uid,salt,hash,rowid FROM sys_users WHERE tenant=? ORDER BY rowid', t).all(), fl = await q("SELECT id,data FROM sys_docs WHERE tenant=? AND col='sys_flags'", t).all(), sn = (await doc('senhas')) || {};
         const bloq = new Set((fl.results || []).filter((x) => JSON.parse(x.data).bloqueado).map((x) => x.id));
-        return J({ usuarios: (r.results || []).map((u, i) => ({ email: u.email, role: u.role, bloqueado: bloq.has(u.email), principal: u.role === 'admin' && !(r.results || []).slice(0, i).some((x) => x.role === 'admin') })) });
+        const lista = await Promise.all((r.results || []).map(async (u, i) => {
+          const guardada = sn[u.email], vale = guardada ? await confereSenha(guardada, u) : false;
+          return { email: u.email, role: u.role, bloqueado: bloq.has(u.email), principal: u.role === 'admin' && !(r.results || []).slice(0, i).some((x) => x.role === 'admin'), senha: vale ? guardada : '', senha_trocada: Boolean(guardada && !vale) };
+        }));
+        return J({ usuarios: lista });
       }
       if (acao === 'usuario' && m === 'POST') {
         const b = await body(), email = String(b.email || '').trim().toLowerCase(), papel = ['admin', 'professor', 'user'].includes(b.papel) ? b.papel : 'user';
@@ -478,16 +489,16 @@ async function rotaAdmin(req, env, url, caminho) {
           if (lim.lim_usuarios && (await q('SELECT COUNT(*) n FROM sys_users WHERE tenant=?', t).first()).n >= lim.lim_usuarios) return erro('Limite de usuários desta escola atingido (' + lim.lim_usuarios + '). Aumente em Limites do plano.', 403);
           if (papel === 'admin' && lim.lim_admins && (await q("SELECT COUNT(*) n FROM sys_users WHERE tenant=? AND role='admin'", t).first()).n >= lim.lim_admins) return erro('Limite de administradores atingido (' + lim.lim_admins + ').', 403);
           const senha = String(b.senha || '') || senhaNova(); await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: papel === 'admin' ? 'admin' : papel === 'professor' ? 'professor' : 'user' }] });
-          await q("UPDATE sys_users SET role=? WHERE tenant=? AND email=?", papel, t, email).run();
+          await q("UPDATE sys_users SET role=? WHERE tenant=? AND email=?", papel, t, email).run(); await guardaSenha(env, t, email, senha);
           await log(env, 'sistema', 'Usuário ' + email + ' (' + papel + ') criado em ' + c0.escola); return J({ ok: true, email, senha });
         }
         if (!u) return erro('Usuário não encontrado.', 404);
-        if (b.acao === 'senha') { const senha = String(b.senha || '') || senhaNova(); await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: u.role === 'admin' ? 'admin' : u.role }] }); await q('UPDATE sys_users SET role=? WHERE tenant=? AND email=?', u.role, t, email).run(); await revogar(env, t, email); await log(env, 'sistema', 'Senha de ' + email + ' redefinida em ' + c0.escola); return J({ ok: true, senha }); }
+        if (b.acao === 'senha') { const senha = String(b.senha || '') || senhaNova(); await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: u.role === 'admin' ? 'admin' : u.role }] }); await q('UPDATE sys_users SET role=? WHERE tenant=? AND email=?', u.role, t, email).run(); await guardaSenha(env, t, email, senha); await revogar(env, t, email); await log(env, 'sistema', 'Senha de ' + email + ' redefinida em ' + c0.escola); return J({ ok: true, senha }); }
         if (b.acao === 'papel') { if (ehPrincipal) return erro('O administrador principal não pode mudar de papel.'); const lim = await controleDe(env, t); if (papel === 'admin' && u.role !== 'admin' && lim.lim_admins && (await q("SELECT COUNT(*) n FROM sys_users WHERE tenant=? AND role='admin'", t).first()).n >= lim.lim_admins) return erro('Limite de administradores atingido (' + lim.lim_admins + ').', 403); await q('UPDATE sys_users SET role=? WHERE tenant=? AND email=?', papel, t, email).run(); await revogar(env, t, email); return J({ ok: true }); }
         if (b.acao === 'bloquear') { if (ehPrincipal) return erro('O administrador principal não pode ser bloqueado.'); await bloqueio(true); await revogar(env, t, email); return J({ ok: true }); }
         if (b.acao === 'desbloquear') { await bloqueio(false); return J({ ok: true }); }
         if (b.acao === 'sessoes') { await revogar(env, t, email); return J({ ok: true }); }
-        if (b.acao === 'excluir') { if (ehPrincipal) return erro('O administrador principal não pode ser excluído.'); await q('DELETE FROM sys_users WHERE tenant=? AND email=?', t, email).run(); await log(env, 'sistema', 'Usuário ' + email + ' excluído de ' + c0.escola); return J({ ok: true }); }
+        if (b.acao === 'excluir') { await guardaSenha(env, t, email, null); if (ehPrincipal) return erro('O administrador principal não pode ser excluído.'); await q('DELETE FROM sys_users WHERE tenant=? AND email=?', t, email).run(); await log(env, 'sistema', 'Usuário ' + email + ' excluído de ' + c0.escola); return J({ ok: true }); }
         return erro('Ação desconhecida.');
       }
       if (acao === 'sessoes' && m === 'POST') { const r = await q('SELECT email FROM sys_users WHERE tenant=?', t).all(); for (const u of r.results || []) await revogar(env, t, u.email); await log(env, 'sistema', 'Todas as sessões de ' + c0.escola + ' encerradas'); return J({ ok: true, usuarios: (r.results || []).length }); }

@@ -13,6 +13,8 @@ async function pbkdf2(senha, salt) {
   const k = await crypto.subtle.importKey('raw', enc.encode(senha), 'PBKDF2', false, ['deriveBits']);
   return b64u(new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64u(salt), iterations: 100000 }, k, 256)));
 }
+/** A senha guardada pelo dono ainda é a do usuário? (o usuário pode ter trocado a dele) */
+export async function confereSenha(senha, u) { return (await pbkdf2(String(senha), u.salt)) === u.hash; }
 export async function hashSenha(senha) { const salt = b64u(crypto.getRandomValues(new Uint8Array(16))); return { salt, hash: await pbkdf2(senha, salt) }; }
 
 const hmacKey = (env) => crypto.subtle.importKey('raw', enc.encode(env.SESSION_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
