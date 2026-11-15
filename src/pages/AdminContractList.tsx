@@ -9,6 +9,7 @@ import { planService } from '../utils/planService';
 import type { Plan } from '../utils/planService';
 import { normalizeModality, MODALIDADES } from '../utils/turmasConstants';
 
+import Tabs from '../components/Tabs';
 interface ContractItem {
     registrationId: string;
     studentIndex: number;
@@ -210,37 +211,7 @@ export default function AdminContractList() {
                 <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#333' }}>Lista de Contratos</h1>
             </div>
 
-            {/* Modalidade Tabs */}
-            <div style={{
-                display: 'flex',
-                gap: '10px',
-                marginBottom: '20px',
-                overflowX: 'auto',
-                paddingBottom: '5px',
-                borderBottom: '1px solid #eee'
-            }}>
-                {MODALIDADES.map(mod => (
-                    <button
-                        key={mod.id}
-                        onClick={() => setSelectedModality(mod.label)}
-                        style={{
-                            padding: '10px 20px',
-                            background: selectedModality === mod.label ? '#00a63a' : 'transparent',
-                            color: selectedModality === mod.label ? '#fff' : '#666',
-                            border: 'none',
-                            borderRadius: '20px',
-                            cursor: 'pointer',
-                            fontWeight: 'bold',
-                            fontSize: '0.9rem',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.2s',
-                            boxShadow: selectedModality === mod.label ? '0 2px 5px rgba(0, 166, 58, 0.28)' : 'none'
-                        }}
-                    >
-                        {mod.label}
-                    </button>
-                ))}
-            </div>
+            <Tabs items={MODALIDADES.map((m) => ({ id: m.label, label: m.label }))} active={selectedModality} onChange={setSelectedModality} />
 
             {/* Search and Actions Bar */}
             <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center' }}>

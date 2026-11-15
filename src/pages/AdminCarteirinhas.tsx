@@ -8,6 +8,7 @@ import PageTitle from '../components/PageTitle';
 import PageContainer from '../components/PageContainer';
 import { formatModalidade } from '../utils/modalidadeUtils';
 
+import Tabs from '../components/Tabs';
 const CARD_QR_SIZE_MM = 12.4;
 const CARD_QR_RIGHT_MM = 4.6;
 const CARD_QR_TOP_MM = 3.7;
@@ -487,39 +488,7 @@ export default function AdminCarteirinhas() {
                     </div>
                 </PageTitle>
 
-                {/* Modality Tabs */}
-                <div style={{
-                    display: 'flex',
-                    gap: '12px',
-                    marginTop: '20px',
-                    overflowX: 'auto',
-                    paddingBottom: '5px',
-                    borderBottom: '1px solid #eee'
-                }}>
-                    {[
-                        { id: 'futebol', label: 'FUTEBOL' }
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setModalityFilter(tab.id)}
-                            style={{
-                                padding: '12px 30px',
-                                borderRadius: '12px 12px 0 0',
-                                border: 'none',
-                                background: modalityFilter === tab.id ? '#00a63a' : 'transparent',
-                                color: modalityFilter === tab.id ? '#fff' : '#888',
-                                fontWeight: '800',
-                                fontSize: '0.9rem',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                transition: 'all 0.2s ease',
-                                borderBottom: modalityFilter === tab.id ? '3px solid #9a1a1f' : '3px solid transparent'
-                            }}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+                <Tabs items={[{ id: 'futebol', label: 'Futebol' }]} active={modalityFilter} onChange={setModalityFilter} />
             </div>
 
             {loading ? (

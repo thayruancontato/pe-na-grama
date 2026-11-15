@@ -10,6 +10,7 @@ import PageContainer from '../components/PageContainer';
 import { normalizeModality } from '../utils/turmasConstants';
 
 
+import Tabs from '../components/Tabs';
 interface Student {
     id: string;
     registrationId: string; // Firestore document ID
@@ -196,37 +197,7 @@ export default function AdminTurmas() {
 
             {/* Content for classes list */}
             <div>
-                {/* MODALITY TABS */}
-                <div style={{ display: 'flex', width: '100%', borderBottom: '2px solid #f0f0f0', marginBottom: '25px', position: 'relative', overflowX: 'auto' }}>
-                    {MODALIDADES.map(mod => {
-                        const isActive = activeModality === mod;
-                        return (
-                            <button
-                                key={mod}
-                                onClick={() => setActiveModality(mod)}
-                                style={{
-                                    flex: '1 0 auto',
-                                    minWidth: '100px',
-                                    padding: '15px',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    borderBottom: isActive ? '3px solid #00a63a' : '3px solid transparent',
-                                    color: isActive ? '#00a63a' : '#888',
-                                    cursor: 'pointer',
-                                    fontWeight: isActive ? 'bold' : '500',
-                                    fontSize: '1rem',
-                                    textTransform: 'uppercase',
-                                    transition: 'all 0.3s ease',
-                                    letterSpacing: '0.5px',
-                                    position: 'relative',
-                                    bottom: '-2px'
-                                }}
-                            >
-                                {mod}
-                            </button>
-                        );
-                    })}
-                </div>
+                <Tabs items={MODALIDADES.map((m) => ({ id: m, label: m }))} active={activeModality} onChange={setActiveModality} />
 
                 {normalizeModality(activeModality) === 'Futebol' && (
                     <button

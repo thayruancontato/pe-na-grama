@@ -20,6 +20,7 @@ import { ManualChargesModal } from './AdminFinanceiroComponents/ManualChargesMod
 import { OverdueStudentsModal } from './AdminFinanceiroComponents/OverdueStudentsModal';
 import { MonthlyChargesModal } from './AdminFinanceiroComponents/MonthlyChargesModal';
 
+import Tabs from '../components/Tabs';
 export default function AdminFinanceiro() {
     const { showAlert } = useDialog();
     const { setLoading: setLoadingOverlay } = useLoading();
@@ -393,39 +394,7 @@ export default function AdminFinanceiro() {
                 <p style={{ color: '#666', marginTop: '5px' }}>Gestão de faturas, planos e recebimentos.</p>
             </header>
 
-            {/* Modality Tabs Bar */}
-            <div style={{
-                display: 'flex',
-                gap: '12px',
-                marginBottom: '25px',
-                overflowX: 'auto',
-                paddingBottom: '10px',
-                borderBottom: '1px solid #eee'
-            }}>
-                {[
-                    { id: 'futebol', label: 'FUTEBOL' }
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setModalityFilter(tab.id)}
-                        style={{
-                            padding: '12px 30px',
-                            borderRadius: '12px 12px 0 0',
-                            border: 'none',
-                            background: modalityFilter === tab.id ? '#00a63a' : 'transparent',
-                            color: modalityFilter === tab.id ? '#fff' : '#888',
-                            fontWeight: '800',
-                            fontSize: '0.9rem',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            transition: 'all 0.2s ease',
-                            borderBottom: modalityFilter === tab.id ? '3px solid #9a1a1f' : '3px solid transparent'
-                        }}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            <Tabs items={[{ id: 'futebol', label: 'Futebol' }]} active={modalityFilter} onChange={setModalityFilter} />
 
             <StatsCards modalityFilter={modalityFilter} stats={stats} onPendingClick={() => setIsOverdueModalOpen(true)} />
 

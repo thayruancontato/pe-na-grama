@@ -15,18 +15,18 @@ function trocar(no: Node) {
     if (!nome) return;
     if (no.nodeType === Node.TEXT_NODE) {
         const t = no.nodeValue || '';
-        if (TEM_NOME.test(t)) no.nodeValue = trocaNome(t);
+        if (TEM_NOME.test(t)) { const n = trocaNome(t); if (n !== t) no.nodeValue = n; } // só grava se mudou: gravar igual dispara o observador de novo e trava a página
         return;
     }
     if (no.nodeType !== Node.ELEMENT_NODE) return;
     const el = no as Element;
     if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return;
-    for (const a of ATRIBUTOS) { const v = el.getAttribute(a); if (v && TEM_NOME.test(v)) el.setAttribute(a, trocaNome(v)); }
+    for (const a of ATRIBUTOS) { const v = el.getAttribute(a); if (v && TEM_NOME.test(v)) { const n = trocaNome(v); if (n !== v) el.setAttribute(a, n); } }
     el.childNodes.forEach(trocar);
 }
 
 if (nome) {
-    const ajustarTitulo = () => { if (TEM_NOME.test(document.title)) document.title = trocaNome(document.title); };
+    const ajustarTitulo = () => { if (TEM_NOME.test(document.title)) { const n = trocaNome(document.title); if (n !== document.title) document.title = n; } };
     const obs = new MutationObserver((muts) => {
         for (const m of muts) {
             if (m.type === 'characterData') trocar(m.target);

@@ -639,8 +639,8 @@ export default function StudentLayout() {
                 )}
 
                 {/* Main Content */}
-                <main style={{ flex: 1, padding: isMobile ? '15px' : '20px', overflowX: 'hidden' }}>
-                    {bloqueado(location.pathname) ? <div className="native-card" style={{ padding: '24px', textAlign: 'center' }}><h2>Recurso indisponível</h2><p>Esta área foi desativada pela escola.</p></div> : <Outlet />}
+                <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '16px' : '28px 32px', overflowX: 'hidden' }}>
+                    {bloqueado(location.pathname) ? <div className="native-card" style={{ padding: '24px', textAlign: 'center' }}><h2>Recurso indisponível</h2><p>Esta área foi desativada pela escola.</p></div> : <div className="ux-page"><Outlet /></div>}
                 </main>
             </div>
 

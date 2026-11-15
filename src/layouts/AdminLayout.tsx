@@ -36,11 +36,6 @@ export default function AdminLayout() {
             const width = window.innerWidth;
             setIsMobile(width < 1024);
 
-            // Auto-collapse logic on resize if needed
-            const isTablet = width >= 1024 && width <= 1366;
-            if (isTablet && location.pathname.includes('/financeiro')) {
-                setCollapsed(true);
-            }
         };
 
         window.addEventListener('resize', handleResize);
@@ -90,20 +85,6 @@ export default function AdminLayout() {
         fetchBirthdays();
 
         return () => window.removeEventListener('resize', handleResize);
-    }, [location.pathname]);
-
-    // Effect to handle path changes for auto-collapse
-    useEffect(() => {
-        const width = window.innerWidth;
-        const isTablet = width >= 1024 && width <= 1366;
-
-        if (isTablet && location.pathname.includes('/financeiro')) {
-            setCollapsed(true);
-        } else {
-            if (isTablet && !location.pathname.includes('/financeiro')) {
-                setCollapsed(false);
-            }
-        }
     }, [location.pathname]);
 
     useEffect(() => {
@@ -267,8 +248,8 @@ export default function AdminLayout() {
                 {/* minWidth: 0 é necessário para o item flex poder encolher; sem isso, ele
                     nunca cede espaço para conteúdo largo (como a tabela do financeiro) e o
                     overflowX: hidden acaba cortando em vez de deixar o filho rolar. */}
-                <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '10px' : '10px', overflowX: 'hidden' }}>
-                    <Outlet />
+                <main style={{ flex: 1, minWidth: 0, padding: isMobile ? '16px' : '28px 32px', overflowX: 'hidden' }}>
+                    <div className="ux-page"><Outlet /></div>
                 </main>
             </div>
         </div>

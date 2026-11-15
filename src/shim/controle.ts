@@ -72,11 +72,14 @@ function aplicar() {
     if (trocas.length || temAlvo) {
         const pinta = (t: string) => { const x = trocas.reduce((s, [re, novo]) => s.replace(re, novo), t); return temAlvo ? deslocaTexto(x) : x; };
         const ATTRS = ['style', 'fill', 'stroke', 'stop-color', 'color'];
+        // valores que o próprio shim já produziu: não pintar de novo (o deslocamento de matiz não é idempotente e alternava as cores sem parar)
+        const feitos = new Set<string>();
+        const repinta = (t: string) => { if (feitos.has(t)) return t; const y = pinta(t); feitos.add(y); return y; };
         const visita = (n: Node) => {
             if (n.nodeType !== 1) return;
             const el = n as Element;
-            if (el.tagName === 'STYLE') { const t = el.textContent || '', y = pinta(t); if (y !== t) el.textContent = y; } // páginas com <style> próprio (ex.: tela inicial)
-            for (const a of ATTRS) { const x = el.getAttribute(a); if (x) { const y = pinta(x); if (y !== x) el.setAttribute(a, y); } }
+            if (el.tagName === 'STYLE') { const t = el.textContent || '', y = repinta(t); if (y !== t) el.textContent = y; } // páginas com <style> próprio (ex.: tela inicial)
+            for (const a of ATTRS) { const x = el.getAttribute(a); if (x) { const y = repinta(x); if (y !== x) el.setAttribute(a, y); } }
             el.childNodes.forEach(visita);
         };
         const obs = new MutationObserver((ms) => { for (const m of ms) { if (m.type === 'attributes') visita(m.target); else m.addedNodes.forEach(visita); } });

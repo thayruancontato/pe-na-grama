@@ -1,0 +1,114 @@
+/* Camada de consistência do sistema da escola.
+   A maior parte das telas tem estilo próprio (inline); aqui ficam as medidas únicas de botão, campo, cartão,
+   tabela, título, selo e janela. src/shim/consistencia.ts põe as classes ux-* nos elementos certos.
+   As cores continuam as da paleta da escola (as cores padrão abaixo são trocadas pelo controle.ts). */
+@media screen {
+  :root {
+    --ux-ink: #09245c;          /* texto forte (escura da paleta) */
+    --ux-text: #10213f;
+    --ux-muted: #63708a;
+    --ux-line: #dce7f3;
+    --ux-line-soft: #e9f0f8;
+    --ux-soft: #f6f9fd;
+    --ux-r-ctl: 10px;
+    --ux-r-card: 14px;
+    --ux-r-modal: 18px;
+    --ux-sh-card: 0 1px 2px rgba(9, 36, 92, .06), 0 6px 18px rgba(9, 36, 92, .06);
+    --ux-sh-pop: 0 24px 60px rgba(9, 36, 92, .28);
+    --ux-ring: 0 0 0 3px rgba(0, 166, 58, .28);
+    --ux-gap: 16px;
+  }
+
+  /* ---------- moldura da página ---------- */
+  .ux-page { width: 100%; max-width: 1280px; margin: 0 auto; }
+  .ux-page .page-container { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+  .ux-root { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: 0 !important; padding-right: 0 !important; width: 100% !important; box-sizing: border-box; }
+  .ux-root-box { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; width: 100% !important; box-sizing: border-box; }
+  .ux-pagehead { margin-bottom: 22px !important; }
+
+  /* ---------- títulos ---------- */
+  .ux-h1 { font-size: 1.65rem !important; font-weight: 800 !important; line-height: 1.2 !important; letter-spacing: -.01em !important; text-transform: none !important; color: var(--ux-ink) !important; margin: 0 !important; }
+  .ux-h2 { font-size: 1.2rem !important; font-weight: 800 !important; line-height: 1.25 !important; letter-spacing: -.005em !important; text-transform: none !important; color: var(--ux-ink) !important; }
+  .ux-h3 { font-size: 1.02rem !important; font-weight: 700 !important; line-height: 1.3 !important; text-transform: none !important; color: var(--ux-ink) !important; }
+  .ux-sub { font-size: .95rem !important; color: var(--ux-muted) !important; line-height: 1.45 !important; margin: 6px 0 0 !important; font-weight: 400 !important; }
+
+  /* ---------- botões ---------- */
+  .ux-btn {
+    box-sizing: border-box; display: inline-flex !important; align-items: center; justify-content: center; gap: 8px;
+    min-height: 40px; padding: 0 16px !important; border-radius: var(--ux-r-ctl) !important;
+    font-family: inherit !important; font-size: 14px !important; font-weight: 700 !important; line-height: 1.2 !important;
+    letter-spacing: 0 !important; text-transform: none !important; white-space: normal; text-align: center;
+    cursor: pointer; transition: filter .15s, box-shadow .15s, background-color .15s, transform .05s;
+  }
+  .ux-btn-sm { min-height: 34px; padding: 0 12px !important; font-size: 13px !important; gap: 6px; }
+  .ux-btn-ico { box-sizing: border-box; display: inline-flex !important; align-items: center; justify-content: center; width: 40px; height: 40px; min-height: 0; padding: 0 !important; border-radius: var(--ux-r-ctl) !important; cursor: pointer; }
+  .ux-btn-ico.ux-btn-sm { width: 34px; height: 34px; }
+  .ux-btn-cancel { background: #fff !important; color: var(--ux-ink) !important; border: 1px solid var(--ux-line) !important; box-shadow: none !important; }
+  .ux-btn-primary { background: #00a63a !important; color: #fff !important; border: 0 !important; }
+  .ux-btn-raw { background: #fff !important; color: var(--ux-ink) !important; border: 1px solid var(--ux-line) !important; box-shadow: none !important; }
+  .ux-btn:hover:not(:disabled), .ux-btn-ico:hover:not(:disabled) { filter: brightness(.95); }
+  .ux-btn:active:not(:disabled), .ux-btn-ico:active:not(:disabled) { transform: translateY(1px); }
+  .ux-btn:disabled, .ux-btn-ico:disabled { opacity: .55 !important; cursor: not-allowed !important; filter: none; }
+  .ux-btn:focus-visible, .ux-btn-ico:focus-visible, .ux-field:focus-visible, a:focus-visible { outline: none !important; box-shadow: var(--ux-ring) !important; }
+
+  /* ---------- campos ---------- */
+  .ux-field { box-sizing: border-box; min-width: 0; max-width: 100%; font-family: inherit !important; font-size: 14.5px !important; color: var(--ux-text); background-color: #fff;
+    border: 1px solid #cdd9e7 !important; border-radius: var(--ux-r-ctl) !important; padding: 0 12px 0 var(--ux-pl, 12px) !important; min-height: 42px; transition: border-color .15s, box-shadow .15s; }
+  textarea.ux-field { padding: 10px 12px 10px var(--ux-pl, 12px) !important; min-height: 96px; line-height: 1.45; }
+  select.ux-field { padding-right: 32px !important; }
+  .ux-card .ux-card, .ux-modal .ux-card { box-shadow: none !important; }
+  .ux-field::placeholder { color: #8c97ab; opacity: 1; }
+  .ux-field:hover:not(:disabled):not(:focus) { border-color: #b4c3d6 !important; }
+  .ux-field:focus { outline: none !important; border-color: #00a63a !important; box-shadow: var(--ux-ring) !important; }
+  .ux-field:disabled { background-color: var(--ux-soft); color: var(--ux-muted); cursor: not-allowed; }
+  .ux-label { font-size: 13px !important; font-weight: 700 !important; color: #3b4a66 !important; letter-spacing: .01em !important; text-transform: none !important; }
+
+  /* ---------- cartões e janelas ---------- */
+  .ux-card { border-radius: var(--ux-r-card) !important; border: 1px solid var(--ux-line) !important; box-shadow: var(--ux-sh-card) !important; background-color: #fff; }
+  .ux-overlay { background: rgba(6, 26, 64, .55) !important; backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+  .ux-modal { min-width: min(440px, calc(100vw - 32px)); box-sizing: border-box; max-height: calc(100vh - 32px); overflow-y: auto; border-radius: var(--ux-r-modal) !important; box-shadow: var(--ux-sh-pop) !important; border: 1px solid var(--ux-line) !important; }
+
+  /* ---------- abas ---------- */
+  .ux-tabs { display: flex; gap: 4px; margin: 0 0 20px; border-bottom: 1px solid var(--ux-line); overflow-x: auto; scrollbar-width: none; }
+  .ux-tabs::-webkit-scrollbar { display: none; }
+  .ux-tab { appearance: none; background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: -1px; padding: 11px 18px; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1.2;
+    color: var(--ux-muted); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; transition: color .15s, border-color .15s; }
+  .ux-tab:hover:not(.on) { color: var(--ux-ink); }
+  .ux-tab.on { color: #00a63a; border-bottom-color: #00a63a; }
+  .ux-tab:focus-visible { outline: none; box-shadow: var(--ux-ring); border-radius: 6px 6px 0 0; }
+  .ux-tab-n { background: #eef3fa; color: var(--ux-ink); border-radius: 999px; padding: 1px 9px; font-size: 12px; }
+  .ux-tab.on .ux-tab-n { background: rgba(0, 166, 58, .14); color: #00a63a; }
+
+  /* ---------- selos ---------- */
+  .ux-badge { box-sizing: border-box; display: inline-flex !important; align-items: center; gap: 5px; border-radius: 999px !important; padding: 3px 10px !important;
+    font-size: 11.5px !important; font-weight: 700 !important; line-height: 1.3 !important; letter-spacing: .03em !important; white-space: nowrap; }
+
+  /* ---------- tabelas ---------- */
+  table.ux-table { width: 100%; border-collapse: separate !important; border-spacing: 0 !important; font-size: 14px; }
+  table.ux-table th { background: var(--ux-soft) !important; color: var(--ux-muted) !important; font-size: 12px !important; font-weight: 700 !important; letter-spacing: .05em !important;
+    text-transform: uppercase !important; padding: 12px !important; border-bottom: 1px solid var(--ux-line) !important; text-align: left; white-space: nowrap; }
+  table.ux-table td { padding: 12px !important; border-bottom: 1px solid var(--ux-line-soft) !important; vertical-align: middle !important; font-size: 14px; color: var(--ux-text); }
+  table.ux-table tbody tr:last-child td { border-bottom: 0 !important; }
+  table.ux-table tbody tr:hover td { background-color: rgba(9, 36, 92, .025); }
+
+  /* ---------- listas vazias e rolagem ---------- */
+  .ux-page ::-webkit-scrollbar { width: 10px; height: 10px; }
+  .ux-page ::-webkit-scrollbar-thumb { background: #c6d3e3; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+  .ux-page ::-webkit-scrollbar-track { background: transparent; }
+
+  @media (max-width: 768px) {
+    .ux-row { flex-wrap: wrap !important; }
+    .ux-row > * { min-width: 0; max-width: 100%; }
+    .ux-h1 { font-size: 1.4rem !important; }
+    .ux-root-box { max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; width: 100% !important; box-sizing: border-box; }
+  .ux-pagehead { margin-bottom: 16px !important; }
+    .ux-btn { min-height: 44px; }
+    .ux-btn-sm { min-height: 38px; }
+    .ux-btn-ico { width: 44px; height: 44px; }
+    .ux-btn-ico.ux-btn-sm { width: 38px; height: 38px; }
+    .ux-field { min-height: 46px; font-size: 16px !important; }
+    table.ux-table th, table.ux-table td { padding: 10px 12px !important; }
+  }
+
+  @media (prefers-reduced-motion: reduce) { .ux-btn, .ux-field { transition: none; } }
+}
