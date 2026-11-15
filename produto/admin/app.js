@@ -255,58 +255,88 @@
   }
 
 
-  // Roteiro de implantação: cada passo mostra se já está feito (detectado sozinho quando dá) e tem o botão que resolve.
+  // Assistente de implantação: uma pergunta por tela; a resposta já executa o passo e marca o checklist.
   async function implantar(id) {
-    const c = await api('clientes/' + id), feitos = { ...c.checklist }, tem = !!c.url_sistema;
-    const [saude, dom] = tem ? await Promise.all([api('clientes/' + id + '/saude').catch(() => null), api('clientes/' + id + '/dominio').catch(() => null)]) : [null, null];
-    const auto = { [CHECK[0]]: saude && saude.usuarios > 0, [CHECK[2]]: tem && dom && dom.estado === 'ok', [CHECK[5]]: saude && saude.matriculas > 0 };
-    let mudou = false; for (const [k, v] of Object.entries(auto)) if (v && !feitos[k]) { feitos[k] = true; mudou = true; }
-    const grava = () => api('clientes/' + id, { m: 'PATCH', b: { checklist: feitos } }).then(() => rota()).catch(falha);
-    if (mudou) grava();
+    const c = await api('clientes/' + id), feitos = { ...c.checklist };
+    const base = location.hostname.split('.').slice(1).join('.');
+    const slug = String(c.escola).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+    const [saude, dom, ctl] = c.url_sistema ? await Promise.all([api('clientes/' + id + '/saude').catch(() => null), api('clientes/' + id + '/dominio').catch(() => null), api('clientes/' + id + '/controle').catch(() => null)]) : [null, null, null];
+    if (saude && saude.usuarios > 0) feitos[CHECK[0]] = true;
+    if (dom && dom.estado === 'ok') feitos[CHECK[2]] = true;
+    if (saude && saude.matriculas > 0) feitos[CHECK[5]] = true;
+    const grava = () => api('clientes/' + id, { m: 'PATCH', b: { checklist: feitos } }).catch(falha);
+    const marca = (k, v) => { feitos[k] = v; return grava(); };
+    const abrePainel = async () => { const w = window.open('', '_blank'); try { const r = await api('clientes/' + id + '/entrar', { m: 'POST', b: {} }); if (w) w.location = r.url; else toast('Libere pop-ups para abrir a escola.', 'err'); } catch (e) { if (w) w.close(); falha(e); } };
+    const COR = [['cor_primaria', 'Primária', '#00a63a'], ['cor_secundaria', 'Secundária', '#17428f'], ['cor_escura', 'Escura', '#09245c'], ['cor_destaque', 'Destaque', '#f4c20d']];
+    const op = (v, t, d) => ({ v, t, d });
+    // Cada passo: pergunta, opções (ou campo), e a função que executa a resposta. Devolve true para avançar.
     const PASSOS = [
-      [CHECK[0], 'Cria o login do administrador e mostra a senha para você enviar.', 'Gerar acesso', 'acesso', tem],
-      [CHECK[1], 'Troque logo, cores e nome da escola (até gerar a paleta a partir da logo).', 'Abrir controle', 'ctl', tem],
-      [CHECK[2], tem ? 'Coloca o endereço da escola no ar.' : 'Digite o endereço da escola (ex.: https://escola.thayruan.com.br).', tem ? 'Publicar endereço' : 'Salvar endereço', 'url', true],
-      [CHECK[3], 'Entre no painel da escola em Mensagens e leia o QR Code com o celular dela.', 'Abrir painel da escola', 'painel', tem],
-      [CHECK[4], 'No painel da escola, em Configurações, informe a chave Pix para receber.', 'Abrir painel da escola', 'painel', tem],
-      [CHECK[5], 'Cadastre ou importe os alunos no painel da escola.', 'Abrir painel da escola', 'painel', tem],
-      [CHECK[6], 'Combine um horário e mostre o sistema para a escola.', 'Chamar no WhatsApp', 'zap', true]];
-    const prox = () => PASSOS.findIndex(p => !feitos[p[0]]);
-    const html = () => {
-      const n = CHECK.filter(k => feitos[k]).length, pr = prox();
-      return `<div class="imp-top"><div class="pg-track"><i style="width:${Math.round(n / CHECK.length * 100)}%"></i></div><b>${n} de ${CHECK.length}</b></div>` +
-        (pr < 0 ? '<div class="pg-alert ok">Tudo pronto! Esta escola está implantada.</div>' : '') +
-        PASSOS.map((p, i) => `<div class="imp-step ${feitos[p[0]] ? 'done' : i === pr ? 'next' : ''}"><label class="imp-ck"><input type="checkbox" data-k="${i}" ${feitos[p[0]] ? 'checked' : ''} aria-label="Marcar como feito"></label>
-          <div class="imp-tx"><b>${i + 1}. ${E(p[0])}</b><span>${E(p[1])}</span>${p[3] === 'url' && !tem ? '<input class="pg-input" id="impUrl" placeholder="https://escola.thayruan.com.br" style="margin-top:8px">' : ''}<div id="res${i}"></div></div>
-          ${feitos[p[0]] && auto[p[0]] ? '<small class="imp-auto">detectado</small>' : `<button class="pg-btn ${i === pr ? 'green' : 'detail'}" data-a="${i}" ${p[4] ? '' : 'disabled title="Defina o endereço primeiro"'}>${p[2]}</button>`}</div>`).join('');
-    };
-    modal('Implantar · ' + c.escola, '<div class="pg-stack" id="imp"></div>', (el, fechar) => {
-      const box = $('#imp', el);
-      const pinta = () => { box.innerHTML = html(); liga(); };
-      const abrePainel = async () => { const w = window.open('', '_blank'); try { const r = await api('clientes/' + id + '/entrar', { m: 'POST', b: {} }); if (w) w.location = r.url; else toast('Libere pop-ups para abrir a escola.', 'err'); } catch (e) { if (w) w.close(); falha(e); } };
-      const acoes = {
-        acesso: async i => {
-          try {
-            const r = await api('clientes/' + id + '/acesso', { m: 'POST', b: {} }); feitos[CHECK[0]] = true; grava();
-            const msg = `Olá, ${c.contato_nome}! Seu acesso ao sistema da ${c.escola}: ${r.url}\nE-mail: ${r.email}\nSenha: ${r.senha}`;
-            pinta(); $('#res' + i, box).innerHTML = `<div class="pg-alert ok" style="margin-top:8px">Anote agora, a senha não aparece de novo.<br>E-mail: <b>${E(r.email)}</b><br>Senha: <b>${E(r.senha)}</b></div><p style="margin-top:8px"><a class="pg-btn ok" target="_blank" rel="noopener" href="${E(waLink(c.contato_tel, msg))}">${I('whats')} Enviar pelo WhatsApp</a></p>`;
-          } catch (e) { falha(e); }
-        },
-        ctl: () => controleEscola(c),
-        url: async () => {
-          try {
-            if (!tem) { const u = ($('#impUrl', box).value || '').trim(); if (!u) return toast('Digite o endereço.', 'err'); await api('clientes/' + id, { m: 'PATCH', b: { url_sistema: u } }); toast('Endereço salvo'); fechar(); return implantar(id); }
-            const r = await api('clientes/' + id + '/publicar', { m: 'POST', b: {} });
-            if (r.ok) { feitos[CHECK[2]] = true; grava(); toast('Endereço publicado'); pinta(); } else toast(r.motivo || 'Não foi possível publicar.', 'err');
-          } catch (e) { falha(e); }
-        },
-        painel: abrePainel,
-        zap: () => window.open(waLink(c.contato_tel, `Olá, ${c.contato_nome}! Vamos combinar o treinamento do sistema da ${c.escola}?`), '_blank', 'noopener')
+      { k: CHECK[2], t: 'Endereço', q: 'Em que endereço a escola vai usar o sistema?', ja: () => feitos[CHECK[2]] ? 'A escola já está no ar em ' + E(c.url_sistema) : '',
+        campo: () => c.url_sistema ? `<p>Endereço definido: <b>${E(c.url_sistema)}</b>. Falta colocar no ar.</p>` : `<label class="pg-label" for="w1">Nome do endereço</label><div class="imp-url"><input class="pg-input" id="w1" value="${E(slug)}" autocomplete="off" spellcheck="false"><span>.${E(base)}</span></div>`,
+        botao: 'Colocar no ar', aplica: async el => {
+          let url = c.url_sistema;
+          if (!url) { const s = ($('#w1', el).value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, ''); if (!s) { toast('Digite o nome do endereço.', 'err'); return false; } url = `https://${s}.${base}`; await api('clientes/' + id, { m: 'PATCH', b: { url_sistema: url } }); c.url_sistema = url; }
+          const r = await api('clientes/' + id + '/publicar', { m: 'POST', b: {} });
+          if (!r.ok) { toast(r.motivo || 'Não foi possível publicar agora.', 'err'); return false; }
+          await marca(CHECK[2], true); toast('Endereço no ar'); return true; } },
+      { k: CHECK[0], t: 'Acesso', q: 'Qual e-mail o administrador da escola vai usar para entrar?', ja: () => '',
+        campo: () => `<label class="pg-label" for="w2">E-mail do administrador</label><input class="pg-input" id="w2" type="email" value="${E(c.contato_email || '')}" placeholder="nome@escola.com.br">` + (feitos[CHECK[0]] ? '<p class="imp-note">Esta escola já tem acesso criado. Gerar de novo troca a senha atual.</p>' : '') + '<div id="w2r"></div>',
+        botao: feitos[CHECK[0]] ? 'Gerar nova senha' : 'Criar acesso', pular: feitos[CHECK[0]], aplica: async el => {
+          if (el.dataset.res) return true;
+          const em = ($('#w2', el).value || '').trim(); if (em && em !== c.contato_email && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em) && !feitos[CHECK[0]]) { await api('clientes/' + id, { m: 'PATCH', b: { contato_email: em } }); c.contato_email = em; }
+          const r = await api('clientes/' + id + '/acesso', { m: 'POST', b: {} }); await marca(CHECK[0], true);
+          const msg = `Olá, ${c.contato_nome}! Seu acesso ao sistema da ${c.escola}: ${r.url}\nE-mail: ${r.email}\nSenha: ${r.senha}`;
+          $('#w2r', el).innerHTML = `<div class="pg-alert ok" style="margin-top:12px">Anote agora, a senha não aparece de novo.<br>E-mail: <b>${E(r.email)}</b><br>Senha: <b>${E(r.senha)}</b></div><p style="margin-top:10px"><a class="pg-btn ok" target="_blank" rel="noopener" href="${E(waLink(c.contato_tel, msg))}">${I('whats')} Enviar pelo WhatsApp</a></p>`;
+          el.dataset.res = '1'; $('[data-go]', el).textContent = 'Continuar'; return false; } },
+      { k: CHECK[1], t: 'Marca', q: 'Como ficam as cores e a logo da escola?', ja: () => '',
+        opcoes: [op('cores', 'Escolher as cores agora', 'Você define as 4 cores do sistema aqui mesmo.'), op('logo', 'Gerar as cores a partir da logo', 'Abre o Controle: troque a logo e clique em "Aplicar paleta da logo".'), op('padrao', 'Manter as cores padrão do Pé na Grama', 'Dá para mudar depois, a qualquer hora.')],
+        extra: v => v === 'cores' ? `<div class="imp-cores">${COR.map(([k, r, d]) => `<label><span>${r}</span><input type="color" data-cor="${k}" value="${E((ctl && ctl.valores && ctl.valores[k]) || d)}"></label>`).join('')}</div>` : '',
+        aplica: async (el, v) => {
+          if (!c.url_sistema) { toast('Defina o endereço primeiro.', 'err'); return false; }
+          if (v === 'cores') { const valores = {}; el.querySelectorAll('[data-cor]').forEach(x => valores[x.dataset.cor] = x.value); await api('clientes/' + id + '/controle', { m: 'PUT', b: { valores } }); toast('Cores aplicadas na escola'); }
+          if (v === 'logo') controleEscola(c);
+          await marca(CHECK[1], true); return true; } },
+      { k: CHECK[3], t: 'WhatsApp', q: 'O WhatsApp da escola já está conectado?', ja: () => '',
+        opcoes: [op('sim', 'Sim, já está conectado', ''), op('agora', 'Vou conectar agora com a escola', 'Abre o painel da escola em Mensagens para ler o QR Code.'), op('depois', 'Deixar para depois', 'Fica pendente no roteiro.')],
+        aplica: async (el, v) => { if (v === 'agora') await abrePainel(); await marca(CHECK[3], v !== 'depois'); return true; } },
+      { k: CHECK[4], t: 'Pix', q: 'A chave Pix da escola já está configurada?', ja: () => '',
+        opcoes: [op('sim', 'Sim, já está configurada', ''), op('agora', 'Vou configurar agora', 'Abre o painel da escola; a chave fica em Configurações.'), op('depois', 'Deixar para depois', 'Fica pendente no roteiro.')],
+        aplica: async (el, v) => { if (v === 'agora') await abrePainel(); await marca(CHECK[4], v !== 'depois'); return true; } },
+      { k: CHECK[5], t: 'Alunos', q: 'Como os alunos vão entrar no sistema?', ja: () => feitos[CHECK[5]] ? `A escola já tem ${saude.matriculas} aluno(s) cadastrado(s).` : '',
+        opcoes: [op('sozinha', 'A própria escola cadastra', 'Ela usa o formulário de matrícula e o cadastro do painel.'), op('eu', 'Eu importo para ela', 'Abre o painel da escola para você cadastrar ou importar.'), op('depois', 'Decidir depois', 'Fica pendente no roteiro.')],
+        aplica: async (el, v) => { if (v === 'eu') await abrePainel(); await marca(CHECK[5], v !== 'depois'); return true; } },
+      { k: CHECK[6], t: 'Treinamento', q: 'Como será o treinamento da escola?', ja: () => '',
+        opcoes: [op('feito', 'Já fiz o treinamento', ''), op('agendar', 'Agendar com a escola', 'Escolha o dia e abro o WhatsApp com a mensagem pronta.'), op('depois', 'Decidir depois', 'Fica pendente no roteiro.')],
+        extra: v => v === 'agendar' ? '<label class="pg-label" for="w7" style="margin-top:12px">Data e hora</label><input class="pg-input" id="w7" type="datetime-local">' : '',
+        aplica: async (el, v) => {
+          if (v === 'agendar') { const d = $('#w7', el).value; if (!d) { toast('Escolha a data e a hora.', 'err'); return false; } const q = new Date(d); const txt = q.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' }) + ' às ' + q.toTimeString().slice(0, 5); window.open(waLink(c.contato_tel, `Olá, ${c.contato_nome}! Podemos fazer o treinamento do sistema da ${c.escola} na ${txt}?`), '_blank', 'noopener'); }
+          await marca(CHECK[6], v === 'feito'); return true; } }
+    ];
+    modal('Implantar · ' + c.escola, '<div id="imp"></div>', (el, fechar) => {
+      const box = $('#imp', el); let n = Math.max(0, PASSOS.findIndex(p => !feitos[p.k])), esc = {};
+      const fim = () => { const ok = CHECK.filter(k => feitos[k]).length;
+        box.innerHTML = `<div class="imp-dots">${PASSOS.map(() => '<i class="on"></i>').join('')}</div><h3 class="imp-q">${ok === CHECK.length ? 'Tudo pronto!' : 'Quase lá'}</h3><p class="imp-note">${ok} de ${CHECK.length} passos concluídos.</p>
+          <ul class="imp-sum">${PASSOS.map(p => `<li class="${feitos[p.k] ? 'ok' : ''}"><span>${feitos[p.k] ? '✓' : '○'}</span>${E(p.k)}</li>`).join('')}</ul>
+          <div class="imp-nav"><button class="pg-btn" data-v>Revisar passos</button>${c.status !== 'ativo' ? '<button class="pg-btn green" data-ativa>Marcar escola como ativa</button>' : '<button class="pg-btn green" data-ok>Concluir</button>'}</div>`;
+        $('[data-v]', box).onclick = () => { n = 0; pinta(); };
+        const a = $('[data-ativa]', box); if (a) a.onclick = async () => { try { await api('clientes/' + id, { m: 'PATCH', b: { status: 'ativo' } }); toast('Escola marcada como ativa'); fechar(); rota(); } catch (e) { falha(e); } };
+        const o = $('[data-ok]', box); if (o) o.onclick = () => { fechar(); rota(); }; };
+      const pinta = () => {
+        if (n >= PASSOS.length) return fim();
+        const p = PASSOS[n], ja = p.ja ? p.ja() : '', v = esc[n] || (p.opcoes ? p.opcoes[0].v : '');
+        box.innerHTML = `<div class="imp-dots">${PASSOS.map((_, i) => `<i class="${i < n ? 'on' : i === n ? 'now' : ''}"></i>`).join('')}</div><small class="imp-step-n">Passo ${n + 1} de ${PASSOS.length} · ${E(p.t)}</small><h3 class="imp-q">${E(p.q)}</h3>
+          ${ja ? `<div class="pg-alert ok">${ja}</div>` : ''}
+          ${p.opcoes ? `<div class="imp-ops" role="radiogroup">${p.opcoes.map(o => `<label class="imp-op ${o.v === v ? 'sel' : ''}"><input type="radio" name="op" value="${o.v}" ${o.v === v ? 'checked' : ''}><span><b>${E(o.t)}</b>${o.d ? `<small>${E(o.d)}</small>` : ''}</span></label>`).join('')}</div><div id="ex">${p.extra ? p.extra(v) : ''}</div>` : (p.campo ? p.campo() : '')}
+          <div class="imp-nav">${n ? '<button class="pg-btn" data-volta>Voltar</button>' : '<span></span>'}<span class="imp-right">${ja || p.pular ? '<button class="pg-btn" data-pula>Pular</button>' : ''}<button class="pg-btn green" data-go>${ja && !p.opcoes && !p.campo ? 'Continuar' : (p.botao || 'Continuar')}</button></span></div>`;
+        box.querySelectorAll('[name=op]').forEach(r => r.onchange = () => { esc[n] = r.value; if (p.extra) { const cores = {}; box.querySelectorAll('[data-cor]').forEach(x => cores[x.dataset.cor] = x.value); $('#ex', box).innerHTML = p.extra(r.value); Object.entries(cores).forEach(([k, val]) => { const x = box.querySelector(`[data-cor="${k}"]`); if (x) x.value = val; }); } box.querySelectorAll('.imp-op').forEach(l => l.classList.toggle('sel', l.querySelector('input').checked)); });
+        const vb = $('[data-volta]', box); if (vb) vb.onclick = () => { n--; pinta(); };
+        const pu = $('[data-pula]', box); if (pu) pu.onclick = () => { n++; pinta(); };
+        const go = $('[data-go]', box); go.onclick = async () => {
+          if (box.dataset.res === '1' || $('#w2r', box) && $('#w2r', box).innerHTML) { n++; return pinta(); }
+          go.disabled = true;
+          try { const sel = (box.querySelector('[name=op]:checked') || {}).value; const r = await p.aplica(box, sel); if (r) { n++; pinta(); } } catch (e) { falha(e); } finally { go.disabled = false; }
+        };
       };
-      function liga() {
-        box.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { b.disabled = true; try { await acoes[PASSOS[+b.dataset.a][3]](+b.dataset.a); } finally { b.disabled = false; } });
-        box.querySelectorAll('[data-k]').forEach(x => x.onchange = () => { feitos[PASSOS[+x.dataset.k][0]] = x.checked; grava(); pinta(); });
-      }
       pinta();
     });
   }

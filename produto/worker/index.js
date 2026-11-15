@@ -507,6 +507,7 @@ async function rotaAdmin(req, env, url, caminho) {
       const b = await body(), campos = [], vals = [];
       if (['implantando', 'ativo', 'cancelado'].includes(b.status)) { campos.push('status=?'); vals.push(b.status); }
       if (typeof b.url_sistema === 'string') { campos.push('url_sistema=?'); vals.push(txt(b.url_sistema, 200)); }
+      if (typeof b.contato_email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.contato_email)) { campos.push('contato_email=?'); vals.push(txt(b.contato_email, 120).toLowerCase()); }
       if (typeof b.notas === 'string') { campos.push('notas=?'); vals.push(txt(b.notas, 4000)); }
       if (b.checklist && typeof b.checklist === 'object') { campos.push('checklist=?'); vals.push(JSON.stringify(Object.fromEntries(Object.entries(b.checklist).slice(0, 20).map(([k, v]) => [txt(k, 40), !!v])))); }
       if (b.mensal != null) { campos.push('mensal=?'); vals.push(Math.max(0, int(b.mensal))); }
