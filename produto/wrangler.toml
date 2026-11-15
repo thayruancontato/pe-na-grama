@@ -1,0 +1,35 @@
+name = "esporte-thayruan"
+main = "worker/index.js"
+compatibility_date = "2024-11-01"
+
+# Arquivos do site (landing, formulário, design system, Central do dono). Só /api/* passa pelo Worker.
+[assets]
+directory = "."
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+run_worker_first = true
+
+[[routes]]
+pattern = "esporte.thayruan.com.br"
+custom_domain = true
+
+# >>> escolas (gerado por provisionar-subdominios.mjs; não edite)
+[[routes]]
+pattern = "centro-esportivo-bosque-das-araucarias.thayruan.com.br"
+custom_domain = true
+
+[[routes]]
+pattern = "escolinha-craques-do-vale.thayruan.com.br"
+custom_domain = true
+# <<< escolas
+
+# Banco de vendas (SQLite dentro do Worker; não usa os bancos D1 da conta)
+[[durable_objects.bindings]]
+name = "BANCO"
+class_name = "Banco"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Banco"]
+
+# Sem [triggers]: o plano gratuito da conta já usa as 5 tarefas agendadas. As mensalidades são geradas 1x/dia pelo próprio uso (veja geracaoDiaria).

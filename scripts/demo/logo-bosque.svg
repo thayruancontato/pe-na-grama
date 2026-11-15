@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="ceu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d5c3e"/><stop offset="1" stop-color="#083d29"/></linearGradient>
+    <clipPath id="disco"><circle cx="256" cy="256" r="224"/></clipPath>
+  </defs>
+  <circle cx="256" cy="256" r="248" fill="#f6c945"/>
+  <circle cx="256" cy="256" r="236" fill="#fffdf4"/>
+  <circle cx="256" cy="256" r="224" fill="url(#ceu)"/>
+  <g clip-path="url(#disco)">
+    <!-- sol/bola atrás da copa -->
+    <circle cx="256" cy="178" r="86" fill="#f6c945"/>
+    <path d="M256 128l30 22-11 36h-38l-11-36z" fill="#083d29" opacity=".85"/>
+    <path d="M226 186l-34-12M286 186l34-12M237 222l-14 30M275 222l14 30M256 128v-34" stroke="#083d29" stroke-width="7" stroke-linecap="round" opacity=".85" fill="none"/>
+    <!-- gramado listrado -->
+    <ellipse cx="256" cy="470" rx="300" ry="120" fill="#8ed16f"/>
+    <path d="M-40 400Q256 350 552 400V540H-40Z" fill="#6fbf55"/>
+    <path d="M40 430Q256 392 472 430M20 460Q256 424 492 460" stroke="#8ed16f" stroke-width="14" fill="none" opacity=".7"/>
+    <!-- araucária: tronco e galhos em candelabro -->
+    <path d="M246 400c4-60 2-110 0-160h20c-2 50-4 100 0 160z" fill="#4a2f1a"/>
+    <path d="M256 290C226 276 196 262 174 232M256 290C286 276 316 262 338 232M256 250C248 220 236 196 226 168M256 250c8-30 20-54 30-82" stroke="#4a2f1a" stroke-width="10" stroke-linecap="round" fill="none"/>
+    <!-- copas achatadas -->
+    <g fill="#e9f6c9"><ellipse cx="170" cy="222" rx="62" ry="22"/><ellipse cx="342" cy="222" rx="62" ry="22"/><ellipse cx="224" cy="160" rx="58" ry="21"/><ellipse cx="288" cy="160" rx="58" ry="21"/></g>
+    <g fill="#8ed16f"><ellipse cx="170" cy="232" rx="58" ry="16"/><ellipse cx="342" cy="232" rx="58" ry="16"/><ellipse cx="224" cy="170" rx="54" ry="15"/><ellipse cx="288" cy="170" rx="54" ry="15"/></g>
+    <ellipse cx="256" cy="116" rx="52" ry="18" fill="#e9f6c9"/><ellipse cx="256" cy="125" rx="48" ry="13" fill="#8ed16f"/>
+  </g>
+  <text x="256" y="452" text-anchor="middle" font-family="Arial Black,Arial,sans-serif" font-weight="900" font-size="44" letter-spacing="6" fill="#fffdf4" stroke="#083d29" stroke-width="3" paint-order="stroke">BOSQUE</text>
+</svg>

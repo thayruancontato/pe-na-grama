@@ -1,0 +1,8 @@
+/* Tokens da marca Pé na Grama: importe em qualquer tela */
+:root{
+  --pg-verde:#007a2b; --pg-verde-vivo:#00a63a; --pg-amarelo:#ffc61a;
+  --pg-marinho:#17428f; --pg-noite:#151c33; --pg-fundo:#f2f7fd;
+  --pg-ink:#1e293b; --pg-slate:#64748b; --pg-linha:#dce7f3;
+  --pg-raio:16px; --pg-raio-botao:10px; --pg-sombra:0 4px 20px rgba(23,66,143,.08);
+  --pg-fonte:'Lato','Segoe UI',system-ui,sans-serif;
+}

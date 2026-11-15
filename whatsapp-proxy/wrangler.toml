@@ -1,0 +1,53 @@
+name = "seu-whatsapp-proxy"
+main = "src/index.js"
+compatibility_date = "2024-03-20"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "RAE_STORAGE"
+id = "b742c8f51783484c9aa22238542a4fb3"
+
+[vars]
+FIREBASE_PROJECT_ID = "SEU-PROJETO-ID"
+FIREBASE_API_KEY = "SEU_FIREBASE_API_KEY"
+WORKER_PUBLIC_URL = "https://SEU-WORKER.SEU-SUBDOMINIO.workers.dev"
+# Provedor ativo = Cora (conta do cliente). Asaas segue configurado e selecionável.
+PAYMENT_PROVIDER = "cora"
+CORA_DEFAULT_ENVIRONMENT = "production"
+CORA_STAGE_CLIENT_ID = "int-2GlPPaOKqVarPWJqZqGyRB"
+# Produção = conta Cora do cliente (cert emitido em 30/07/2026, expira 30/07/2027)
+CORA_PRODUCTION_CLIENT_ID = "int-4IohW5C29e7xFk3tzgaI7D"
+
+[[mtls_certificates]]
+binding = "CORA_STAGE_CERT"
+certificate_id = "157f5982-81c4-43e6-95db-acd531e87755"
+
+[[mtls_certificates]]
+binding = "CORA_PRODUCTION_CERT"
+certificate_id = "d23b09be-b329-4a44-84a8-fc0f7afc3843"
+
+# Para ativar a Cora de verdade, suba os certificados fora do Git:
+# npx wrangler mtls-certificate upload --cert caminho/certificate.pem --key caminho/private-key.key --name cora-stage
+# Depois adicione o binding retornado pelo Cloudflare:
+# [[mtls_certificates]]
+# binding = "CORA_STAGE_CERT"
+# certificate_id = "cole-o-certificate-id-stage"
+#
+# Para produção, repita com as credenciais de produção:
+# CORA_PRODUCTION_CLIENT_ID = "cole-o-client-id-producao"
+# [[mtls_certificates]]
+# binding = "CORA_PRODUCTION_CERT"
+# certificate_id = "cole-o-certificate-id-producao"
+
+[triggers]
+crons = ["* * * * *"]
+
+# --- Provedores de pagamento configuraveis pelo painel (docs/provedores-de-pagamento.md) ---
+# E-mails (separados por virgula) que podem salvar credenciais pelo painel. Padrao: rumoaoesporte@admin.com
+# ADMIN_EMAILS = "dono@suaescola.com.br"
+# Segredo que cifra as credenciais guardadas no KV:  npx wrangler secret put PROVIDER_CONFIG_KEY
+# Certificados mTLS (somente Efi, Banco Inter e Sicoob). Envie o certificado e crie o binding:
+#   npx wrangler mtls-certificate upload --cert certificado.pem --key chave.key --name efi
+# [[mtls_certificates]]
+# binding = "MTLS_EFI"          # ou MTLS_INTER / MTLS_SICOOB
+# certificate_id = "id-devolvido-pelo-comando-acima"

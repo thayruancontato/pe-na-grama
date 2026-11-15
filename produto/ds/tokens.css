@@ -1,0 +1,114 @@
+/* Design system do Pé na Grama — TOKENS
+   Fonte: variáveis reais do sistema (src/App.css) + valores medidos nas telas renderizadas.
+   Importe este arquivo antes de components.css. */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700;800;900&family=Open+Sans:wght@300;400;600;700;800&display=swap');
+
+:root {
+  /* marca */
+  --brand-blue: #17428f;
+  --brand-blue-dark: #09245c;
+  --brand-blue-deep: #061a40;
+  --brand-green: #00a63a;
+  --brand-green-dark: #007a2a;
+  --brand-gold: #f4c20d;
+  --brand-gold-dark: #c88a04;
+  --brand-cyan: #59c8df;
+
+  /* papéis */
+  --primary-color: var(--brand-blue);
+  --accent-color: var(--brand-green);
+  --success-color: #16a34a;
+  --danger-color: #e74c3c;
+  --whatsapp: #25d366;
+
+  /* superfícies e texto */
+  --white: #ffffff;
+  --light-gray: #f4f8fc;
+  --surface-soft: #f8fbff;
+  --soft-blue: #eef8ff;
+  --border-color: var(--hairline);
+  --dark-gray: #10213f;      /* texto padrão */
+  --medium-gray: #63708a;
+  --slate-900: #1e293b;      /* valores e títulos de cartão */
+  --slate-950: #0f172a;
+  --slate-500: #64748b;      /* rótulos de KPI */
+  --text-muted: #666666;     /* subtítulos e cabeçalho de tabela */
+  --line-soft: var(--hairline);      /* bordas leves de cartões pequenos */
+  --line-input: rgba(16, 33, 63, 0.22);     /* bordas de campos e botões de contorno */
+
+  /* cartões de indicador (KPI) */
+  --kpi-dark: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  --kpi-green: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --kpi-purple: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  --kpi-red: #ef4444;
+  --kpi-amber: #f59e0b;
+  --kpi-cyan: #0891b2;
+
+  /* status (badges) */
+  --ok-bg: #d6f3df;   --ok-fg: #0f6b38;
+  --warn-bg: #fff0bf; --warn-fg: #7a5a00;
+  --bad-bg: #fff5f5;  --bad-fg: #c53030; --bad-bd: #feb2b2;
+  --info-bg: #dbe6fb; --info-fg: #17428f;
+
+  /* tipografia */
+  --font-primary: 'Lato', 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+  --font-secondary: 'Open Sans', 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+  --font-button: Arial, sans-serif;       /* botões do sistema usam a fonte padrão do navegador */
+  --font-mono: ui-monospace, 'Courier New', monospace;
+  --fs-title: 28.8px;     /* título de página, peso 900, caixa alta */
+  --fs-card-title: 19.2px;
+  --fs-kpi: 32px;
+  --fs-kpi-label: 13.6px;
+  --fs-body: 16px;
+  --fs-small: 14px;
+  --fs-tiny: 13px;   /* piso do sistema */
+
+  /* espaçamento */
+  --spacing-xs: var(--s-2);
+  --spacing-sm: var(--s-3);
+  --spacing-md: 12px;
+  --spacing-lg: var(--s-4);
+  --spacing-xl: 24px;
+  --spacing-xxl: var(--s-6);
+
+  /* raios */
+  --radius-xs: 4px;     /* tags, badges, botões pequenos */
+  --radius-sm: 6px;     /* campos */
+  --radius: 8px;        /* botões, menu */
+  --radius-md: 12px;    /* cartões de turma, conexão */
+  --radius-lg: 20px;    /* cartões grandes e KPI */
+  --radius-pill: 20px;  /* chips de filtro */
+
+  /* sombras */
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.08);
+  --shadow-card-soft: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --shadow-bar: 0 10px 30px rgba(0, 0, 0, 0.15);
+  --shadow-brand: 0 18px 50px rgba(9, 36, 92, 0.16);
+  --shadow-brand-lg: 0 18px 50px rgba(9, 36, 92, 0.18);
+  --shadow-soft: 0 8px 24px rgba(9, 36, 92, 0.08);
+
+  /* gradientes de marca */
+  --grad-side-head: radial-gradient(circle at 22% 8%, rgba(244, 194, 13, 0.24), transparent 34%), linear-gradient(135deg, #17428f 0%, #09245c 100%);
+  --grad-menu-active: linear-gradient(135deg, rgba(23, 66, 143, 0.1), rgba(0, 166, 58, 0.1));
+  --grad-submenu-active: linear-gradient(135deg, #00a63a 0%, #17428f 100%);
+  --grad-side: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  --grad-page: linear-gradient(180deg, #f4f8fc 0%, #eef8ff 100%);
+  --grad-login: radial-gradient(circle at 18% -10%, rgba(244, 194, 13, 0.22), transparent 32%), radial-gradient(circle at 85% 2%, rgba(0, 166, 58, 0.18), transparent 28%), linear-gradient(135deg, #17428f 0%, #09245c 58%, #061a40 100%);
+
+  /* decisões de design (revisão com a skill de gosto):
+     - escala de espaçamento única: 4 8 12 16 24 32 48 64 96 128 (use --s-N em tudo que for novo)
+     - nenhum texto abaixo de 13px; texto de leitura em 16px com contraste alto
+     - um só filete (--hairline) para bordas e divisórias
+     - foco visível em azul da marca com 2px (o dourado antigo tinha contraste 1,6:1, abaixo dos 3:1 mínimos)
+     - alvos de toque: botões 44px, campos 48px; só linhas de tabela usam botão de 36px
+     - 90% neutro: cor só no botão principal, em estados e em gráficos */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px; --s-10: 128px;
+  --hairline: rgba(16, 33, 63, 0.14);
+  --focus-ring: var(--brand-blue);
+  --btn-h: 44px; --btn-h-dense: 36px; --field-h: 48px;
+  --ink: #10213f;
+
+  /* layout */
+  --sidebar-w: 260px;
+  --sidebar-w-collapsed: 80px;
+}

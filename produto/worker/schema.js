@@ -1,0 +1,17 @@
+// Esquema do banco (SQLite do Durable Object). Roda a cada partida com CREATE ... IF NOT EXISTS, então é seguro repetir.
+export const SCHEMA = [
+  "CREATE TABLE IF NOT EXISTS settings (k TEXT PRIMARY KEY, v TEXT)",
+  "CREATE TABLE IF NOT EXISTS planos (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  nome TEXT NOT NULL,\n  mensal INTEGER NOT NULL,\n  implantacao INTEGER NOT NULL DEFAULT 0,\n  descricao TEXT NOT NULL DEFAULT '',\n  ativo INTEGER NOT NULL DEFAULT 1\n)",
+  "CREATE TABLE IF NOT EXISTS leads (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  criado TEXT NOT NULL,\n  status TEXT NOT NULL DEFAULT 'novo',          \n  escola TEXT NOT NULL,\n  cidade TEXT NOT NULL DEFAULT '',\n  uf TEXT NOT NULL DEFAULT '',\n  contato_nome TEXT NOT NULL DEFAULT '',\n  contato_tel TEXT NOT NULL DEFAULT '',\n  contato_email TEXT NOT NULL DEFAULT '',\n  config TEXT NOT NULL DEFAULT '{}',            \n  logo TEXT NOT NULL DEFAULT '',                \n  notas TEXT NOT NULL DEFAULT '',\n  ip TEXT NOT NULL DEFAULT ''\n)",
+  "CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status, criado)",
+  "CREATE TABLE IF NOT EXISTS contratos (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  token TEXT NOT NULL UNIQUE,\n  lead_id INTEGER,\n  cliente_id INTEGER,\n  escola TEXT NOT NULL,\n  plano_nome TEXT NOT NULL DEFAULT '',\n  mensal INTEGER NOT NULL DEFAULT 0,\n  implantacao INTEGER NOT NULL DEFAULT 0,\n  dia_venc INTEGER NOT NULL DEFAULT 10,\n  texto TEXT NOT NULL,                          \n  status TEXT NOT NULL DEFAULT 'enviado',       \n  criado TEXT NOT NULL,\n  assinado_em TEXT,\n  ass_nome TEXT,\n  ass_doc TEXT,\n  ass_ip TEXT,\n  ass_ua TEXT,\n  ass_hash TEXT\n)",
+  "CREATE TABLE IF NOT EXISTS clientes (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  lead_id INTEGER,\n  contrato_id INTEGER,\n  escola TEXT NOT NULL,\n  contato_nome TEXT NOT NULL DEFAULT '',\n  contato_tel TEXT NOT NULL DEFAULT '',\n  contato_email TEXT NOT NULL DEFAULT '',\n  plano_nome TEXT NOT NULL DEFAULT '',\n  mensal INTEGER NOT NULL DEFAULT 0,\n  dia_venc INTEGER NOT NULL DEFAULT 10,\n  status TEXT NOT NULL DEFAULT 'implantando',   \n  criado TEXT NOT NULL,\n  url_sistema TEXT NOT NULL DEFAULT '',\n  checklist TEXT NOT NULL DEFAULT '{}',\n  notas TEXT NOT NULL DEFAULT ''\n)",
+  "CREATE TABLE IF NOT EXISTS faturas (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  token TEXT NOT NULL UNIQUE,\n  cliente_id INTEGER NOT NULL,\n  descricao TEXT NOT NULL,\n  competencia TEXT,                              \n  valor INTEGER NOT NULL,\n  vencimento TEXT NOT NULL,\n  status TEXT NOT NULL DEFAULT 'aberta',         \n  criado TEXT NOT NULL,\n  pago_em TEXT,\n  informado_em TEXT\n)",
+  "CREATE INDEX IF NOT EXISTS idx_faturas_cliente ON faturas(cliente_id, competencia)",
+  "CREATE INDEX IF NOT EXISTS idx_faturas_status ON faturas(status, vencimento)",
+  "CREATE TABLE IF NOT EXISTS tentativas (chave TEXT NOT NULL, quando INTEGER NOT NULL)",
+  "CREATE INDEX IF NOT EXISTS idx_tent ON tentativas(chave, quando)",
+  "CREATE TABLE IF NOT EXISTS atividade (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  quando TEXT NOT NULL,\n  tipo TEXT NOT NULL,\n  texto TEXT NOT NULL\n)",
+  "CREATE TABLE IF NOT EXISTS sys_docs (tenant TEXT NOT NULL, col TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tenant, col, id))",
+  "CREATE TABLE IF NOT EXISTS sys_users (tenant TEXT NOT NULL, email TEXT NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL, uid TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'user', PRIMARY KEY (tenant, email))"
+];

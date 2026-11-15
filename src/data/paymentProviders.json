@@ -1,0 +1,207 @@
+[
+  {
+    "id": "asaas", "name": "Asaas", "color": "#0030B9", "logo": "/asaas-logo.svg",
+    "tagline": "Pix, boleto e cartão com cadastro de clientes e carnê.",
+    "methods": ["PIX", "BOLETO", "CREDIT_CARD"], "verification": "native",
+    "site": "https://www.asaas.com", "docs": "https://docs.asaas.com",
+    "environments": [{ "id": "production", "label": "Produção" }],
+    "fields": [
+      { "key": "apiKey", "label": "Chave de API", "secret": true, "required": true, "placeholder": "$aact_...", "help": "Asaas > Integrações > Chave de API. Se vazio, usa o segredo ASAAS_API_KEY do Worker." }
+    ],
+    "webhook": "Asaas > Integrações > Webhooks: use a URL do Worker /asaas/webhook e o token em ASAAS_WEBHOOK_TOKEN."
+  },
+  {
+    "id": "mercadopago", "name": "Mercado Pago", "color": "#00B1EA", "logo": "/provedores/mercadopago.png",
+    "tagline": "Pix e boleto pela API de Pagamentos.",
+    "methods": ["PIX", "BOLETO"], "verification": "docs",
+    "site": "https://www.mercadopago.com.br", "docs": "https://www.mercadopago.com.br/developers/pt/reference/payments/_payments/post",
+    "environments": [{ "id": "production", "label": "Produção" }, { "id": "sandbox", "label": "Teste (credenciais de teste)" }],
+    "fields": [
+      { "key": "accessToken", "label": "Access Token", "secret": true, "required": true, "placeholder": "APP_USR-...", "help": "Mercado Pago Developers > Suas integrações > Credenciais. Use o de teste (TEST-...) para homologar." }
+    ],
+    "webhook": "Suas integrações > Webhooks: evento Pagamentos, com a URL abaixo."
+  },
+  {
+    "id": "pagbank", "name": "PagBank", "color": "#2BB673", "logo": "/provedores/pagbank.png",
+    "tagline": "Pix com QR Code e boleto pela API de Pedidos.",
+    "methods": ["PIX", "BOLETO"], "verification": "docs",
+    "site": "https://pagseguro.uol.com.br", "docs": "https://developer.pagbank.com.br/reference/criar-pedido",
+    "environments": [{ "id": "production", "label": "Produção" }, { "id": "sandbox", "label": "Sandbox" }],
+    "fields": [
+      { "key": "token", "label": "Token de acesso", "secret": true, "required": true, "help": "PagBank > Venda online > Integrações > Gerar token (um token por ambiente)." }
+    ],
+    "webhook": "A URL é enviada em cada pedido (notification_urls); não precisa cadastrar no painel."
+  },
+  {
+    "id": "pagarme", "name": "Pagar.me", "color": "#65A300", "logo": "/provedores/pagarme.png",
+    "tagline": "Pix, boleto e cartão pela API v5 (Stone).",
+    "methods": ["PIX", "BOLETO"], "verification": "docs",
+    "site": "https://pagar.me", "docs": "https://docs.pagar.me/reference/criar-pedido-2",
+    "environments": [{ "id": "production", "label": "Produção" }, { "id": "sandbox", "label": "Teste (chave sk_test)" }],
+    "fields": [
+      { "key": "secretKey", "label": "Chave secreta", "secret": true, "required": true, "placeholder": "sk_...", "help": "Dashboard Pagar.me > Configurações > Chaves. A chave de teste (sk_test_) não gera cobrança real." }
+    ],
+    "webhook": "Configurações > Webhooks: eventos order.paid e charge.paid com a URL abaixo."
+  },
+  {
+    "id": "stripe", "name": "Stripe", "color": "#635BFF", "logo": "/provedores/stripe.png",
+    "tagline": "Pix, boleto e cartão (Checkout) em reais.",
+    "methods": ["PIX", "BOLETO", "CREDIT_CARD"], "verification": "docs",
+    "site": "https://stripe.com/br", "docs": "https://docs.stripe.com/payments/pix",
+    "environments": [{ "id": "production", "label": "Produção" }, { "id": "sandbox", "label": "Modo de teste" }],
+    "fields": [
+      { "key": "secretKey", "label": "Chave secreta", "secret": true, "required": true, "placeholder": "sk_live_... ou sk_test_...", "help": "Stripe > Desenvolvedores > Chaves de API. Pix e boleto precisam estar ativados na conta." },
+      { "key": "successUrl", "label": "Página após o pagamento (cartão)", "placeholder": "https://sua-escola.com.br/obrigado", "help": "Para onde o Checkout leva o responsável depois de pagar." }
+    ],
+    "webhook": "Desenvolvedores > Webhooks: eventos payment_intent.succeeded e checkout.session.completed."
+  },
+  {
+    "id": "paypal", "name": "PayPal", "color": "#003087", "logo": "/provedores/paypal.png",
+    "tagline": "Pagamento com conta PayPal ou cartão, em reais.",
+    "methods": ["CREDIT_CARD"], "verification": "docs",
+    "site": "https://www.paypal.com/br", "docs": "https://developer.paypal.com/docs/api/orders/v2/",
+    "environments": [{ "id": "production", "label": "Produção" }, { "id": "sandbox", "label": "Sandbox" }],
+    "fields": [
+      { "key": "clientId", "label": "Client ID", "required": true },
+      { "key": "clientSecret", "label": "Client Secret", "secret": true, "required": true },
+      { "key": "returnUrl", "label": "Página após aprovar", "placeholder": "https://sua-escola.com.br/obrigado" }
+    ],
+    "webhook": "Developer > Webhooks: eventos CHECKOUT.ORDER.APPROVED e PAYMENT.CAPTURE.COMPLETED. O sistema captura o pedido aprovado."
+  },
+  {
+    "id": "cielo", "name": "Cielo", "color": "#00A3E0", "logo": "/provedores/cielo.png",
+    "tagline": "Pix e boleto pela API E-commerce 3.0.",
+    "methods": ["PIX", "BOLETO"], "verification": "docs",
+    "site": "https://www.cielo.com.br", "docs": "https://docs.cielo.com.br/ecommerce-cielo/reference/sobre-a-api",
+    "environments": [{ "id": "production", "label": "Produção" }, { "id": "sandbox", "label": "Sandbox" }],
+    "fields": [
+      { "key": "merchantId", "label": "MerchantId", "required": true, "help": "Fornecido no cadastro do E-commerce Cielo." },
+      { "key": "merchantKey", "label": "MerchantKey", "secret": true, "required": true },
+      { "key": "boletoProvider", "label": "Banco do boleto", "placeholder": "Bradesco2", "help": "Padrão Bradesco2. Use o provedor habilitado na sua conta." }
+    ],
+    "webhook": "Cadastre a URL abaixo como \"URL de Status de Pagamento\" no Backoffice Cielo."
+  },
+  {
+    "id": "iugu", "name": "iugu", "color": "#7B2FF2", "logo": "/provedores/iugu.png",
+    "tagline": "Faturas com Pix e boleto.",
+    "methods": ["PIX", "BOLETO"], "verification": "docs",
+    "site": "https://www.iugu.com", "docs": "https://dev.iugu.com/reference/criar-fatura",
+    "environments": [{ "id": "production", "label": "Produção/Teste (a chave define)" }],
+    "fields": [
+      { "key": "apiToken", "label": "Token de API", "secret": true, "required": true, "help": "iugu > Administração > Configurações de conta > Tokens de API. Use um token de teste para homologar." }
+    ],
+    "webhook": "Configurações > Gatilhos: evento \"Fatura: mudança de status\" com a URL abaixo."
+  },
+  {
+    "id": "vindi", "name": "Vindi", "color": "#00C2A8", "logo": "/provedores/vindi.png",
+    "tagline": "Cobranças avulsas com Pix, boleto e cartão.",
+    "methods": ["PIX", "BOLETO", "CREDIT_CARD"], "verification": "partial",
+    "site": "https://www.vindi.com.br", "docs": "https://vindi.github.io/api-docs/dist/",
+    "environments": [{ "id": "production", "label": "Produção" }, { "id": "sandbox", "label": "Sandbox" }],
+    "fields": [
+      { "key": "apiKey", "label": "Chave de API privada", "secret": true, "required": true, "help": "Vindi > Configurações > Chaves de API." },
+      { "key": "productId", "label": "ID do produto de mensalidade", "required": true, "placeholder": "123456", "help": "A Vindi exige um produto em cada cobrança. Crie um produto \"Mensalidade\" e informe o ID." }
+    ],
+    "webhook": "Configurações > Webhooks: eventos bill_paid e bill_created com a URL abaixo."
+  },
+  {
+    "id": "woovi", "name": "Woovi (OpenPix)", "color": "#03D69D", "logo": "/provedores/woovi.png",
+    "tagline": "Pix com conciliação automática.",
+    "methods": ["PIX"], "verification": "docs",
+    "site": "https://woovi.com", "docs": "https://developers.woovi.com/api#tag/charge/paths/~1api~1v1~1charge/post",
+    "environments": [{ "id": "production", "label": "Produção" }],
+    "fields": [
+      { "key": "appId", "label": "AppID", "secret": true, "required": true, "help": "Woovi > API/Plugins > Nova API. Cole o AppID completo." }
+    ],
+    "webhook": "API/Plugins > Webhooks: evento OPENPIX:CHARGE_COMPLETED com a URL abaixo."
+  },
+  {
+    "id": "abacatepay", "name": "AbacatePay", "color": "#7EC845", "logo": "/provedores/abacatepay.png",
+    "tagline": "Pix com QR Code (API v2).",
+    "methods": ["PIX"], "verification": "partial",
+    "site": "https://www.abacatepay.com", "docs": "https://docs.abacatepay.com",
+    "environments": [{ "id": "production", "label": "Produção/Dev (a chave define)" }],
+    "fields": [
+      { "key": "apiKey", "label": "Chave de API", "secret": true, "required": true, "placeholder": "abc_...", "help": "Painel AbacatePay > Integrações. Chaves de dev não movimentam dinheiro." }
+    ],
+    "webhook": "Painel > Webhooks: evento de Pix pago com a URL abaixo."
+  },
+  {
+    "id": "zoop", "name": "Zoop", "color": "#FF5A00", "logo": "/provedores/zoop.png",
+    "tagline": "Pix pela API de transações do marketplace.",
+    "methods": ["PIX"], "verification": "partial",
+    "site": "https://zoop.com.br", "docs": "https://docs.zoop.co/docs/criando-transacao-pix",
+    "environments": [{ "id": "production", "label": "Produção" }],
+    "fields": [
+      { "key": "marketplaceId", "label": "Marketplace ID", "required": true },
+      { "key": "sellerId", "label": "Seller ID", "required": true },
+      { "key": "publishableKey", "label": "Chave publicável (ZPK)", "secret": true, "required": true, "help": "Enviadas por e-mail no onboarding. Chaves de teste não vão ao banco." }
+    ],
+    "webhook": "Dashboard Zoop > Webhooks: eventos transaction.succeeded com a URL abaixo."
+  },
+  {
+    "id": "efi", "name": "Efí Bank", "color": "#F37021", "logo": "/provedores/efi.png",
+    "tagline": "API Pix com certificado (mTLS).",
+    "methods": ["PIX"], "verification": "assisted",
+    "site": "https://sejaefi.com.br", "docs": "https://dev.efipay.com.br/docs/api-pix/cobrancas-imediatas",
+    "environments": [{ "id": "production", "label": "Produção" }, { "id": "sandbox", "label": "Homologação" }],
+    "fields": [
+      { "key": "clientId", "label": "Client ID", "required": true },
+      { "key": "clientSecret", "label": "Client Secret", "secret": true, "required": true },
+      { "key": "pixKey", "label": "Chave Pix da conta", "required": true, "placeholder": "e-mail, CPF/CNPJ, telefone ou aleatória" }
+    ],
+    "certificate": "MTLS_EFI",
+    "webhook": "Registrado pelo botão \"Registrar webhook\" (PUT /v2/webhook/{chave}). Exige o certificado .p12 convertido e enviado ao Cloudflare."
+  },
+  {
+    "id": "inter", "name": "Banco Inter", "color": "#FF7A00", "logo": "/provedores/inter.png",
+    "tagline": "API Pix do Inter PJ com certificado (mTLS).",
+    "methods": ["PIX"], "verification": "assisted",
+    "site": "https://www.bancointer.com.br/empresas", "docs": "https://developers.inter.co/references/pix",
+    "environments": [{ "id": "production", "label": "Produção" }],
+    "fields": [
+      { "key": "clientId", "label": "Client ID", "required": true },
+      { "key": "clientSecret", "label": "Client Secret", "secret": true, "required": true },
+      { "key": "pixKey", "label": "Chave Pix da conta", "required": true },
+      { "key": "accountNumber", "label": "Conta corrente (opcional)", "placeholder": "Só se tiver mais de uma conta" }
+    ],
+    "certificate": "MTLS_INTER",
+    "webhook": "Registrado pelo botão \"Registrar webhook\" (PUT /pix/v2/webhook/{chave}). Exige certificado e chave da integração."
+  },
+  {
+    "id": "sicoob", "name": "Sicoob", "color": "#00A859", "logo": "/provedores/sicoob.png",
+    "tagline": "API Pix do Sicoob com certificado (mTLS).",
+    "methods": ["PIX"], "verification": "assisted",
+    "site": "https://www.sicoob.com.br", "docs": "https://developers.sicoob.com.br",
+    "environments": [{ "id": "production", "label": "Produção" }],
+    "fields": [
+      { "key": "clientId", "label": "Client ID", "required": true },
+      { "key": "pixKey", "label": "Chave Pix da conta", "required": true }
+    ],
+    "certificate": "MTLS_SICOOB",
+    "webhook": "Registrado pelo botão \"Registrar webhook\". Exige o certificado ICP-Brasil da cooperativa."
+  },
+  {
+    "id": "cora", "name": "Cora", "color": "#FE3E6D", "logo": "/cora-logo.svg",
+    "tagline": "Pix e boleto com certificado (mTLS).",
+    "methods": ["PIX", "BOLETO"], "verification": "native",
+    "site": "https://www.cora.com.br", "docs": "https://developers.cora.com.br",
+    "environments": [{ "id": "stage", "label": "Stage" }, { "id": "production", "label": "Produção" }],
+    "managed": true,
+    "fields": [],
+    "webhook": "Credenciais e certificado ficam como segredos do Worker (CORA_*); o painel apenas ativa e testa."
+  },
+  {
+    "id": "pixmanual", "name": "Pix manual", "color": "#32BCAD", "logo": "",
+    "tagline": "Sua chave Pix, sem intermediário. Baixa feita por você.",
+    "methods": ["PIX"], "verification": "native",
+    "site": "https://www.bcb.gov.br/estabilidadefinanceira/pix", "docs": "https://www.bcb.gov.br/estabilidadefinanceira/spb_pix",
+    "environments": [{ "id": "production", "label": "Produção" }],
+    "fields": [
+      { "key": "pixKey", "label": "Chave Pix", "required": true },
+      { "key": "receiverName", "label": "Nome do recebedor", "required": true, "placeholder": "Escola de Esportes" },
+      { "key": "receiverCity", "label": "Cidade do recebedor", "required": true, "placeholder": "SAO PAULO" }
+    ],
+    "webhook": "Sem confirmação automática: use a baixa manual (\"receber em dinheiro\") no financeiro."
+  }
+]

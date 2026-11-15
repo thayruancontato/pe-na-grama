@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Design system · Pé na Grama</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="components.css">
+<style>
+.ds-sec{scroll-margin-top:20px}
+.ds-sec>.pg-card-title{margin-bottom:6px}
+.ds-note{color:var(--text-muted);max-width:75ch;margin-bottom:18px}
+.ds-demo{border:1px dashed var(--border-color);border-radius:var(--radius-md);padding:20px;background:#fbfdff;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.ds-demo.col{display:grid}
+.ds-sw{border-radius:var(--radius-md);overflow:hidden;background:#fff;box-shadow:var(--shadow-card-soft)}
+.ds-sw i{display:block;height:70px;border-bottom:1px solid var(--line-soft)}
+.ds-sw div{padding:10px 12px;font-weight:900;font-size:13.6px}
+.ds-sw code,.ds-code{font:600 12px/1.4 var(--font-mono);color:var(--medium-gray);display:block;overflow-wrap:anywhere}
+.ds-code{background:#0f172a;color:#cbd5e1;padding:14px 16px;border-radius:var(--radius-md);white-space:pre-wrap;margin-top:12px;font-weight:400}
+.ds-table td code{font:600 12px var(--font-mono);color:var(--brand-blue-dark)}
+.ds-type>div{display:grid;grid-template-columns:200px 1fr;gap:16px;align-items:baseline;padding:12px 0;border-bottom:1px solid var(--line-soft)}
+.ds-type small{font:700 12px var(--font-mono);color:var(--medium-gray)}
+.ds-sh{width:140px;height:80px;background:#fff;border-radius:var(--radius-md);display:grid;place-items:center;font:700 12px var(--font-mono);color:var(--medium-gray)}
+.ds-r{width:110px;height:70px;background:var(--soft-blue);border:2px solid var(--brand-blue);display:grid;place-items:center;font:700 12px var(--font-mono);color:var(--brand-blue)}
+.ds-ic{display:grid;gap:6px;place-items:center;width:84px;padding:12px 6px;border-radius:10px;font:600 11px var(--font-mono);color:var(--medium-gray)}
+.ds-ic svg{width:24px;height:24px;color:var(--brand-blue)}
+.ds-shell{display:grid;grid-template-columns:150px 1fr;border:1px solid var(--border-color);border-radius:var(--radius-md);overflow:hidden;min-height:170px;background:var(--grad-page)}
+.ds-shell aside{background:var(--grad-side);border-right:1px solid var(--border-color)}
+.ds-shell aside i{display:block;height:44px;background:var(--grad-side-head)}
+.ds-shell aside b{display:block;margin:8px;height:20px;border-radius:8px;background:var(--grad-menu-active)}
+.ds-shell main{padding:14px}
+</style>
+</head>
+<body class="pg">
+<div class="pg-app">
+  <aside class="pg-side" id="side">
+    <div class="pg-side-head"><img src="../assets/logo-branco.png" alt="Pé na Grama"></div>
+    <nav class="pg-nav" id="nav"></nav>
+    <div class="pg-side-foot"><a class="pg-btn side" href="../admin/">Abrir a Central do dono</a></div>
+  </aside>
+  <main class="pg-main"><div class="pg-page">
+    <div class="pg-page-head"><div><h1 class="pg-title">Design system</h1><p class="pg-sub">Tokens, estrutura e componentes do sistema Pé na Grama. Os valores foram medidos nas telas reais; a Central do dono usa este mesmo conjunto.</p></div>
+      <div class="pg-actions"><a class="pg-btn" href="tokens.css" download>Baixar tokens.css</a><a class="pg-btn green" href="components.css" download>Baixar components.css</a></div></div>
+    <div class="pg-stack" id="doc"></div>
+  </div></main>
+</div>
+<script src="icons.js"></script>
+<script>
+const $ = (s, r = document) => r.querySelector(s), E = PG.esc, I = PG.icon;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const SECS = [];
+const sec = (id, titulo, icone, nota, html) => { SECS.push([id, titulo, icone]); return `<section class="pg-card ds-sec" id="${id}"><div class="pg-card-title">${I(icone)} ${titulo}</div><p class="ds-note">${nota}</p>${html}</section>`; };
+const sw = (v, nome, uso) => `<div class="ds-sw"><i style="background:var(${v})"></i><div>${nome}<code>${v}</code><code>${css(v)}</code>${uso ? `<code style="font-family:var(--font-primary);font-weight:400">${uso}</code>` : ''}</div></div>`;
+const grade = a => `<div class="pg-grid-4">${a.join('')}</div>`;
+const code = c => `<pre class="ds-code">${E(c)}</pre>`;
+const tbl = (cab, lin) => `<div class="pg-table-wrap ds-table"><table class="pg-table"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${lin.map(l => `<tr>${l.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+let h = '';
+
+h += sec('cores', 'Cores', 'pie', 'Azul e verde são a marca; dourado é destaque. O texto padrão é o azul-noite <code>--dark-gray</code>, nunca preto puro.',
+  `<h3 class="pg-label" style="margin:6px 0 10px">Marca</h3>` + grade([['--brand-blue', 'Azul', 'menu, links, contornos'], ['--brand-blue-dark', 'Azul escuro', 'texto de item ativo'], ['--brand-blue-deep', 'Azul profundo', 'fundo da entrada'], ['--brand-green', 'Verde', 'títulos, botões, destaque'], ['--brand-green-dark', 'Verde escuro', 'hover do botão'], ['--brand-gold', 'Dourado', 'barra do item ativo'], ['--brand-gold-dark', 'Dourado escuro', 'detalhes'], ['--brand-cyan', 'Ciano', 'apoio']].map(a => sw(...a))) +
+  `<h3 class="pg-label" style="margin:22px 0 10px">Superfícies e texto</h3>` + grade([['--white', 'Branco', 'cartões'], ['--light-gray', 'Fundo', 'fundo da página'], ['--surface-soft', 'Superfície suave', 'barra lateral'], ['--soft-blue', 'Azul claro', 'botões suaves'], ['--border-color', 'Borda', 'divisores'], ['--dark-gray', 'Texto', 'texto padrão'], ['--medium-gray', 'Texto suave', 'legendas'], ['--slate-900', 'Título de cartão', 'valores']].map(a => sw(...a))) +
+  `<h3 class="pg-label" style="margin:22px 0 10px">Indicadores e estados</h3>` + grade([['--kpi-dark', 'KPI escuro', 'receita recorrente'], ['--kpi-green', 'KPI verde', 'receita do mês'], ['--kpi-purple', 'KPI roxo', 'lucro'], ['--kpi-red', 'KPI vermelho', 'despesas'], ['--kpi-amber', 'KPI âmbar', 'taxas'], ['--success-color', 'Sucesso', 'confirmações'], ['--danger-color', 'Perigo', 'ações destrutivas'], ['--whatsapp', 'WhatsApp', 'etiqueta de contato']].map(a => sw(...a))));
+
+h += sec('tipografia', 'Tipografia', 'file', 'Lato em títulos e texto; Open Sans em campos e filtros; os botões usam a fonte padrão (Arial), como no sistema. Títulos de página e de cartão ficam em caixa alta, peso 900.',
+  `<div class="ds-type">${[['Título de página', '28.8px · 900 · caixa alta', 'pg-title', 'Alunos cadastrados'], ['Título de cartão', '19.2px · 900 · caixa alta', 'pg-card-title', 'Distribuição por modalidade'], ['Valor de indicador', '32px · 900', '', ''], ['Rótulo de indicador', '13.6px · 800 · caixa alta · 0.5px', 'pg-kpi-label', 'Alunos ativos'], ['Texto', '16px · 400', '', 'Cada aluno com o status à vista.'], ['Subtítulo', '16px · 400 · #666', 'pg-sub', 'Listagem de alunos com contrato aprovado'], ['Cabeçalho de tabela', '12px · 700 · #666', '', 'Aluno / Responsável'], ['Badge', '10.4px · 800 · caixa alta', 'pg-badge', 'Em dia']].map(([n, v, c, t]) => `<div><small>${n}<br>${v}</small><div>${c === 'pg-badge' ? `<span class="pg-badge">${t}</span>` : c ? `<div class="${c}">${t}</div>` : n === 'Valor de indicador' ? '<b style="font:900 32px var(--font-primary)">R$ 4.440,00</b>' : n === 'Cabeçalho de tabela' ? `<span style="font:700 12px var(--font-primary);color:#666">${t}</span>` : t}</div></div>`).join('')}</div>`);
+
+h += sec('espacamento', 'Espaçamento, raios e sombras', 'tag', 'Raio 8px é o padrão (botões, menu). Cartões grandes usam 20px, cartões médios 12px, tags e botões pequenos 4px.',
+  `<h3 class="pg-label" style="margin:6px 0 10px">Raios</h3><div class="ds-demo">${[['--radius-xs', '4px'], ['--radius-sm', '6px'], ['--radius', '8px'], ['--radius-md', '12px'], ['--radius-lg', '20px']].map(([v, n]) => `<div class="ds-r" style="border-radius:var(${v})">${v.slice(2)}<br>${n}</div>`).join('')}</div>
+   <h3 class="pg-label" style="margin:22px 0 10px">Sombras</h3><div class="ds-demo" style="background:#eef3f9">${[['--shadow-card', '0 10px 30px / .08'], ['--shadow-card-soft', '0 4px 20px / .06'], ['--shadow-bar', '0 10px 30px / .15'], ['--shadow-brand-lg', '0 18px 50px azul']].map(([v, n]) => `<div class="ds-sh" style="box-shadow:var(${v})">${n}</div>`).join('')}</div>
+   <h3 class="pg-label" style="margin:22px 0 10px">Espaçamento</h3>` + tbl(['Token', 'Valor', 'Uso'], [['<code>--spacing-xs</code>', '6px', 'entre ícone e texto'], ['<code>--spacing-sm</code>', '10px', 'entre botões'], ['<code>--spacing-md</code>', '12px', 'células de tabela'], ['<code>--spacing-lg</code>', '18px', 'entre blocos'], ['<code>--spacing-xl</code>', '24px', 'padding de cartão'], ['<code>--spacing-xxl</code>', '36px', 'entre seções']]));
+
+h += sec('estrutura', 'Estrutura da página', 'menu', 'Barra lateral fixa de 260px (gradiente branco, cabeçalho azul com a logo) e área de conteúdo com título verde. Em telas até 900px a barra vira gaveta.',
+  `<div class="ds-shell"><aside><i></i><b style="opacity:.7"></b><b style="opacity:.3"></b><b style="opacity:.3"></b></aside><main><div class="pg-title" style="font-size:20px">Título da página</div><p class="pg-sub" style="font-size:13px">Subtítulo cinza</p><div class="pg-card" style="margin-top:12px;padding:14px">Cartão</div></div></main></div>` +
+  code(`<body class="pg">
+  <div class="pg-app">
+    <aside class="pg-side">
+      <div class="pg-side-head"><img src="logo-branco.png"></div>
+      <nav class="pg-nav"><a class="pg-nav-item on">Estatísticas</a></nav>
+      <div class="pg-side-foot"><button class="pg-btn exit">Sair</button></div>
+    </aside>
+    <main class="pg-main"><div class="pg-page">
+      <div class="pg-page-head"><div><h1 class="pg-title">Título</h1><p class="pg-sub">Subtítulo</p></div></div>
+    </div></main>
+  </div></body>`));
+
+h += sec('navegacao', 'Menu lateral', 'menu', 'Item ativo: gradiente azul/verde translúcido, texto azul escuro e barra dourada de 4px à esquerda. Subitem ativo: gradiente verde para azul, texto branco.',
+  `<div class="ds-demo" style="background:#fff;display:block;max-width:300px;padding:14px 0"><a class="pg-nav-item on">${I('chart')}<span class="grow">Estatísticas</span>${I('chevron')}</a><a class="pg-nav-sub on">Visão geral</a><a class="pg-nav-sub">Relatórios</a><a class="pg-nav-item">${I('users')}<span class="grow">Cadastros</span>${I('chevron')}</a><a class="pg-nav-item">${I('dollar')}<span class="grow">Financeiro</span>${I('chevron')}</a></div>` +
+  code(`<a class="pg-nav-item on"><svg class="i">…</svg><span class="grow">Estatísticas</span></a>\n<a class="pg-nav-sub on">Visão geral</a>`));
+
+h += sec('cartoes', 'Cartões e barra do mês', 'pie', 'Cartão branco com raio 20px e sombra suave. Variante <code>soft</code> (raio 12px) para blocos de apoio e <code>edge-*</code> para destacar com barra de 5px.',
+  `<div class="pg-bar" style="margin-bottom:16px"><button aria-label="Mês anterior">${I('chevron').replace('<svg', '<svg style="transform:scaleX(-1)"')}</button><div><small>Dados do mês</small><b>Novembro de 2026</b></div><button aria-label="Próximo mês">${I('chevron')}</button></div>
+  <div class="pg-grid-3"><div class="pg-card"><div class="pg-card-title">${I('pie')} Cartão</div><p class="ds-note" style="margin:8px 0 0">raio 20 · sombra 0 10 30 / .08</p></div><div class="pg-card soft"><div class="pg-card-title">Cartão soft</div><p class="ds-note" style="margin:8px 0 0">raio 12 · sombra 0 4 20 / .06</p></div><div class="pg-card edge-green"><div class="pg-card-title">Com barra</div><p class="ds-note" style="margin:8px 0 0">edge-green, red, cyan, gold</p></div></div>` +
+  code(`<div class="pg-card"><div class="pg-card-title"><svg class="i">…</svg> Título</div>…</div>\n<div class="pg-card edge-green">…</div>`));
+
+h += sec('kpi', 'Indicadores (KPI)', 'trend', 'Seis variações. Claro por padrão; escuro, verde e roxo usam gradiente 135° e texto branco. Valor 32px/900, rótulo em caixa alta.',
+  `<div class="pg-grid-3">${[['', 'users', 'Alunos ativos', '37', 'Total: 40'], ['dark', 'trend', 'Receita mensal recorrente', 'R$ 4.440,00', 'Previsão baseada nos planos'], ['green', 'check', 'Receita do mês', 'R$ 3.000,00', '68% pagos'], ['purple', 'chart', 'Lucro líquido', 'R$ 2.150,00', 'Operacional'], ['red', 'alert', 'Despesas do mês', 'R$ 850,00', 'Gastos lançados'], ['amber', 'dollar', 'Taxas', 'R$ 41,80', 'Estimativa']].map(([c, ic, l, v, f]) => `<div class="pg-kpi ${c}"><div class="pg-kpi-head"><span class="pg-kpi-icon">${I(ic)}</span><span class="pg-kpi-label">${l}</span></div><div class="pg-kpi-value">${v}</div><div class="pg-kpi-foot">${f}</div><div class="pg-kpi-bg"><svg viewBox="0 0 24 24">${PG.icon(ic).replace(/<\/?svg[^>]*>/g, '')}</svg></div></div>`).join('')}</div>
+  <div style="margin-top:16px"><div class="pg-row" style="display:flex;justify-content:space-between;font-weight:900;font-size:13px;text-transform:uppercase;margin-bottom:8px"><span>Futebol</span><span style="color:var(--brand-green)">68%</span></div><div class="pg-track"><i style="width:68%"></i></div></div>` +
+  code(`<div class="pg-kpi dark">\n  <div class="pg-kpi-head"><span class="pg-kpi-icon"><svg class="i">…</svg></span><span class="pg-kpi-label">Receita</span></div>\n  <div class="pg-kpi-value">R$ 4.440,00</div><div class="pg-kpi-foot">Previsão</div>\n</div>`));
+
+h += sec('botoes', 'Botões', 'send', 'Verde para a ação principal da tela, contorno cinza para ações comuns, azul suave para edição, tracejado para "adicionar". Desabilitado é cinza #e0e0e0.',
+  `<div class="ds-demo"><button class="pg-btn green">${I('plus')} Nova turma</button><button class="pg-btn ok">Gerar QR Code</button><button class="pg-btn">${I('refresh')} Atualizar lista</button><button class="pg-btn soft">${I('pencil')} Editar mensagem</button><button class="pg-btn sm">Exportar</button><button class="pg-btn detail">Detalhes</button><button class="pg-btn danger">Cancelar contrato</button><button class="pg-btn" disabled>Disparar cobranças (0)</button></div>
+  <div class="ds-demo" style="margin-top:12px;max-width:340px;background:#fff"><button class="pg-btn side">Recolher</button><button class="pg-btn exit">${I('logout')} Sair (Administrador)</button></div>
+  <div style="margin-top:12px"><button class="pg-dashed">${I('refresh')} Configurar alocação automática</button></div>` +
+  code(`<button class="pg-btn green">Nova turma</button>\n<button class="pg-btn">Atualizar lista</button>\n<button class="pg-btn detail">Detalhes</button>\n<button class="pg-btn" disabled>Disparar</button>`));
+
+h += sec('filtros', 'Filtros, abas e etiquetas', 'tag', 'Chips de filtro têm raio 20px e texto em caixa alta; o selecionado ganha a cor do significado (vermelho para inadimplentes, verde para ok). Abas selecionadas viram pílula verde.',
+  `<div class="pg-chips"><button class="pg-chip on">Inadimplentes<small>Faturas atrasadas</small></button><button class="pg-chip">Pendentes<small>A vencer neste mês</small></button><button class="pg-chip">Manuais<small>Uniformes e kits</small></button><button class="pg-chip on ok">Pagos</button><button class="pg-chip on info">Novos</button><button class="pg-chip on warn">Proposta</button></div>
+  <div class="pg-tabs" style="margin-top:18px"><button class="pg-tab on">Futebol</button><button class="pg-tab">Natação</button><button class="pg-tab">Vôlei</button></div>
+  <div class="ds-demo" style="margin-top:18px"><span class="pg-badge">Em dia</span><span class="pg-badge ok">Pago</span><span class="pg-badge warn">A vencer</span><span class="pg-badge bad">Pendente</span><span class="pg-badge info">Novo</span><span class="pg-tag">Sub-13</span><a class="pg-tag wa" href="#">WhatsApp</a><span class="pg-pill">${I('users')} 10 alunos</span><span><i class="pg-dot"></i>Desconectado</span><span><i class="pg-dot ok"></i>Conectado</span></div>` +
+  code(`<button class="pg-chip on">Inadimplentes<small>Faturas atrasadas</small></button>\n<button class="pg-tab on">Futebol</button>\n<span class="pg-badge bad">Pendente</span> <span class="pg-tag">Sub-13</span>`));
+
+h += sec('formularios', 'Formulários', 'pencil', 'Campos com borda #ddd, raio 6px e Open Sans 13.6px. O foco ganha borda e halo verdes. Área de texto de mensagem usa fonte monoespaçada.',
+  `<div class="pg-grid-2"><div class="pg-field"><label class="pg-label" for="a">Buscar</label><input class="pg-input" id="a" placeholder="Buscar por nome, responsável ou CPF…"></div><div class="pg-field"><label class="pg-label" for="b">Ordenar</label><select class="pg-select" id="b"><option>Nome do aluno (A-Z)</option></select></div></div>
+  <div class="pg-field" style="margin-top:14px"><label class="pg-label" for="c">Template da cobrança</label><textarea class="pg-textarea" id="c">Olá, {responsavel}! Aqui é da {escola}.</textarea><span class="pg-hint">Variáveis: {responsavel}, {aluno}, {valor}, {vencimento}</span></div>` +
+  code(`<div class="pg-field"><label class="pg-label">Nome</label><input class="pg-input"></div>\n<select class="pg-select">…</select> <textarea class="pg-textarea"></textarea>`));
+
+h += sec('tabelas', 'Tabelas', 'users', 'Cabeçalho cinza claro com texto 12px/700, linhas zebradas, ação "Detalhes" à direita. Nome em negrito com apoio em cinza embaixo.',
+  `<div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Aluno / Responsável</th><th>Plano</th><th>Turma</th><th>Pendência</th><th class="num">Valor</th><th></th></tr></thead><tbody>
+  ${[['Arthur Costa', 'Fernanda Oliveira', 'Mensal Futebol', 'Sub-13', 'Em dia', '', 'R$ 120,00'], ['Bruno Freitas', 'Roberto Ferreira', 'Mensal Futebol', 'Sub-11', 'Pendente', 'bad', 'R$ 120,00'], ['Caio Castro', 'Patrícia Ribeiro', 'Mensal Futebol', 'Sub-9', 'Pendente', 'bad', 'R$ 120,00']].map(r => `<tr><td><b>${r[0]}</b><small>Resp: ${r[1]}</small></td><td>${r[2]}</td><td><span class="pg-tag">${r[3]}</span></td><td><span class="pg-badge ${r[5]}">${r[4]}</span></td><td class="num">${r[6]}</td><td class="ac"><a class="pg-tag wa" href="#">WhatsApp</a> <button class="pg-btn detail">Detalhes</button></td></tr>`).join('')}</tbody></table></div>` +
+  code(`<div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Aluno</th><th class="num">Valor</th></tr></thead>\n<tbody><tr><td><b>Nome</b><small>Apoio</small></td><td class="num">R$ 120,00</td></tr></tbody></table></div>`));
+
+h += sec('turmas', 'Cartão de turma e listas', 'cap', 'Cartão pequeno com borda #eee de 2px, horário grande no centro. Listas de detalhes usam rótulo em caixa alta à esquerda.',
+  `<div class="pg-grid-3"><div class="pg-turma"><div class="t">17:00</div><div class="n"><b>Turma:</b> Sub-9</div><small>Dias: Terça, Quinta</small><span class="pg-pill" style="margin-top:10px">${I('users')} 10 alunos</span></div>
+  <div class="pg-card soft"><dl class="pg-dl"><dt>Escola</dt><dd>Escola Rubro-Negra</dd><dt>Plano</dt><dd>Mensal</dd><dt>Valor</dt><dd>R$ 130,00</dd></dl></div>
+  <div class="pg-card soft"><label class="pg-check done"><input type="checkbox" checked><span>Conta criada</span></label><label class="pg-check"><input type="checkbox"><span>WhatsApp conectado</span></label></div></div>`);
+
+h += sec('janelas', 'Janelas e avisos', 'alert', 'Janela branca com raio 20px sobre fundo azul profundo translúcido. Avisos curtos usam toast escuro; mensagens fixas usam <code>pg-alert</code>.',
+  `<div class="pg-stack"><div class="pg-alert">Contrato enviado. Copie o link e mande para o cliente.</div><div class="pg-alert ok">Fatura marcada como paga.</div><div class="pg-alert bad">Não foi possível salvar. Tente de novo.</div></div>` +
+  code(`PG.modal({ titulo: 'Detalhes', html: '…' })   // admin/app.js\nPG.toast('Salvo')`));
+
+h += sec('icones', 'Ícones', 'search', 'Traço de 2px, 18px por padrão, cor do texto (<code>currentColor</code>). Mesma família lucide do sistema.',
+  `<div class="ds-demo">${PG.iconNames.map(n => `<div class="ds-ic">${I(n)}<span>${n}</span></div>`).join('')}</div>` + code(`<script src="ds/icons.js"><\/script>\nPG.icon('chart')  // devolve o <svg class="i">`));
+
+h += sec('padroes', 'Padrões de uso', 'check', 'Regras que o sistema já segue e que as novas telas repetem.',
+  tbl(['Assunto', 'Regra'], [['Idioma', 'Português do Brasil, frases curtas, verbo no começo do botão ("Salvar", "Enviar contrato").'], ['Dinheiro', 'Sempre <code>R$ 1.234,56</code>. Guardar em centavos, mostrar com <code>PG.brl()</code>.'], ['Datas', '<code>dd/mm/aaaa</code>. Meses por extenso em caixa alta na barra do mês.'], ['Títulos', 'Página e cartão em caixa alta, peso 900. Subtítulo cinza #666.'], ['Ação principal', 'Um botão verde por tela, no canto superior direito.'], ['Estados', 'Pago = verde, pendente/atrasado = vermelho, a vencer = âmbar, novo = azul, neutro = cinza.'], ['Foco', 'Anel dourado de 3px em tudo que se clica. Nunca remover.'], ['Confirmação', 'Nada de <code>alert()</code> ou <code>confirm()</code>: usar janela e toast.'], ['Movimento', 'Transições curtas (150–250ms); respeitar <code>prefers-reduced-motion</code>.']]));
+
+h += sec('uso', 'Como usar', 'link', 'Dois arquivos de CSS e um de ícones. A Central do dono, o contrato e a fatura do cliente usam exatamente isto.',
+  code(`<link rel="stylesheet" href="/ds/tokens.css">\n<link rel="stylesheet" href="/ds/components.css">\n<script src="/ds/icons.js"><\/script>\n<body class="pg"> … </body>`));
+
+$('#doc').innerHTML = h;
+$('#nav').innerHTML = SECS.map(([id, t, ic], i) => `<a class="pg-nav-item${i ? '' : ' on'}" href="#${id}">${I(ic)}<span class="grow">${t}</span></a>`).join('');
+const links = [...document.querySelectorAll('#nav a')];
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) links.forEach(l => l.classList.toggle('on', l.getAttribute('href') === '#' + e.target.id)); }), { rootMargin: '-20% 0px -70% 0px' });
+document.querySelectorAll('.ds-sec').forEach(s => io.observe(s));
+</script>
+</body>
+</html>

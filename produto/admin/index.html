@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Central do dono · Pé na Grama</title>
+<link rel="icon" href="../assets/favicon.png">
+<link rel="stylesheet" href="../ds/tokens.css">
+<link rel="stylesheet" href="../ds/components.css">
+<style>.pg-table td.ac{white-space:normal;min-width:190px}.pg-table td.ac .pg-btn{margin:2px 0}.pg-table td:first-child{min-width:200px}
+.ad-bars{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;align-items:end;height:190px;margin-top:18px}
+.ad-bar{display:flex;flex-direction:column;justify-content:flex-end;gap:6px;height:100%;text-align:center}
+.ad-bar i{display:block;flex:none;background:var(--brand-green);border-radius:8px 8px 0 0}
+.ad-bar b{font-size:13px;font-weight:800}.ad-bar small{font-size:13px;color:var(--medium-gray);text-transform:uppercase;font-weight:700}
+.ad-funil{display:grid;gap:14px;margin-top:16px}
+.ad-funil .l{display:flex;justify-content:space-between;font-weight:900;font-size:13px;text-transform:uppercase;margin-bottom:6px}
+.ad-feed{display:grid;gap:0;margin-top:10px}
+.ad-feed div{display:flex;gap:14px;padding:10px 0;border-bottom:1px solid var(--line-soft);font-size:14.4px}
+.ad-feed div:last-child{border:0}.ad-feed time{color:var(--medium-gray);font-size:13px;min-width:78px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ad-menu{display:none}
+@media(max-width:900px){.ad-menu{display:inline-flex}}
+.ad-copy{display:flex;gap:8px}.ad-copy .pg-input{font-family:var(--font-mono);font-size:13px}
+.ad-msg{white-space:pre-wrap;background:var(--surface-soft);border:1px solid var(--border-color);border-radius:var(--radius);padding:10px 12px;font-size:13.6px;max-height:140px;overflow:auto}
+.ad-logo{width:92px;height:92px;object-fit:contain;border-radius:12px;background:repeating-conic-gradient(#e8eef7 0 25%,#fff 0 50%) 50%/14px 14px;border:1px solid var(--line-soft)}
+.ad-pal{display:flex;gap:6px}.ad-pal i{width:26px;height:26px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px var(--border-color)}
+.ad-steps{display:grid;gap:10px;margin-top:10px;counter-reset:s}
+.ad-steps a{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:var(--radius-md);background:var(--soft-blue);text-decoration:none;font-weight:800;color:var(--brand-blue)}
+.ad-steps a.ok{background:#f0fff4;color:#276749}.ad-steps a.ok .n{background:var(--success-color)}
+.ad-steps .n{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--brand-blue);color:#fff;font-weight:900;flex:none}
+.ad-plan{display:grid;gap:10px}.ad-plan .v{font:900 28px/1 var(--font-primary);color:var(--slate-900)}.ad-plan.off{opacity:.55}
+.ad-tools{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.ad-sec{font:900 15px/1.2 var(--font-primary);text-transform:uppercase;color:var(--slate-900);margin:22px 0 10px}
+.ad-note{font-size:13px;color:var(--medium-gray);margin-top:6px}
+.ad-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media(max-width:700px){.ad-two{grid-template-columns:1fr}.pg-dl{grid-template-columns:1fr}.pg-dl dt{margin-top:8px}}
+.ad-att{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.ad-att-g{background:var(--surface-soft);border:1px solid var(--border-color);border-radius:var(--radius-md);padding:14px 16px}
+.ad-att-h{font:900 13.5px/1.3 var(--font-primary);text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:6px;color:var(--slate-900)}
+.ad-att-i{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 6px;border-radius:8px;text-decoration:none;color:inherit;border-top:1px solid var(--line-soft)}
+.ad-att-i:hover{background:#fff}.ad-att-i b{display:block;font-size:14.4px;color:var(--slate-900)}.ad-att-i small{display:block;color:var(--medium-gray);font-size:13px}
+.ad-att-i svg{color:var(--brand-green)}
+@media(max-width:860px){.ad-att{grid-template-columns:1fr}}
+.ad-delta{display:inline-block;font-weight:800}.ad-delta.up{color:#86efac}.ad-delta.down{color:#fca5a5}
+.pg-kpi .ad-onbrand{margin-top:10px;background:rgba(255,255,255,.28)}.pg-kpi .ad-onbrand i{background:#fff}
+.ad-split{align-items:start;display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:16px}.ad-split.b{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+@media(max-width:1000px){.ad-split,.ad-split.b{grid-template-columns:minmax(0,1fr)}}
+.ad-chart{position:relative;margin-top:14px;padding-left:66px}
+.ad-grid{position:absolute;left:0;right:0;top:18px;height:150px;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+.ad-grid span{border-top:1px dashed var(--border-color);position:relative;height:0}.ad-grid em{position:absolute;left:-66px;top:-8px;font:700 11px/1 var(--font-primary);color:var(--medium-gray);font-style:normal;white-space:nowrap;width:58px;text-align:right}
+.ad-cols{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:start}
+.ad-col{display:grid;grid-template-rows:168px auto;gap:6px;justify-items:center;cursor:default}
+.ad-col .bw{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;width:100%;height:168px}
+.ad-col b{font:800 10.5px/1 var(--font-primary);color:var(--slate-900);white-space:nowrap;height:12px}
+.ad-col i{display:block;flex:none;width:100%;max-width:34px;background:#c7e8d1;border-radius:8px 8px 0 0;transition:background .15s}
+.ad-col.now i{background:var(--brand-green)}.ad-col:hover i{background:var(--brand-blue)}
+.ad-col small{font:700 11px var(--font-primary);text-transform:uppercase;color:var(--medium-gray)}
+.ad-hb{display:grid;gap:14px;margin-top:14px}.ad-hb .l{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px;font-weight:800;font-size:14px}.ad-hb small{font-weight:600;color:var(--medium-gray)}
+@media(max-width:700px){.ad-col b{display:none}.ad-chart{padding-left:0}.ad-grid{display:none}.ad-cols{gap:4px}}
+</style>
+</head>
+<body class="pg">
+<div id="app"></div>
+<script src="../ds/icons.js"></script>
+<script src="app.js?v=3"></script>
+</body>
+</html>

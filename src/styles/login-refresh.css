@@ -1,0 +1,60 @@
+/* Telas de login (administrador e responsável): campos de 48px, foco visível, botão de 52px, cartão mais limpo.
+   Escopo: só dentro de .login-refresh. Os estilos antigos eram inline, por isso os !important. */
+.login-refresh { --lr-ink: #10213f; --lr-muted: #4a5875; --lr-line: rgba(16, 33, 63, 0.22); --lr-focus: #17428f; }
+
+.login-refresh .landing-content {
+    border-radius: 24px !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    box-shadow: 0 32px 90px rgba(6, 26, 64, 0.34) !important;
+}
+
+/* rótulos e textos de apoio legíveis */
+.login-refresh label { font-size: 14px !important; font-weight: 700 !important; color: var(--lr-ink) !important; letter-spacing: 0 !important; }
+.login-refresh h2 { color: var(--lr-ink) !important; letter-spacing: -0.01em; }
+.login-refresh form + div a, .login-refresh a { min-height: 44px; display: inline-flex; align-items: center; }
+
+/* campos */
+.login-refresh input:not([type='checkbox']):not([type='radio']) {
+    min-height: 48px !important;
+    padding: 12px 14px !important;
+    font-size: 16px !important; /* 16px evita o zoom automático no celular */
+    color: var(--lr-ink) !important;
+    background: #fff !important;
+    border: 1.5px solid var(--lr-line) !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.login-refresh input::placeholder { color: #6b7691; opacity: 1; }
+.login-refresh input:not([type='checkbox']):not([type='radio']):focus {
+    border-color: var(--lr-focus) !important;
+    box-shadow: 0 0 0 3px rgba(23, 66, 143, 0.18) !important;
+    outline: none !important;
+}
+.login-refresh input[type='password'], .login-refresh input[type='text'][name='password'] { padding-right: 52px !important; }
+
+/* botão de mostrar/ocultar senha: área de toque de 44px */
+.login-refresh button[aria-label*='senha'] { width: 44px; height: 44px; justify-content: center; border-radius: 8px !important; right: 4px !important; }
+.login-refresh button[aria-label*='senha']:hover { background: rgba(23, 66, 143, 0.08) !important; }
+
+/* botões */
+.login-refresh button[type='submit'] {
+    min-height: 52px !important;
+    border-radius: 12px !important;
+    font-size: 16px !important;
+    letter-spacing: 0.02em;
+}
+.login-refresh button:focus-visible, .login-refresh a:focus-visible, .login-refresh input[type='checkbox']:focus-visible {
+    outline: 2px solid var(--lr-focus) !important;
+    outline-offset: 2px !important;
+}
+
+/* celular: uma coluna, respiro menor, sem estourar a largura */
+@media (max-width: 640px) {
+    .login-refresh { padding: 12px !important; }
+    .login-refresh .landing-content { border-radius: 18px !important; }
+    .login-refresh .landing-content > div { padding: 28px 22px !important; flex-basis: 100% !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .login-refresh * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

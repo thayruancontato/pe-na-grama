@@ -1,0 +1,10 @@
+# Publicacao independente do Worker de pagamentos (sem Firebase, sem certificados da Cora).
+# Deploy: npx wrangler deploy -c wrangler.pagamentos.toml
+name = "pe-na-grama-pagamentos"
+main = "src/index.js"
+compatibility_date = "2024-03-20"
+workers_dev = true
+
+[[kv_namespaces]]
+binding = "RAE_STORAGE"
+id = "7d41390f5ad744769125b43032b1f31e"
