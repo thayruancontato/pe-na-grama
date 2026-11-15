@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
 import type React from 'react';
-import { Building2, ImagePlus, Loader2, PenLine, Save, Trash2 } from 'lucide-react';
+import { Building2, ImagePlus, Loader2, PenLine, Save, Search, Trash2 } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useDialog } from '../context/CustomDialogContext';
@@ -17,6 +17,27 @@ const so = (s: string) => s.replace(/\D/g, '');
 const maskCnpj = (v: string) => { const d = so(v).slice(0, 14); return d.replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2'); };
 const maskCep = (v: string) => so(v).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2');
 const maskTel = (v: string) => { const d = so(v).slice(0, 11); return d.length > 10 ? d.replace(/^(\d{2})(\d{5})(\d)/, '($1) $2-$3') : d.replace(/^(\d{2})(\d{4})(\d)/, '($1) $2-$3'); };
+
+const cnpjValido = (v: string) => {
+    const d = so(v); if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false;
+    const dv = (n: number) => { let s = 0, pos = n - 7; for (let i = 0; i < n; i++) { s += +d[i] * pos--; if (pos < 2) pos = 9; } const r = s % 11; return r < 2 ? 0 : 11 - r; };
+    return dv(12) === +d[12] && dv(13) === +d[13];
+};
+const MINUSCULAS = new Set(['de', 'da', 'do', 'das', 'dos', 'e', 'em', 'a', 'o']), SIGLAS = new Set(['ltda', 'epp', 'me', 'mei', 'eireli', 'ss', 'sa', 's/a', 'cia', 'ii', 'iii', 'iv']);
+const bonito = (s: string) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim().split(' ').map((w, i) => SIGLAS.has(w) ? w.toUpperCase() : (i && MINUSCULAS.has(w)) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+/** Consulta pública do CNPJ (BrasilAPI, gratuita) e devolve os campos já formatados. */
+async function consultarCnpj(cnpj: string): Promise<Partial<Perfil>> {
+    const r = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + so(cnpj));
+    if (r.status === 404) throw new Error('CNPJ não encontrado na Receita.');
+    if (!r.ok) throw new Error('A consulta da Receita está fora do ar agora. Preencha manualmente ou tente de novo.');
+    const j = await r.json(), tel = so(String(j.ddd_telefone_1 || '')), cidade = bonito(j.municipio), uf = String(j.uf || '').toUpperCase();
+    return {
+        razaoSocial: bonito(j.razao_social), rua: bonito([j.descricao_tipo_de_logradouro, j.logradouro].filter(Boolean).join(' ')), numero: String(j.numero || '').trim(), bairro: bonito(j.bairro),
+        cidade, uf, cep: maskCep(String(j.cep || '')), email: String(j.email || '').toLowerCase(), telefone: tel.length >= 10 ? maskTel(tel) : '',
+        foroCidade: cidade, foroUf: uf
+    };
+}
 
 /** Reduz a foto da assinatura para no máximo 600px de largura e guarda como imagem embutida. */
 async function prepararFoto(arquivo: File): Promise<string> {
@@ -38,6 +59,18 @@ export default function AdminDadosEscola() {
     const [salvando, setSalvando] = useState(false);
     const [desenhando, setDesenhando] = useState(false);
     const arquivo = useRef<HTMLInputElement>(null);
+    const [busca, setBusca] = useState<{ estado: 'parado' | 'buscando' | 'ok' | 'erro'; msg: string }>({ estado: 'parado', msg: '' });
+    const ultimo = useRef('');
+
+    const buscar = async (cnpj: string) => {
+        if (!cnpjValido(cnpj)) { setBusca({ estado: 'erro', msg: 'Esse CNPJ não é válido. Confira os números.' }); return; }
+        ultimo.current = so(cnpj); setBusca({ estado: 'buscando', msg: 'Consultando a Receita…' });
+        try {
+            const d = await consultarCnpj(cnpj), vazios = Object.entries(d).filter(([, v]) => !v).length;
+            setP((atual) => ({ ...atual, ...Object.fromEntries(Object.entries(d).filter(([, v]) => v)) }));
+            setBusca({ estado: 'ok', msg: vazios ? 'Dados preenchidos. Complete o que faltou e confira abaixo.' : 'Tudo preenchido. Confira e salve.' });
+        } catch (e) { ultimo.current = ''; setBusca({ estado: 'erro', msg: e instanceof Error ? e.message : 'Não consegui consultar.' }); }
+    };
 
     useEffect(() => {
         getDoc(doc(db, ...PERFIL)).then((s) => { if (s.exists()) setP({ ...VAZIO, ...(s.data() as any) }); }).catch(() => {}).finally(() => setCarregando(false));
@@ -68,8 +101,20 @@ export default function AdminDadosEscola() {
             <p style={{ margin: '0 0 18px', color: '#64748b', maxWidth: 760 }}>Estes dados entram automaticamente no contrato, na ficha de inscrição, nos termos e nos recibos. Enquanto estiverem em branco, os documentos mostram campos como [CNPJ DA ESCOLA].</p>
 
             <section style={painel}>
+                <h2 style={titulo}>Comece pelo CNPJ</h2>
+                <p style={{ margin: '0 0 12px', color: '#64748b' }}>Digite só o CNPJ: buscamos na Receita a razão social, o endereço, o telefone e o e-mail e preenchemos tudo abaixo.</p>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                    <label style={{ ...rotuloCss, flex: '1 1 260px', maxWidth: 360 }}>CNPJ
+                        <input value={p.cnpj} inputMode="numeric" placeholder="00.000.000/0000-00" autoComplete="off" style={{ ...campoCss, fontSize: '1.1rem' }}
+                            onChange={(e) => { const v = maskCnpj(e.target.value); setP({ ...p, cnpj: v }); if (so(v).length === 14 && so(v) !== ultimo.current) buscar(v); else if (so(v).length < 14) setBusca({ estado: 'parado', msg: '' }); }} />
+                    </label>
+                    <button type="button" onClick={() => buscar(p.cnpj)} disabled={busca.estado === 'buscando' || so(p.cnpj).length !== 14} style={{ ...botao('#17428f'), opacity: so(p.cnpj).length === 14 ? 1 : 0.5 }}>{busca.estado === 'buscando' ? <Loader2 className="spin" size={17} /> : <Search size={17} />} Buscar dados</button>
+                </div>
+                {busca.msg && <p role="status" style={{ margin: '12px 0 0', fontWeight: 700, color: busca.estado === 'erro' ? '#b42318' : busca.estado === 'ok' ? '#15803d' : '#64748b' }}>{busca.msg}</p>}
+            </section>
+            <section style={{ ...painel, marginTop: 16 }}>
                 <h2 style={titulo}>Identificação</h2>
-                <div style={grade}>{campo('razaoSocial', 'Razão social', { max: 120 })}{campo('cnpj', 'CNPJ', { mask: maskCnpj, ph: '00.000.000/0000-00', modo: 'numeric' })}</div>
+                <div style={grade}>{campo('razaoSocial', 'Razão social', { max: 120 })}</div>
             </section>
             <section style={{ ...painel, marginTop: 16 }}>
                 <h2 style={titulo}>Endereço</h2>
