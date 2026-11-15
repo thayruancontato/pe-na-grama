@@ -194,12 +194,29 @@ async function auditar(env, tenant, s, acao) {
   if (dias && Math.random() < 0.05) await env.DB.prepare("DELETE FROM sys_docs WHERE tenant=? AND col='auditoria' AND json_extract(data,'$.quando')<?").bind(tenant, new Date(Date.now() - dias * 86400e3).toISOString()).run();
 }
 
+// Reservas de espaços (responsável e professor): leem os horários já ocupados (sem dados pessoais) e criam a própria reserva.
+async function rotaReservas(env, tenant, s, m, col, id, corpo) {
+  if (col !== 'rentals_bookings') return null;
+  if (m === 'GET') {
+    const r = await env.DB.prepare('SELECT id,data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, col).all();
+    const docs = (r.results || []).map((x) => { const d = JSON.parse(x.data), meu = String(d.criadoPor || d.email || '').toLowerCase() === s.email, o = {}; for (const [k, v] of Object.entries(d)) if (meu || !/nome|name|mail|phone|telefone|cpf|user|criadoPor|contact/i.test(k)) o[k] = v; return { id: x.id, data: o }; });
+    if (id) { const x = docs.find((d) => d.id === id); return J(x ? { existe: true, data: x.data } : { existe: false }); }
+    return J({ docs });
+  }
+  if (m === 'POST' && !id) {
+    const d = corpo.data; if (!d || typeof d.locationId !== 'string' || typeof d.date !== 'string') return erro('Dados da reserva incompletos.');
+    const novo = idNovo(); try { await gravar(env, tenant, { op: 'set', col, id: novo, data: { ...d, criadoPor: s.email } }); } catch (e) { return erro(e.message); }
+    await auditar(env, tenant, s, 'reserva criada ' + novo); return J({ id: novo });
+  }
+  return null;
+}
 // Acesso do responsável (role 'user'): lê só a própria inscrição (pelo e-mail) e coleções de consulta; edita só dados de contato da própria inscrição.
 const LEITURA_PAIS = new Set(['rumo_ao_esporte_2026_plans', 'turmas', 'rentals_locations', 'patrocinadores']);
 const CAMPO_PROIBIDO = /^(status|financial|contract|approved|role|plan|valor|desconto|discount|origem)/i;
 async function portalPais(env, tenant, s, m, partes, corpo) {
   const [, col, id] = partes, REG = 'rumo_ao_esporte_2026_registrations', meu = (d) => String(d && d.responsavel && d.responsavel.email || '').toLowerCase() === s.email;
   if (partes[0] !== 'db' || !colOk(col || '')) return erro('Sem permissão.', 403);
+  const rr = await rotaReservas(env, tenant, s, m, col, id, corpo); if (rr) return rr;
   if (m === 'GET') {
     if (col === REG) {
       if (id) { const x = await env.DB.prepare('SELECT data FROM sys_docs WHERE tenant=? AND col=? AND id=?').bind(tenant, col, id).first(); const d = x && JSON.parse(x.data); return J(d && meu(d) ? { existe: true, data: d } : { existe: false }); }
@@ -243,21 +260,40 @@ const CHAMADAS = 'rumo_ao_esporte_2026_chamadas';
 async function portalProfessor(env, tenant, s, m, partes, corpo) {
   const [, col, id] = partes, REG = 'rumo_ao_esporte_2026_registrations';
   if (partes[0] !== 'db' || !colOk(col || '')) return erro('Sem permissão.', 403);
+  const rr = await rotaReservas(env, tenant, s, m, col, id, corpo); if (rr) return rr;
   const limpa = (d) => ({ contractStatus: d.contractStatus, status: d.status, responsavel: { nome: d.responsavel && d.responsavel.nome, telefonePrincipal: d.responsavel && d.responsavel.telefonePrincipal },
     alunos: (d.alunos || []).map((a) => ({ nome: a.nome, dataNascimento: a.dataNascimento, fotoUrl: a.fotoUrl, turmaId: a.turmaId, camisa: a.camisa, medicamentos: a.medicamentos, alergias: a.alergias })) });
+  // Só as turmas em que o professor é o responsável (o nome do cadastro dele = o responsável da turma)
+  const norm = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const tr = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='teachers' AND lower(trim(json_extract(data,'$.email')))=? LIMIT 1").bind(tenant, s.email).first();
+  const meuNome = tr ? norm(JSON.parse(tr.data).nome) : '';
+  const rt = await env.DB.prepare("SELECT id,data FROM sys_docs WHERE tenant=? AND col='turmas'").bind(tenant).all();
+  const minhas = new Set((rt.results || []).filter((x) => meuNome && norm(JSON.parse(x.data).responsavel) === meuNome).map((x) => x.id));
   if (m === 'GET') {
+    if (col === 'turmas') {
+      const docs = (rt.results || []).filter((x) => minhas.has(x.id)).map((x) => ({ id: x.id, data: JSON.parse(x.data) }));
+      if (id) { const x = docs.find((d) => d.id === id); return J(x ? { existe: true, data: x.data } : { existe: false }); }
+      return J({ docs });
+    }
+    if (col === CHAMADAS) {
+      const r = await env.DB.prepare('SELECT id,data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, col).all();
+      const docs = (r.results || []).map((x) => ({ id: x.id, data: JSON.parse(x.data) })).filter((x) => minhas.has(x.data.turmaId));
+      if (id) { const x = docs.find((d) => d.id === id); return J(x ? { existe: true, data: x.data } : { existe: false }); }
+      return J({ docs });
+    }
     if (col === REG || col === 'teachers') {
       const r = await env.DB.prepare('SELECT id,data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, col).all();
       let docs = (r.results || []).map((x) => ({ id: x.id, data: JSON.parse(x.data) }));
-      if (col === REG) docs = docs.map((x) => ({ id: x.id, data: limpa(x.data) }));
+      if (col === REG) docs = docs.map((x) => { const l = limpa(x.data); l.alunos = l.alunos.filter((a) => minhas.has(a.turmaId)); return { id: x.id, data: l }; }).filter((x) => x.data.alunos.length);
       else docs = docs.filter((x) => String(x.data.email || '').trim().toLowerCase() === s.email).map((x) => { const { senha, cpf, ...resto } = x.data; return { id: x.id, data: resto }; });
       if (id) { const x = docs.find((d) => d.id === id); return J(x ? { existe: true, data: x.data } : { existe: false }); }
       return J({ docs });
     }
-    if (col === CHAMADAS || LEITURA_PAIS.has(col) || (col === 'system_settings' && id !== 'whatsapp_evolution')) return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
+    if ((LEITURA_PAIS.has(col) && col !== 'turmas') || col === 'rumo_ao_esporte_2026_convocacoes' || (col === 'system_settings' && id !== 'whatsapp_evolution')) return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
     return J(id ? { existe: false } : { docs: [] });
   }
   if (m === 'POST' && col === CHAMADAS && !id) {
+    if (!corpo.data || !minhas.has(corpo.data.turmaId)) return erro('Você só pode registrar chamada das suas turmas.', 403);
     const novo = idNovo();
     try { await gravar(env, tenant, { op: 'set', col, id: novo, data: corpo.data }); } catch (e) { return erro(e.message); }
     await auditar(env, tenant, s, `professor registrou chamada ${novo}`);

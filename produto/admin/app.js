@@ -15,7 +15,7 @@
   const badge = (m, k) => { const [t, c] = m[k] || [k, '']; return `<span class="pg-badge ${c}">${E(t)}</span>`; };
   const digits = s => String(s || '').replace(/\D/g, '');
   const waLink = (tel, msg) => { let d = digits(tel); if (d.length <= 11) d = '55' + d; return 'https://wa.me/' + d + (msg ? '?text=' + encodeURIComponent(msg) : ''); };
-  function toast(t) { const e = document.createElement('div'); e.className = 'pg-toast'; e.setAttribute('role', 'status'); e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), 2800); }
+  function toast(t, tipo) { const e = document.createElement('div'); e.className = 'pg-toast' + (tipo === 'err' ? ' err' : ''); e.setAttribute('role', tipo === 'err' ? 'alert' : 'status'); e.textContent = t; document.body.appendChild(e); setTimeout(() => e.remove(), tipo === 'err' ? 5200 : 2800); }
   async function copiar(t) { try { await navigator.clipboard.writeText(t); } catch { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); document.execCommand('copy'); a.remove(); } toast('Copiado'); }
   async function api(p, o = {}) {
     const r = await fetch('/api/admin/' + p, { method: o.m || 'GET', headers: { 'content-type': 'application/json', 'x-pg': '1' }, body: o.b ? JSON.stringify(o.b) : undefined });
@@ -24,19 +24,33 @@
     if (!r.ok) throw new Error(j.erro || 'Algo deu errado.');
     return j;
   }
-  const falha = e => { if (e.message !== 'sessao') toast(e.message); };
+  const falha = e => { if (e.message !== 'sessao') toast(e.message, 'err'); };
 
   // ---------- janela ----------
-  function modal(titulo, html, onOpen) {
-    const back = document.createElement('div'); back.className = 'pg-modal-back';
-    back.innerHTML = `<div class="pg-modal" role="dialog" aria-modal="true" aria-label="${E(titulo)}"><div class="pg-modal-head"><div class="pg-card-title">${E(titulo)}</div><button class="pg-x" aria-label="Fechar">${I('x')}</button></div><div class="mbody">${html}</div></div>`;
-    const fechar = () => { back.remove(); document.removeEventListener('keydown', esc); };
-    const esc = e => { if (e.key === 'Escape') fechar(); };
+  function modal(titulo, html, onOpen, opts = {}) {
+    const antes = document.activeElement, back = document.createElement('div'); back.className = 'pg-modal-back';
+    back.innerHTML = `<div class="pg-modal ${opts.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-label="${E(titulo)}"><div class="pg-modal-head"><div class="pg-card-title">${E(titulo)}</div><button class="pg-x" aria-label="Fechar">${I('x')}</button></div><div class="mbody">${html}</div></div>`;
+    const sair = () => { back.remove(); document.removeEventListener('keydown', esc); if (antes && antes.focus) antes.focus(); };
+    const fechar = async () => { if (opts.guarda && opts.guarda() && !(await confirma('Descartar alterações?', 'Você mudou opções que ainda não foram salvas. Se fechar agora, elas se perdem.', 'Descartar', true))) return; sair(); };
+    const esc = e => { if (e.key === 'Escape' && !document.querySelector('.pg-modal-back.conf')) fechar(); };
     back.addEventListener('mousedown', e => { if (e.target === back) fechar(); });
     $('.pg-x', back).onclick = fechar; document.addEventListener('keydown', esc);
     document.body.appendChild(back); $('.pg-x', back).focus();
-    if (onOpen) onOpen($('.mbody', back), fechar);
-    return { el: $('.mbody', back), fechar };
+    if (onOpen) onOpen($('.mbody', back), sair);
+    return { el: $('.mbody', back), fechar: sair };
+  }
+  // Confirmação no padrão da Central (no lugar do confirm do navegador); perigo = botão vermelho.
+  function confirma(titulo, texto, rotulo = 'Confirmar', perigo = false, extra = '') {
+    return new Promise(res => {
+      const back = document.createElement('div'); back.className = 'pg-modal-back conf'; back.style.zIndex = 200;
+      back.innerHTML = `<div class="pg-modal ad-conf" role="alertdialog" aria-modal="true" aria-label="${E(titulo)}" style="width:min(440px,100%);padding:24px;overflow:visible"><div class="pg-card-title">${E(titulo)}</div><p>${E(texto)}</p>${extra}<div class="pg-actions" style="justify-content:flex-end;margin-top:20px"><button class="pg-btn" data-n>Cancelar</button><button class="pg-btn ${perigo ? 'danger' : 'green'}" data-s>${E(rotulo)}</button></div></div>`;
+      const fim = v => { back.remove(); document.removeEventListener('keydown', k, true); res(v); };
+      const k = e => { if (e.key === 'Escape') { e.stopPropagation(); fim(false); } };
+      document.addEventListener('keydown', k, true);
+      back.addEventListener('mousedown', e => { if (e.target === back) fim(false); });
+      $('[data-n]', back).onclick = () => fim(false); $('[data-s]', back).onclick = () => fim(back.querySelector('select') ? back.querySelector('select').value : true);
+      document.body.appendChild(back); $('[data-n]', back).focus();
+    });
   }
 
   // ---------- entrada ----------
@@ -55,9 +69,12 @@
     app.innerHTML = `<div class="pg-app"><aside class="pg-side" id="side"><div class="pg-side-head"><img src="../assets/logo-branco.png" alt="Pé na Grama"></div>
       <nav class="pg-nav" aria-label="Seções">${NAV.map(([id, t, ic]) => `<a class="pg-nav-item" data-r="${id}" href="#/${id}">${I(ic)}<span class="grow">${t}</span></a>`).join('')}</nav>
       <div class="pg-side-foot"><a class="pg-btn side" href="../ds/">Design system</a><button class="pg-btn exit" id="sair">${I('logout')} Sair</button></div></aside>
-      <main class="pg-main"><div class="pg-page" id="page"></div></main></div>`;
+      <div class="ad-scrim" id="scrim"></div><main class="pg-main"><div class="ad-topm"><button class="pg-btn" id="menu2" aria-label="Abrir menu" aria-controls="side">${I('menu')}</button><b id="tit"></b></div><div class="pg-page" id="page"></div></main></div>`;
     $('#sair').onclick = sair;
-    $('#side').addEventListener('click', e => { if (e.target.closest('a[data-r]')) $('#side').classList.remove('open'); });
+    const gaveta = (abrir) => { $('#side').classList.toggle('open', abrir); $('#scrim').classList.toggle('on', abrir); };
+    $('#menu2').onclick = () => gaveta(!$('#side').classList.contains('open')); $('#scrim').onclick = () => gaveta(false);
+    $('#side').addEventListener('click', e => { if (e.target.closest('a[data-r]')) gaveta(false); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#side') && $('#side').classList.contains('open')) gaveta(false); });
   }
   const cabeca = (titulo, sub, acoes = '') => `<div class="pg-page-head"><div><button class="pg-btn ad-menu" id="menu" aria-label="Abrir menu" style="margin-bottom:10px">${I('menu')} Menu</button><h1 class="pg-title">${titulo}</h1><p class="pg-sub">${sub}</p></div><div class="pg-actions">${acoes}</div></div>`;
   const vazio = (t, d) => `<div class="pg-empty"><b>${t}</b><br>${d || ''}</div>`;
@@ -72,6 +89,15 @@
     pg.innerHTML = '<div class="pg-empty">Carregando…</div>';
     try { await (ROTAS[r] || painel)(pg); const ab = +q.get('abrir'); if (ab && r === 'pedidos') detalhePedido(ab); if (ab && r === 'clientes') detalheCliente(ab); } catch (e) { if (e.message !== 'sessao') pg.innerHTML = `<div class="pg-alert bad">${E(e.message)}</div>`; }
     const m = $('#menu'); if (m) m.onclick = () => $('#side').classList.toggle('open');
+    rotular(pg); const t = $('#tit'); if (t) t.textContent = (NAV.find(n => n[0] === r) || NAV[0])[1];
+    window.scrollTo(0, 0);
+  }
+  // Cada célula de tabela leva o nome da coluna (usado quando a tabela vira lista de cartões no celular).
+  function rotular(raiz) {
+    raiz.querySelectorAll('table.pg-table').forEach(t => {
+      const nomes = [...t.querySelectorAll('thead th')].map(h => h.textContent.trim());
+      t.querySelectorAll('tbody tr').forEach(tr => [...tr.children].forEach((td, i) => { if (!td.hasAttribute('data-l')) td.setAttribute('data-l', nomes[i] || ''); }));
+    });
   }
   async function abrir() { try { await api('me'); } catch { return; } shell(); window.addEventListener('hashchange', () => { document.querySelectorAll('.pg-modal-back').forEach(m => m.remove()); rota(); }); rota(); }
 
@@ -199,15 +225,27 @@
   const painelEscola = (url) => { try { const u = new URL(/^https?:\/\//i.test(url || '') ? url : 'https://' + url); return /^https?:$/.test(u.protocol) && url ? u.origin + '/admin/login' : ''; } catch { return ''; } };
   const btnPainel = (url, sm) => { const h = painelEscola(url); return h ? `<a class="pg-btn green ${sm ? 'detail' : ''}" target="_blank" rel="noopener" href="${E(h)}">${I('link')} Abrir painel da escola</a>` : `<button class="pg-btn ${sm ? 'detail' : ''}" disabled title="Informe o endereço do sistema em Detalhes">Sem endereço</button>`; };
 
+  let buscaCli = '', stCli = '';
   async function clientes(pg) {
     const lista = await api('clientes');
-    pg.innerHTML = cabeca('Clientes', 'Escolas que assinaram o contrato e o andamento de cada uma.') +
-      `<div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Escola</th><th>Plano</th><th class="num">Mensalidade</th><th>Situação</th><th>Próxima cobrança</th><th>Implantação</th><th></th></tr></thead><tbody>
-      ${lista.map(c => { const feitos = CHECK.filter(k => c.checklist[k]).length; return `<tr><td><b>${E(c.escola)}</b><small>${E(c.contato_nome)} · ${E(c.contato_tel)}</small></td><td>${E(c.plano_nome)}</td><td class="num">${brl(c.mensal)}</td>
+    const linha = c => { const feitos = CHECK.filter(k => c.checklist[k]).length; return `<tr class="ad-click" data-id="${c.id}" tabindex="0"><td><b>${E(c.escola)}</b><small>${E(c.contato_nome)} · ${E(c.contato_tel)}</small></td><td>${E(c.plano_nome)}</td><td class="num">${brl(c.mensal)}</td>
         <td>${badge(ST_CLI, c.status)}${c.atrasadas ? ` <span class="pg-badge bad">Em atraso · ${brl(c.valor_atrasado)}</span>` : ''}</td><td>${c.proximo ? dt(c.proximo) : '—'}</td>
-        <td><div class="pg-track" style="width:110px"><i style="width:${Math.round(feitos / CHECK.length * 100)}%"></i></div><small>${feitos} de ${CHECK.length}</small></td><td class="ac">${btnPainel(c.url_sistema, true)} <button class="pg-btn detail" data-id="${c.id}">Detalhes</button></td></tr>`; }).join('')}</tbody></table>
-      ${lista.length ? '' : vazio('Nenhum cliente ainda', 'Quando uma escola assinar o contrato, ela aparece aqui já com a primeira fatura.')}</div>`;
-    pg.querySelectorAll('[data-id]').forEach(b => b.onclick = () => detalheCliente(+b.dataset.id));
+        <td><div class="pg-track" style="width:110px"><i style="width:${Math.round(feitos / CHECK.length * 100)}%"></i></div><small>${feitos} de ${CHECK.length}</small></td><td class="ac">${btnPainel(c.url_sistema, true).replace('Abrir painel da escola', 'Abrir painel')} ${c.url_sistema ? `<button class="pg-btn detail" data-ctl="${c.id}">${I('settings')} Controle</button>` : ''} <button class="pg-btn detail" data-det="${c.id}">Detalhes</button></td></tr>`; };
+    pg.innerHTML = cabeca('Clientes', 'Escolas que assinaram o contrato e o andamento de cada uma.') +
+      (lista.length ? `<div class="ad-find"><input class="pg-input" id="cb" type="search" placeholder="Buscar escola ou contato…" aria-label="Buscar cliente" value="${E(buscaCli)}"><select class="pg-select" id="cs" aria-label="Filtrar por situação"><option value="">Todas as situações</option>${Object.entries(ST_CLI).map(([k, v]) => `<option value="${k}" ${stCli === k ? 'selected' : ''}>${v[0]}</option>`).join('')}<option value="atraso" ${stCli === 'atraso' ? 'selected' : ''}>Com fatura em atraso</option></select><span class="n" id="cn" aria-live="polite"></span></div>` : '') +
+      `<div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Escola</th><th>Plano</th><th class="num">Mensalidade</th><th>Situação</th><th>Próxima cobrança</th><th>Implantação</th><th></th></tr></thead><tbody id="cl"></tbody></table>
+      ${lista.length ? '' : vazio('Nenhum cliente ainda', 'Quando uma escola assinar o contrato, ela aparece aqui já com a primeira fatura.')}<div id="cv"></div></div>`;
+    const desenha = () => {
+      const q = buscaCli.trim().toLowerCase(), v = lista.filter(c => (!q || (c.escola + ' ' + c.contato_nome + ' ' + c.contato_tel).toLowerCase().includes(q)) && (!stCli || (stCli === 'atraso' ? c.atrasadas > 0 : c.status === stCli)));
+      $('#cl', pg).innerHTML = v.map(linha).join(''); rotular(pg);
+      const n = $('#cn', pg); if (n) n.textContent = v.length + ' de ' + lista.length + ' escola(s)';
+      $('#cv', pg).innerHTML = lista.length && !v.length ? vazio('Nenhuma escola encontrada', 'Mude a busca ou o filtro de situação.') : '';
+      pg.querySelectorAll('[data-det]').forEach(b => b.onclick = e => { e.stopPropagation(); detalheCliente(+b.dataset.det); });
+      pg.querySelectorAll('[data-ctl]').forEach(b => b.onclick = async e => { e.stopPropagation(); const c = lista.find(x => x.id === +b.dataset.ctl); b.disabled = true; try { await controleEscola(c); } finally { b.disabled = false; } });
+      pg.querySelectorAll('tr.ad-click').forEach(tr => { const abre = e => { if (e.target.closest('a,button')) return; detalheCliente(+tr.dataset.id); }; tr.onclick = abre; tr.onkeydown = e => { if (e.key === 'Enter' && e.target === tr) detalheCliente(+tr.dataset.id); }; });
+    };
+    const cb = $('#cb', pg); if (cb) { cb.oninput = () => { buscaCli = cb.value; desenha(); }; $('#cs', pg).onchange = e => { stCli = e.target.value; desenha(); }; }
+    desenha();
   }
 
   async function detalheCliente(id) {
@@ -222,13 +260,13 @@
       ${c.url_sistema ? `<div><div class="ad-sec" style="margin-top:0">Sistema da escola</div><div id="saude" class="pg-alert" style="margin-bottom:10px">Carregando situação…</div>
         <div class="ad-two"><div class="pg-field"><label class="pg-label" for="lm">Limite de matrículas (0 = sem limite)</label><div class="ad-copy"><input class="pg-input" id="lm" type="number" min="0" value="0"><button class="pg-btn" id="lmb">Salvar limite</button></div></div>
         <div class="pg-field"><label class="pg-label">Acesso do administrador</label><button class="pg-btn" id="acesso">Gerar acesso do administrador</button></div></div>
-        <div class="pg-field"><button class="pg-btn green" id="ctl">Controle total da escola (módulos, marca, limites, segurança, usuários, dados)</button></div>
+        <div class="ad-cta"><div><b>Controle total da escola</b><span>127 opções: módulos, marca, limites, segurança, usuários e dados desta escola.</span></div><button class="pg-btn" id="ctl">Abrir controle</button></div>
         <div class="pg-field"><label class="pg-label">Endereço no ar</label><div class="ad-copy"><span id="dom" style="flex:1;align-self:center">Verificando…</span><button class="pg-btn" id="pub">Publicar endereço</button></div></div><div class="pg-field"><label class="pg-label">Cópias de segurança (automáticas, 1 por dia; ficam as 7 mais recentes)</label><div id="bks" style="margin-bottom:8px">Carregando…</div><button class="pg-btn" id="bkn">Fazer cópia agora</button></div><div id="acessoRes"></div></div>` : ''}
       <div><div class="ad-sec" style="margin-top:0">Implantação</div>${CHECK.map(k => `<label class="pg-check ${c.checklist[k] ? 'done' : ''}"><input type="checkbox" data-ck="${E(k)}" ${c.checklist[k] ? 'checked' : ''}><span>${E(k)}</span></label>`).join('')}</div>
       <div class="pg-field"><label class="pg-label" for="nt">Anotações</label><textarea class="pg-textarea" id="nt" style="min-height:80px">${E(c.notas)}</textarea></div>
       <div><div class="ad-sec" style="margin-top:0;display:flex;justify-content:space-between;align-items:center"><span>Faturas</span><button class="pg-btn sm" id="nova">${I('plus')} Cobrança avulsa</button></div>
         <div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Descrição</th><th>Vence</th><th class="num">Valor</th><th>Situação</th><th></th></tr></thead><tbody>${c.faturas.map(f => `<tr><td>${E(f.descricao)}</td><td>${dt(f.vencimento)}</td><td class="num">${brl(f.valor)}</td><td>${badge(ST_FAT, f.status)}</td><td class="ac">${f.status === 'aberta' || f.status === 'informada' ? `<button class="pg-btn detail" data-paga="${f.id}">Marcar paga</button> ` : ''}<button class="pg-btn detail" data-copia="${location.origin}/fatura?t=${E(f.token)}">Copiar link</button></td></tr>`).join('')}</tbody></table></div></div>
-      <div class="pg-actions" style="justify-content:flex-end"><button class="pg-btn green" id="salvar">Salvar</button></div></div>`, (el, fechar) => {
+      <div class="ad-foot"><button class="pg-btn green" id="salvar">Salvar alterações</button></div></div>`, (el, fechar) => {
       el.querySelectorAll('[data-copia]').forEach(b => b.onclick = () => copiar(b.dataset.copia));
       el.querySelectorAll('[data-paga]').forEach(b => b.onclick = async () => { try { await api('faturas/' + b.dataset.paga, { m: 'PATCH', b: { status: 'paga' } }); toast('Fatura marcada como paga'); fechar(); rota(); } catch (e) { falha(e); } });
       $('#nova', el).onclick = () => cobrancaAvulsa(c, fechar);
@@ -236,80 +274,139 @@
         api('clientes/' + id + '/saude').then(s => { $('#saude', el).innerHTML = `<b>${s.matriculas}</b> matrícula(s)${s.limite ? ` de ${s.limite}` : ''} · <b>${s.usuarios}</b> usuário(s) · ${s.kb} KB de dados · última ação: ${s.ultima_acao ? E(s.ultima_acao.quando.slice(0, 16).replace('T', ' ')) + ' (' + E(s.ultima_acao.quem) + ')' : 'nenhuma ainda'}`; $('#lm', el).value = s.limite; }).catch(() => { $('#saude', el).textContent = 'Sem dados ainda (sistema sem uso ou fora do ar).'; });
         const estadoDom = () => api('clientes/' + id + '/dominio').then(d => { $('#dom', el).textContent = d.estado === 'ok' ? 'Publicado (' + d.host + ')' : d.estado + (d.chave_configurada ? '' : ' · chave do Cloudflare não configurada'); }).catch(() => { $('#dom', el).textContent = 'Não consegui verificar.'; });
         estadoDom();
-        const listaBk = () => api('clientes/' + id + '/backups').then(r => { $('#bks', el).innerHTML = r.lista.length ? r.lista.map(b => `<div style="display:flex;gap:10px;align-items:center;margin:4px 0"><span style="flex:1">${E(b.quando.slice(0, 16).replace('T', ' '))} UTC · ${Math.round(b.bytes / 1024)} KB</span><button class="pg-btn detail" data-rest="${E(b.quando)}">Restaurar</button></div>`).join('') : 'Nenhuma ainda. A primeira sai em até 24 horas.'; $('#bks', el).querySelectorAll('[data-rest]').forEach(x => x.onclick = async () => { if (!confirm('Restaurar os dados da escola para esta cópia? Os dados atuais são substituídos (antes disso o estado de agora também é guardado como cópia).')) return; try { const r2 = await api('clientes/' + id + '/restaurar', { m: 'POST', b: { quando: x.dataset.rest, confirmar: true } }); toast('Restaurado (' + r2.docs + ' registros)'); listaBk(); } catch (e) { falha(e); } }); }).catch(() => { $('#bks', el).textContent = 'Não consegui listar.'; });
+        const listaBk = () => api('clientes/' + id + '/backups').then(r => { $('#bks', el).innerHTML = r.lista.length ? r.lista.map(b => `<div style="display:flex;gap:10px;align-items:center;margin:4px 0"><span style="flex:1">${E(b.quando.slice(0, 16).replace('T', ' '))} UTC · ${Math.round(b.bytes / 1024)} KB</span><button class="pg-btn detail" data-rest="${E(b.quando)}">Restaurar</button></div>`).join('') : 'Nenhuma ainda. A primeira sai em até 24 horas.'; $('#bks', el).querySelectorAll('[data-rest]').forEach(x => x.onclick = async () => { if (!(await confirma('Restaurar esta cópia?', 'Os dados atuais da escola são substituídos pelos desta cópia. Antes disso, o estado de agora também é guardado como cópia.', 'Restaurar', true))) return; try { const r2 = await api('clientes/' + id + '/restaurar', { m: 'POST', b: { quando: x.dataset.rest, confirmar: true } }); toast('Restaurado (' + r2.docs + ' registros)'); listaBk(); } catch (e) { falha(e); } }); }).catch(() => { $('#bks', el).textContent = 'Não consegui listar.'; });
         listaBk();
         $('#bkn', el).onclick = async () => { try { await api('clientes/' + id + '/backup', { m: 'POST', b: {} }); toast('Cópia feita'); listaBk(); } catch (e) { falha(e); } };
         $('#pub', el).onclick = async () => { try { const r = await api('clientes/' + id + '/publicar', { m: 'POST', b: {} }); if (r.ok) toast('Endereço publicado'); else alert(r.motivo); estadoDom(); } catch (e) { falha(e); } };
         $('#ctl', el).onclick = () => controleEscola(c);
         $('#lmb', el).onclick = async () => { try { await api('clientes/' + id + '/limite', { m: 'PUT', b: { max: +$('#lm', el).value || 0 } }); toast('Limite salvo'); } catch (e) { falha(e); } };
-        $('#acesso', el).onclick = async () => { if (!confirm('Gerar um novo acesso? A senha anterior do administrador deixa de valer.')) return; try { const r = await api('clientes/' + id + '/acesso', { m: 'POST', b: {} }); $('#acessoRes', el).innerHTML = `<div class="pg-alert ok" style="margin-top:10px">Anote agora, a senha não aparece de novo.<br>Endereço: <b>${E(r.url)}</b><br>E-mail: <b>${E(r.email)}</b><br>Senha: <b>${E(r.senha)}</b></div>`; } catch (e) { falha(e); } };
+        $('#acesso', el).onclick = async () => { if (!(await confirma('Gerar novo acesso?', 'A senha anterior do administrador da escola deixa de valer. A nova aparece uma única vez.', 'Gerar acesso', true))) return; try { const r = await api('clientes/' + id + '/acesso', { m: 'POST', b: {} }); $('#acessoRes', el).innerHTML = `<div class="pg-alert ok" style="margin-top:10px">Anote agora, a senha não aparece de novo.<br>Endereço: <b>${E(r.url)}</b><br>E-mail: <b>${E(r.email)}</b><br>Senha: <b>${E(r.senha)}</b></div>`; } catch (e) { falha(e); } };
       }
       $('#salvar', el).onclick = async () => {
         const checklist = {}; el.querySelectorAll('[data-ck]').forEach(i => checklist[i.dataset.ck] = i.checked);
         try { await api('clientes/' + id, { m: 'PATCH', b: { status: $('#st', el).value, url_sistema: $('#ur', el).value, mensal: money($('#mn', el).value), dia_venc: +$('#dv', el).value, notas: $('#nt', el).value, checklist } }); toast('Cliente salvo'); fechar(); rota(); } catch (e) { falha(e); } };
-    });
+    }, { wide: true });
   }
+  const ATALHO_TXT = { 'suspensa:true': 'O endereço da escola sai do ar e mostra a mensagem de suspensão.', 'suspensa:false': 'A escola volta ao ar.', 'manutencao:true': 'Só administradores conseguem entrar enquanto durar.', 'manutencao:false': 'Todos voltam a entrar.', 'somente_leitura:true': 'Ninguém consegue gravar nada até você liberar.', 'somente_leitura:false': 'A gravação volta ao normal.' };
   // ---------- controle total da escola (dono master) ----------
   async function controleEscola(c) {
     const id = c.id, base = 'clientes/' + id + '/';
     let ctl; try { ctl = await api(base + 'controle'); } catch (e) { return falha(e); }
     const grupos = [...new Set(ctl.catalogo.map(o => o.g))], mudou = {}, internoMud = {};
+    const PERIGO = k => /^(suspensa|manutencao|somente_leitura|bloq_)/.test(k);
+    const padrao = o => o.d, difere = o => ctl.valores[o.k] !== padrao(o);
+    const atual = o => (o.k in mudou ? mudou[o.k] : ctl.valores[o.k]);
+    const nMud = () => Object.keys(mudou).length + Object.keys(internoMud).length;
     const campo = o => {
-      const v = ctl.valores[o.k], k = E(o.k);
-      if (o.t === 'bool') return `<label class="pg-check"><input type="checkbox" data-k="${k}" ${v ? 'checked' : ''}><span>${E(o.r)}</span></label>`;
-      const ent = o.t === 'num' ? `<input class="pg-input" type="number" min="0" data-k="${k}" value="${E(v)}">` : o.t === 'cor' ? `<input type="color" data-k="${k}" value="${E(v)}" style="width:60px;height:36px">` : o.t === 'sel' ? `<select class="pg-select" data-k="${k}">${o.o.map(x => `<option value="${E(x[0])}" ${v === x[0] ? 'selected' : ''}>${E(x[1])}</option>`).join('')}</select>` : `<input class="pg-input" data-k="${k}" value="${E(v)}" placeholder="${E(o.a || '')}">`;
-      return `<div class="pg-field"><label class="pg-label">${E(o.r)}${o.a && o.t !== 'txt' ? ` <small style="font-weight:400;color:var(--medium-gray)">· ${E(o.a)}</small>` : ''}</label>${ent}</div>`;
+      const v = atual(o), k = E(o.k), aj = o.a ? `<span class="help">${E(o.a)}</span>` : '';
+      if (o.t === 'bool') return `<label class="ad-sw ${PERIGO(o.k) ? 'danger' : ''}"><input type="checkbox" data-k="${k}" ${v ? 'checked' : ''}><span>${E(o.r)}</span></label>${aj}`;
+      const rot = `<label class="pg-label" for="k_${k}">${E(o.r)}</label>`;
+      const ent = o.t === 'num' ? `<input class="pg-input" id="k_${k}" type="number" inputmode="numeric" min="0" data-k="${k}" value="${E(v)}">`
+        : o.t === 'cor' ? `<div class="ad-colorrow"><input type="color" id="k_${k}" data-k="${k}" value="${E(v)}"><code>${E(v)}</code></div>`
+        : o.t === 'sel' ? `<select class="pg-select" id="k_${k}" data-k="${k}">${o.o.map(x => `<option value="${E(x[0])}" ${v === x[0] ? 'selected' : ''}>${E(x[1])}</option>`).join('')}</select>`
+        : `<input class="pg-input" id="k_${k}" data-k="${k}" value="${E(v)}" placeholder="${E(o.a || '')}" maxlength="400">`;
+      return rot + ent + (o.t === 'txt' ? '' : aj);
     };
-    const aba = { opcoes: '', usuarios: '<div id="usu">Carregando…</div>', dados: '<div id="dad">Carregando…</div>', ficha: '', acoes: '' };
-    aba.opcoes = `<div class="pg-field"><input class="pg-input" id="busca" type="search" placeholder="Buscar entre ${ctl.catalogo.length} opções…"></div><div id="ops">${grupos.map(g => `<details class="grp" open><summary class="ad-sec" style="cursor:pointer">${E(g)} <small style="font-weight:400">(${ctl.catalogo.filter(o => o.g === g).length})</small></summary><div class="ad-two">${ctl.catalogo.filter(o => o.g === g).map(o => `<div class="op" data-txt="${E((o.r + ' ' + (o.a || '')).toLowerCase())}">${campo(o)}</div>`).join('')}</div></details>`).join('')}</div><div class="pg-actions" style="justify-content:flex-end;margin-top:14px"><button class="pg-btn green" id="salvaOp">Salvar opções</button></div>`;
-    aba.ficha = `<div class="ad-two">${ctl.interno_campos.map(([k, r]) => `<div class="pg-field"><label class="pg-label">${E(r)}</label><input class="pg-input" data-i="${E(k)}" value="${E(ctl.interno[k] || '')}"></div>`).join('')}</div><div class="pg-actions" style="justify-content:flex-end;margin-top:14px"><button class="pg-btn green" id="salvaFi">Salvar ficha</button></div>`;
-    aba.acoes = `<div class="pg-stack"><div class="pg-field"><label class="pg-label">Entrar no painel da escola como administrador (30 minutos)</label><button class="pg-btn" id="entrarEsc">Entrar como a escola</button></div>
-      <div class="pg-field"><label class="pg-label">Encerrar as sessões de todos os usuários da escola</label><button class="pg-btn" id="sessTodas">Encerrar todas as sessões</button></div>
-      <div class="pg-field"><label class="pg-label">Baixar todos os dados da escola (arquivo JSON)</label><a class="pg-btn" href="/api/admin/${base}exportar" id="expDados">Baixar dados</a></div>
-      <div class="pg-field"><label class="pg-label">Atalhos de estado</label><div class="ad-copy"><button class="pg-btn" data-atalho="suspensa:true">Suspender escola</button><button class="pg-btn" data-atalho="suspensa:false">Reativar escola</button><button class="pg-btn" data-atalho="manutencao:true">Ligar manutenção</button><button class="pg-btn" data-atalho="manutencao:false">Desligar manutenção</button><button class="pg-btn" data-atalho="somente_leitura:true">Somente leitura</button><button class="pg-btn" data-atalho="somente_leitura:false">Liberar gravação</button></div></div><div id="acRes"></div></div>`;
-    modal('Controle total · ' + c.escola, `<div class="pg-stack"><div class="ad-copy" id="abas" style="flex-wrap:wrap">${[['opcoes', 'Opções (' + ctl.catalogo.length + ')'], ['usuarios', 'Usuários'], ['dados', 'Dados e registro'], ['ficha', 'Ficha interna'], ['acoes', 'Ações']].map(([k, r], i) => `<button class="pg-btn ${i ? '' : 'green'}" data-aba="${k}">${r}</button>`).join('')}</div><div id="corpoAba"></div></div>`, (el) => {
+    const opcao = o => `<div class="ad-op" data-k="${E(o.k)}" data-txt="${E((o.r + ' ' + (o.a || '')).toLowerCase())}">${campo(o)}<span class="ad-tags"></span></div>`;
+    const tabs = [['opcoes', 'Opções', ctl.catalogo.length], ['usuarios', 'Usuários'], ['dados', 'Dados e registro'], ['ficha', 'Ficha interna'], ['acoes', 'Ações']];
+    let aberta = 'opcoes';
+    modal('Controle total · ' + c.escola, `<div class="ad-tabs" role="tablist" aria-label="Seções do controle">${tabs.map(([k, r, n]) => `<button role="tab" id="t_${k}" data-aba="${k}" aria-selected="${k === aberta}" aria-controls="corpoAba">${r}${n ? `<small>${n}</small>` : ''}</button>`).join('')}</div><div id="corpoAba" role="tabpanel"></div>`, (el) => {
       const corpo = $('#corpoAba', el);
+      const marca = () => { // destaca o que mudou e mostra o contador no rodapé
+        corpo.querySelectorAll('.ad-op').forEach(d => {
+          const o = ctl.catalogo.find(x => x.k === d.dataset.k), tem = o.k in mudou, per = !tem && difere(o);
+          d.classList.toggle('mod', tem);
+          d.querySelector('.ad-tags').innerHTML = (tem ? '<span class="tag">não salvo</span>' : per ? '<span class="tag" style="background:#e0f2fe;color:#075985">personalizado</span>' : '') + ((tem ? mudou[o.k] !== padrao(o) : per) ? ' <button class="pg-btn detail" style="min-height:24px;padding:2px 8px;font-size:12px" data-reset="' + E(o.k) + '">Voltar ao padrão</button>' : '');
+        });
+        corpo.querySelectorAll('.ad-grp').forEach(g => { const n = g.querySelectorAll('.ad-op.mod').length; g.querySelector('.alt').textContent = n ? n + ' não salva(s)' : ''; });
+        corpo.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => { const o = ctl.catalogo.find(x => x.k === b.dataset.reset), i = corpo.querySelector('[data-k="' + o.k + '"]'); if (o.t === 'bool') i.checked = !!o.d; else i.value = o.d; i.dispatchEvent(new Event('change')); });
+        const f = $('#fInfo', corpo); if (f) { const n = nMud(); f.textContent = n ? n + ' alteração(ões) ainda não salva(s)' : 'Tudo salvo'; f.classList.toggle('has', !!n); const sv = $('#salva', corpo); if (sv) sv.disabled = !n; const ds = $('#descarta', corpo); if (ds) ds.disabled = !n; }
+        corpo.querySelectorAll('.ad-colorrow code').forEach(cd => { const i = cd.parentNode.querySelector('input'); cd.textContent = i.value; });
+      };
+      const rodape = txt => `<div class="ad-foot"><span class="ad-foot-info" id="fInfo" aria-live="polite"></span><button class="pg-btn" id="descarta">Descartar</button><button class="pg-btn green" id="salva">${txt}</button></div>`;
+      const abas = {
+        opcoes: () => `<div class="ad-find" style="margin-bottom:12px"><input class="pg-input" id="busca" type="search" placeholder="Buscar entre ${ctl.catalogo.length} opções (ex.: senha, WhatsApp, turmas)…" aria-label="Buscar opção"><label class="ad-sw" style="font-weight:600;font-size:14px"><input type="checkbox" id="soMud"><span>Só personalizadas</span></label><span class="n"><button class="pg-btn detail" id="abreTudo">Abrir tudo</button> <button class="pg-btn detail" id="fechaTudo">Fechar tudo</button></span></div><div id="ops">${grupos.map(g => `<details class="ad-grp" open><summary>${E(g)} <span class="c">${ctl.catalogo.filter(o => o.g === g).length} opções</span> <span class="c alt" style="color:#92400e"></span></summary><div class="gb">${ctl.catalogo.filter(o => o.g === g).map(opcao).join('')}</div></details>`).join('')}</div><div class="ad-none" id="nenhuma" hidden>Nenhuma opção encontrada. Tente outra palavra.</div>${rodape('Salvar opções')}`,
+        usuarios: () => '<div id="usu"><div class="pg-empty">Carregando…</div></div>',
+        dados: () => '<div id="dad"><div class="pg-empty">Carregando…</div></div>',
+        ficha: () => `<p class="pg-sub" style="margin:0 0 14px">Anotações só suas. Nada daqui aparece para a escola.</p><div class="ad-two">${ctl.interno_campos.map(([k, r]) => `<div class="pg-field"><label class="pg-label" for="i_${E(k)}">${E(r)}</label><input class="pg-input" id="i_${E(k)}" data-i="${E(k)}" value="${E(internoMud[k] != null ? internoMud[k] : (ctl.interno[k] || ''))}" maxlength="300"></div>`).join('')}</div>${rodape('Salvar ficha')}`,
+        acoes: () => {
+          const v = ctl.valores, est = [['suspensa', 'Suspensa', 'bad'], ['manutencao', 'Em manutenção', 'warn'], ['somente_leitura', 'Somente leitura', 'warn']].filter(([k]) => v[k]);
+          const at = (k, val, rot, cls = '') => `<button class="pg-btn ${cls}" data-atalho="${k}:${val}" ${!!v[k] === val ? 'disabled' : ''}>${rot}</button>`;
+          return `<div class="pg-stack"><div class="ad-cta"><div><b>Entrar como a escola</b><span>Abre o painel como administrador por 30 minutos, em outra aba. A entrada fica no registro de ações.</span></div><button class="pg-btn" id="entrarEsc">Abrir painel da escola</button></div>
+          <div><div class="ad-sec" style="margin-top:0">Estado agora</div><div id="estAgora">${est.length ? est.map(([, t, c2]) => `<span class="pg-badge ${c2}" style="margin-right:6px">${t}</span>`).join('') : '<span class="pg-badge ok">Funcionando normalmente</span>'}</div></div>
+          <div><div class="ad-sec" style="margin-top:0">Atalhos de estado</div><div class="ad-quick">${at('suspensa', true, 'Suspender escola', 'dang')}${at('suspensa', false, 'Reativar escola')}${at('manutencao', true, 'Ligar manutenção', 'warnb')}${at('manutencao', false, 'Desligar manutenção')}${at('somente_leitura', true, 'Somente leitura', 'warnb')}${at('somente_leitura', false, 'Liberar gravação')}</div></div>
+          <div><div class="ad-sec" style="margin-top:0">Segurança e dados</div><div class="ad-quick"><button class="pg-btn" id="sessTodas">Encerrar todas as sessões</button><a class="pg-btn" href="/api/admin/${base}exportar" download>Baixar todos os dados (JSON)</a></div></div></div>`;
+        },
+      };
       const liga = () => {
-        corpo.querySelectorAll('[data-k]').forEach(i => i.onchange = () => { mudou[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
-        corpo.querySelectorAll('[data-i]').forEach(i => i.onchange = () => { internoMud[i.dataset.i] = i.value; });
-        const b = $('#busca', corpo); if (b) b.oninput = () => { const q = b.value.toLowerCase(); corpo.querySelectorAll('.op').forEach(d => d.style.display = d.dataset.txt.includes(q) ? '' : 'none'); };
-        const sv = $('#salvaOp', corpo); if (sv) sv.onclick = async () => { try { const r = await api(base + 'controle', { m: 'PUT', b: { valores: mudou } }); Object.assign(ctl.valores, r.valores); toast(Object.keys(mudou).length + ' opção(ões) salva(s)'); for (const k in mudou) delete mudou[k]; } catch (e) { falha(e); } };
-        const sf = $('#salvaFi', corpo); if (sf) sf.onclick = async () => { try { await api(base + 'controle', { m: 'PUT', b: { interno: internoMud } }); Object.assign(ctl.interno, internoMud); toast('Ficha salva'); } catch (e) { falha(e); } };
+        corpo.querySelectorAll('[data-k]').forEach(i => { if (i.dataset.reset !== undefined) return; i.onchange = i.oninput = () => { const o = ctl.catalogo.find(x => x.k === i.dataset.k), val = i.type === 'checkbox' ? i.checked : i.type === 'number' ? Math.max(0, Math.floor(+i.value || 0)) : i.value; if (val === ctl.valores[o.k]) delete mudou[o.k]; else mudou[o.k] = val; marca(); }; });
+        corpo.querySelectorAll('[data-i]').forEach(i => i.oninput = () => { if (i.value === (ctl.interno[i.dataset.i] || '')) delete internoMud[i.dataset.i]; else internoMud[i.dataset.i] = i.value; marca(); });
+        const b = $('#busca', corpo);
+        if (b) {
+          const filtra = () => { const q = b.value.trim().toLowerCase(), so = $('#soMud', corpo).checked; let ach = 0;
+            corpo.querySelectorAll('.ad-op').forEach(d => { const o = ctl.catalogo.find(x => x.k === d.dataset.k), ok = (!q || d.dataset.txt.includes(q)) && (!so || difere(o) || o.k in mudou); d.style.display = ok ? '' : 'none'; if (ok) ach++; });
+            corpo.querySelectorAll('.ad-grp').forEach(g => { const ve = [...g.querySelectorAll('.ad-op')].some(d => d.style.display !== 'none'); g.style.display = ve ? '' : 'none'; if (q && ve) g.open = true; });
+            $('#nenhuma', corpo).hidden = ach > 0; };
+          b.oninput = filtra; $('#soMud', corpo).onchange = filtra;
+          $('#abreTudo', corpo).onclick = () => corpo.querySelectorAll('.ad-grp').forEach(g => g.open = true); $('#fechaTudo', corpo).onclick = () => corpo.querySelectorAll('.ad-grp').forEach(g => g.open = false);
+        }
+        const sv = $('#salva', corpo), ds = $('#descarta', corpo);
+        if (sv) sv.onclick = async () => {
+          const ficha = aberta === 'ficha'; sv.disabled = true; const rot = sv.textContent; sv.textContent = 'Salvando…';
+          try {
+            if (ficha) { await api(base + 'controle', { m: 'PUT', b: { interno: internoMud } }); Object.assign(ctl.interno, internoMud); for (const k in internoMud) delete internoMud[k]; toast('Ficha salva'); }
+            else { const r = await api(base + 'controle', { m: 'PUT', b: { valores: mudou } }); const n = Object.keys(mudou).length; Object.assign(ctl.valores, r.valores); for (const k in mudou) delete mudou[k]; toast(n + ' opção(ões) salva(s) — já valem na escola'); }
+          } catch (e) { falha(e); }
+          sv.textContent = rot; marca();
+        };
+        if (ds) ds.onclick = () => { if (aberta === 'ficha') for (const k in internoMud) delete internoMud[k]; else for (const k in mudou) delete mudou[k]; mostra(aberta); };
         const usu = $('#usu', corpo); if (usu) listaUsuarios(usu);
         const dad = $('#dad', corpo); if (dad) painelDados(dad);
-        const ent = $('#entrarEsc', corpo); if (ent) {
-          ent.onclick = async () => { const w = window.open('', '_blank'); try { const r = await api(base + 'entrar', { m: 'POST', b: {} }); if (w) w.location = r.url; else toast('Libere pop-ups para abrir a escola.'); } catch (e) { if (w) w.close(); falha(e); } };
-          $('#sessTodas', corpo).onclick = async () => { if (!confirm('Encerrar as sessões de todos os usuários desta escola?')) return; try { const r = await api(base + 'sessoes', { m: 'POST', b: {} }); toast('Sessões encerradas (' + r.usuarios + ' usuários)'); } catch (e) { falha(e); } };
-          corpo.querySelectorAll('[data-atalho]').forEach(b => b.onclick = async () => { const [k, v] = b.dataset.atalho.split(':'); if (!confirm('Confirmar: ' + b.textContent + '?')) return; try { const r = await api(base + 'controle', { m: 'PUT', b: { valores: { [k]: v === 'true' } } }); Object.assign(ctl.valores, r.valores); toast('Feito: ' + b.textContent); } catch (e) { falha(e); } });
+        const ent = $('#entrarEsc', corpo);
+        if (ent) {
+          ent.onclick = async () => { const w = window.open('', '_blank'); ent.disabled = true; try { const r = await api(base + 'entrar', { m: 'POST', b: {} }); if (w) w.location = r.url; else toast('Libere pop-ups para abrir a escola.', 'err'); } catch (e) { if (w) w.close(); falha(e); } ent.disabled = false; };
+          $('#sessTodas', corpo).onclick = async () => { if (!(await confirma('Encerrar todas as sessões?', 'Todos os usuários desta escola precisam entrar de novo.', 'Encerrar sessões', true))) return; try { const r = await api(base + 'sessoes', { m: 'POST', b: {} }); toast('Sessões encerradas (' + r.usuarios + ' usuários)'); } catch (e) { falha(e); } };
+          corpo.querySelectorAll('[data-atalho]').forEach(b => b.onclick = async () => { const [k, val] = b.dataset.atalho.split(':'); if (!(await confirma(b.textContent + '?', ATALHO_TXT[b.dataset.atalho] || 'Vale na hora para todos os usuários da escola.', b.textContent, /suspensa:true|somente_leitura:true/.test(b.dataset.atalho)))) return; try { const r = await api(base + 'controle', { m: 'PUT', b: { valores: { [k]: val === 'true' } } }); Object.assign(ctl.valores, r.valores); toast('Feito: ' + b.textContent); mostra('acoes'); } catch (e) { falha(e); } });
         }
+        marca();
       };
-      const mostra = k => { corpo.innerHTML = aba[k]; el.querySelectorAll('[data-aba]').forEach(b => b.classList.toggle('green', b.dataset.aba === k)); liga(); };
-      el.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => mostra(b.dataset.aba));
+      function mostra(k) {
+        aberta = k; corpo.innerHTML = abas[k](); corpo.setAttribute('aria-labelledby', 't_' + k);
+        el.querySelectorAll('[data-aba]').forEach(b => b.setAttribute('aria-selected', b.dataset.aba === k)); liga();
+      }
+      el.querySelectorAll('[data-aba]').forEach(b => { b.onclick = () => mostra(b.dataset.aba); b.onkeydown = e => { const i = tabs.findIndex(t => t[0] === b.dataset.aba), d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { const n = tabs[(i + d + tabs.length) % tabs.length][0]; mostra(n); el.querySelector('[data-aba="' + n + '"]').focus(); } }; });
       mostra('opcoes');
-    });
+    }, { wide: true, guarda: () => nMud() > 0 });
+
     async function listaUsuarios(box) {
       try {
-        const r = await api(base + 'usuarios');
-        box.innerHTML = `<div class="ad-copy" style="flex-wrap:wrap;margin-bottom:10px"><input class="pg-input" id="nuE" placeholder="e-mail do novo usuário" style="flex:2;min-width:180px"><select class="pg-select" id="nuP" style="flex:1"><option value="admin">Administrador</option><option value="professor">Professor</option><option value="user">Responsável</option></select><button class="pg-btn" id="nuB">Criar usuário</button></div><div id="usRes"></div>
-          <div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>E-mail</th><th>Papel</th><th></th></tr></thead><tbody>${r.usuarios.map(u => `<tr><td>${E(u.email)}${u.principal ? ' <span class="pg-badge">principal</span>' : ''}${u.bloqueado ? ' <span class="pg-badge bad">bloqueado</span>' : ''}</td><td>${E({ admin: 'Administrador', professor: 'Professor', user: 'Responsável' }[u.role] || u.role)}</td><td class="ac"><button class="pg-btn detail" data-u="senha" data-e="${E(u.email)}">Nova senha</button> <button class="pg-btn detail" data-u="sessoes" data-e="${E(u.email)}">Sair dos aparelhos</button> ${u.bloqueado ? `<button class="pg-btn detail" data-u="desbloquear" data-e="${E(u.email)}">Desbloquear</button>` : `<button class="pg-btn detail" data-u="bloquear" data-e="${E(u.email)}">Bloquear</button>`} ${u.principal ? '' : `<button class="pg-btn detail" data-u="papel" data-e="${E(u.email)}">Mudar papel</button> <button class="pg-btn detail" data-u="excluir" data-e="${E(u.email)}">Excluir</button>`}</td></tr>`).join('')}</tbody></table></div>`;
-        const mostra = (t, senha) => { $('#usRes', box).innerHTML = `<div class="pg-alert ok" style="margin-bottom:10px">${E(t)}<br>Senha: <b>${E(senha)}</b> (anote agora; não aparece de novo)</div>`; };
-        $('#nuB', box).onclick = async () => { try { const x = await api(base + 'usuario', { m: 'POST', b: { acao: 'criar', email: $('#nuE', box).value, papel: $('#nuP', box).value } }); mostra('Usuário criado: ' + x.email, x.senha); listaUsuarios(box); } catch (e) { falha(e); } };
+        const r = await api(base + 'usuarios'), PAPEL = { admin: 'Administrador', professor: 'Professor', user: 'Responsável' };
+        box.innerHTML = `<div class="ad-cta" style="background:var(--soft-blue);color:var(--slate-900);margin-bottom:14px"><div style="flex:1;min-width:240px"><b>Novo usuário</b><span style="color:var(--medium-gray)">A senha é gerada e aparece uma única vez.</span></div><div class="ad-copy" style="flex-wrap:wrap;flex:2;min-width:260px"><input class="pg-input" id="nuE" type="email" placeholder="e-mail" aria-label="E-mail do novo usuário" style="flex:2;min-width:160px"><select class="pg-select" id="nuP" aria-label="Papel" style="flex:1;min-width:130px"><option value="admin">Administrador</option><option value="professor">Professor</option><option value="user">Responsável</option></select><button class="pg-btn green" id="nuB">Criar</button></div></div><div id="usRes" aria-live="polite"></div>
+          <div class="ad-find"><input class="pg-input" id="usB" type="search" placeholder="Buscar usuário…" aria-label="Buscar usuário"><span class="n">${r.usuarios.length} usuário(s)</span></div>
+          <div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>E-mail</th><th>Papel</th><th></th></tr></thead><tbody id="usT">${r.usuarios.map(u => `<tr data-e="${E(u.email.toLowerCase())}"><td><b>${E(u.email)}</b>${u.principal ? ' <span class="pg-badge info">principal</span>' : ''}${u.bloqueado ? ' <span class="pg-badge bad">bloqueado</span>' : ''}</td><td>${E(PAPEL[u.role] || u.role)}</td><td class="ac"><button class="pg-btn detail" data-u="senha" data-e="${E(u.email)}">Nova senha</button> <button class="pg-btn detail" data-u="sessoes" data-e="${E(u.email)}">Sair dos aparelhos</button> ${u.bloqueado ? `<button class="pg-btn detail" data-u="desbloquear" data-e="${E(u.email)}">Desbloquear</button>` : u.principal ? '' : `<button class="pg-btn detail" data-u="bloquear" data-e="${E(u.email)}">Bloquear</button>`} ${u.principal ? '' : `<button class="pg-btn detail" data-u="papel" data-e="${E(u.email)}">Mudar papel</button> <button class="pg-btn detail" style="color:#b91c1c;border-color:#b91c1c" data-u="excluir" data-e="${E(u.email)}">Excluir</button>`}</td></tr>`).join('')}</tbody></table></div>`;
+        rotular(box);
+        $('#usB', box).oninput = e => { const q = e.target.value.trim().toLowerCase(); box.querySelectorAll('#usT tr').forEach(tr => tr.style.display = !q || tr.dataset.e.includes(q) ? '' : 'none'); };
+        const mostra = (t, senha) => { $('#usRes', box).innerHTML = `<div class="pg-alert ok" style="margin-bottom:12px">${E(t)}<div class="ad-copy" style="margin-top:8px"><input class="pg-input" readonly value="${E(senha)}" aria-label="Senha gerada" style="flex:1"><button class="pg-btn" id="cpS">${I('copy')} Copiar</button></div><small style="display:block;margin-top:6px;font-weight:600">Anote agora: a senha não aparece de novo.</small></div>`; $('#cpS', box).onclick = () => copiar(senha); };
+        $('#nuB', box).onclick = async e => { e.target.disabled = true; try { const x = await api(base + 'usuario', { m: 'POST', b: { acao: 'criar', email: $('#nuE', box).value, papel: $('#nuP', box).value } }); await listaUsuarios(box); mostra('Usuário criado: ' + x.email, x.senha); } catch (er) { falha(er); e.target.disabled = false; } };
         box.querySelectorAll('[data-u]').forEach(b => b.onclick = async () => {
           const acao = b.dataset.u, email = b.dataset.e; let papel;
-          if (acao === 'papel') { papel = prompt('Novo papel para ' + email + ': admin, professor ou user', 'professor'); if (!papel) return; }
-          if (['excluir', 'bloquear'].includes(acao) && !confirm((acao === 'excluir' ? 'Excluir ' : 'Bloquear ') + email + '?')) return;
-          try { const x = await api(base + 'usuario', { m: 'POST', b: { acao, email, papel } }); if (x.senha) mostra('Nova senha de ' + email, x.senha); else toast('Feito'); if (acao !== 'senha' && acao !== 'sessoes') listaUsuarios(box); } catch (e) { falha(e); }
+          if (acao === 'papel') { papel = await confirma('Mudar o papel', email, 'Mudar papel', false, '<div class="pg-field" style="margin-top:12px"><label class="pg-label">Novo papel</label><select class="pg-select"><option value="admin">Administrador</option><option value="professor">Professor</option><option value="user">Responsável</option></select></div>'); if (!papel) return; }
+          if (['excluir', 'bloquear'].includes(acao) && !(await confirma(acao === 'excluir' ? 'Excluir usuário?' : 'Bloquear usuário?', email + (acao === 'excluir' ? ' perde o acesso e o login deixa de existir.' : ' não consegue mais entrar até você desbloquear.'), acao === 'excluir' ? 'Excluir' : 'Bloquear', true))) return;
+          b.disabled = true;
+          try { const x = await api(base + 'usuario', { m: 'POST', b: { acao, email, papel } }); if (acao !== 'senha' && acao !== 'sessoes') await listaUsuarios(box); if (x.senha) mostra('Nova senha de ' + email, x.senha); else toast(acao === 'sessoes' ? 'Sessões encerradas' : 'Feito'); } catch (e) { falha(e); }
+          b.disabled = false;
         });
-      } catch (e) { box.textContent = 'Não consegui listar.'; }
+      } catch (e) { box.innerHTML = '<div class="pg-alert bad">Não consegui listar os usuários.</div>'; }
     }
     async function painelDados(box) {
       try {
-        const [d, a] = await Promise.all([api(base + 'dados'), api(base + 'auditoria')]);
-        box.innerHTML = `<div class="ad-sec" style="margin-top:0">Dados armazenados</div><div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Coleção</th><th class="num">Registros</th><th class="num">KB</th></tr></thead><tbody>${d.colecoes.map(x => `<tr><td>${E(x.col)}</td><td class="num">${x.n}</td><td class="num">${x.kb}</td></tr>`).join('')}</tbody></table></div>
-          <div class="ad-copy" style="margin:10px 0"><button class="pg-btn" data-l="auditoria">Limpar registro de ações</button><button class="pg-btn" data-l="rumo_ao_esporte_2026_chamadas">Limpar histórico de chamadas</button></div>
-          <div class="ad-sec">Últimas ações na escola</div>${a.registros.length ? a.registros.map(x => `<div style="font-size:13px;margin:3px 0"><b>${E((x.quando || '').slice(0, 16).replace('T', ' '))}</b> · ${E(x.quem)} · ${E(x.acao)}</div>`).join('') : 'Nenhuma ação registrada.'}`;
-        box.querySelectorAll('[data-l]').forEach(b => b.onclick = async () => { if (!confirm('Apagar tudo de "' + b.dataset.l + '" desta escola? Não dá para desfazer (só restaurando um backup).')) return; try { const r = await api(base + 'limpar-dados', { m: 'POST', b: { col: b.dataset.l, confirmar: true } }); toast(r.apagados + ' registro(s) apagado(s)'); painelDados(box); } catch (e) { falha(e); } });
-      } catch (e) { box.textContent = 'Não consegui carregar.'; }
+        const [d, a] = await Promise.all([api(base + 'dados'), api(base + 'auditoria')]), tot = d.colecoes.reduce((s, x) => s + x.kb, 0) || 1;
+        box.innerHTML = `<div class="ad-sec" style="margin-top:0">Dados armazenados <small style="font-weight:600;text-transform:none;color:var(--medium-gray)">· ${tot} KB no total</small></div><div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Coleção</th><th class="num">Registros</th><th class="num">KB</th><th>Peso</th></tr></thead><tbody>${d.colecoes.map(x => `<tr><td><b>${E(x.col)}</b></td><td class="num">${x.n}</td><td class="num">${x.kb}</td><td><div class="pg-track" style="width:120px"><i style="width:${Math.max(2, Math.round(x.kb / tot * 100))}%"></i></div></td></tr>`).join('')}</tbody></table></div>
+          <div class="ad-sec">Limpeza</div><div class="ad-quick"><button class="pg-btn" data-l="auditoria">Limpar registro de ações</button><button class="pg-btn" data-l="rumo_ao_esporte_2026_chamadas">Limpar histórico de chamadas</button></div>
+          <div class="ad-sec">Últimas ações na escola</div>${a.registros.length ? `<div class="ad-feed">${a.registros.map(x => `<div><time>${E((x.quando || '').slice(5, 16).replace('T', ' '))}</time><span><b>${E(x.quem)}</b> · ${E(x.acao)}</span></div>`).join('')}</div>` : vazio('Nenhuma ação registrada', 'As ações dos usuários da escola aparecem aqui.')}`;
+        rotular(box);
+        box.querySelectorAll('[data-l]').forEach(b => b.onclick = async () => { if (!(await confirma('Apagar tudo de ' + (b.dataset.l === 'auditoria' ? 'registro de ações' : 'histórico de chamadas') + '?', 'Não dá para desfazer (só restaurando um backup).', 'Apagar', true))) return; try { const r = await api(base + 'limpar-dados', { m: 'POST', b: { col: b.dataset.l, confirmar: true } }); toast(r.apagados + ' registro(s) apagado(s)'); painelDados(box); } catch (e) { falha(e); } });
+      } catch (e) { box.innerHTML = '<div class="pg-alert bad">Não consegui carregar os dados.</div>'; }
     }
   }
   function cobrancaAvulsa(c, fecharAntes) {

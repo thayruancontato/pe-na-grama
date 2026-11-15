@@ -43,6 +43,12 @@ const semDadosDaEscolaAntiga = (outDir: string): Plugin => ({
       out = out.replace(/(['"])((?:(?!\1)[^\\\n`])*)\1/g, (lit, _q, corpo, pos, todo) => (!(todo[pos - 1] === '=' && /[\w-]/.test(todo[pos - 2] || '')) && /Rumo ao Esporte/.test(corpo) ? '`' + corpo.replace(NOME_RE, NOME_RT) + '`' : lit))
       out = out.split('\n').map((linha) => linha.split('`').map((trecho, i) => (i % 2 === 1 ? trecho.replace(NOME_RE, NOME_RT) : trecho)).join('`')).join('\n')
     }
+    // Endereço do sistema original (rumoaoesporte.com.br) em textos: vira o endereço em que a escola está aberta (e-mails de teste com @ ficam como estão).
+    if (!id.split(String.fromCharCode(92)).join('/').endsWith('/src/shim/marca.ts') && /(?<![@\w.])rumoaoesporte\.com\.br/.test(out)) {
+      const DOM_T = /(?<![@\w.])rumoaoesporte\.com\.br/, DOM_G = /(?<![@\w.])rumoaoesporte\.com\.br/g
+      out = out.replace(/(['"])((?:(?!\1)[^\\\n`])*)\1/g, (lit, _q, corpo, pos, todo) => (!(todo[pos - 1] === '=' && /[\w-]/.test(todo[pos - 2] || '')) && DOM_T.test(corpo) ? '`' + corpo.replace(DOM_G, '${location.host}') + '`' : lit))
+      out = out.split('\n').map((linha) => linha.split('`').map((trecho, i) => (i % 2 === 1 ? trecho.replace(DOM_G, '${location.host}') : trecho)).join('`')).join('\n')
+    }
     // Campos [CNPJ DA ESCOLA], [ENDEREÇO DA ESCOLA]... (os dados reais viraram campos acima): em textos de código viram o valor da página "Dados da escola".
     if (!id.split(String.fromCharCode(92)).join('/').endsWith('/src/shim/marca.ts') && CAMPO_TESTE.test(out)) {
       const rt = (c: string) => '${(globalThis as any).__MARCA__?.perfil?.' + CAMPO_CHAVE[c] + " || '" + c.slice(0, -1) + "' + ']'}" // o campo é cortado em dois pedaços para o segundo passe não trocá-lo de novo

@@ -57,8 +57,13 @@ confere('professor com senha errada recusado', (await req('POST', '/sys/auth/log
 confere('professor não lê o financeiro', ((await req('GET', '/sys/db/financial_payments', lpf.token))[1].docs || []).length === 0);
 confere('professor não edita inscrição', (await req('PUT', '/sys/db/' + REG + '/x', lpf.token, { data: { status: 'x' }, update: true }))[0] === 403);
 confere('professor lê a própria ficha sem a senha', JSON.stringify((await req('GET', '/sys/db/teachers', lpf.token))[1]).includes('senha-prof-1') === false);
-const [, cc] = await req('POST', '/sys/db/rumo_ao_esporte_2026_chamadas', lpf.token, { data: { turmaId: 'teste', presentCount: 0, totalCount: 0 } });
-confere('professor registra chamada', !!cc.id);
+const [, tm] = await req('POST', '/sys/db/turmas', tk, { data: { nome: 'Turma do teste', responsavel: 'Prof Teste' } });
+const [, tm2] = await req('POST', '/sys/db/turmas', tk, { data: { nome: 'Turma de outro', responsavel: 'Outro Professor' } });
+const [, cc] = await req('POST', '/sys/db/rumo_ao_esporte_2026_chamadas', lpf.token, { data: { turmaId: tm.id, data: '2026-01-01', presentCount: 0, totalCount: 0 } });
+confere('professor registra chamada da própria turma', !!cc.id);
+confere('professor não registra chamada de turma alheia', (await req('POST', '/sys/db/rumo_ao_esporte_2026_chamadas', lpf.token, { data: { turmaId: tm2.id, data: '2026-01-01' } }))[0] === 403);
+confere('professor só enxerga as próprias turmas', ((await req('GET', '/sys/db/turmas', lpf.token))[1].docs || []).map((d) => d.id).join() === tm.id);
+await req('DELETE', '/sys/db/turmas/' + tm.id, tk); await req('DELETE', '/sys/db/turmas/' + tm2.id, tk);
 await req('DELETE', '/sys/db/rumo_ao_esporte_2026_chamadas/' + cc.id, tk);
 await req('PUT', '/sys/db/teachers/' + ct.id, tk, { data: { active: false }, update: true });
 confere('professor desativado não entra', (await req('POST', '/sys/auth/login', null, { email: 'prof.auto@example.com', password: 'senha-prof-1' }))[0] === 401);
