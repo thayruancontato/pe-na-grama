@@ -5,7 +5,7 @@ Endereço: `https://esporte.thayruan.com.br/admin`. A senha da Central fica só 
 ## Rotina para uma escola nova
 1. **Pedidos**: o pedido chega pela landing page. Abra, ajuste a proposta e envie o contrato.
 2. **Contratos**: o cliente assina no link. Ao assinar, a escola vira **Cliente**, ganha um endereço (`nome-da-escola.thayruan.com.br`) e a primeira fatura.
-3. **Publicar o endereço**: é automático no momento da assinatura, desde que a chave do Cloudflare esteja configurada (veja "Configurar a publicação automática" abaixo). Em Clientes > Detalhes, "Endereço no ar" mostra o estado, e **Publicar endereço** tenta de novo. Sem a chave, use o caminho antigo: `node produto/provisionar-subdominios.mjs` e `npx wrangler deploy` em `produto/`.
+3. **Publicar o endereço**: é automático no momento da assinatura, desde que a chave do Cloudflare esteja configurada (veja "Configurar a publicação automática" abaixo). Em Clientes > Detalhes, "Endereço no ar" mostra o estado, e **Publicar endereço** tenta de novo. Para republicar todas de uma vez (reparo): `node produto/provisionar-subdominios.mjs <central> <senha>`. **Não coloque domínios de escola em `[[routes]]` no `wrangler.toml`:** com rotas no arquivo, cada `wrangler deploy` apaga os domínios que não estão nele (testado: o endereço caiu com erro 530). Sem rotas no arquivo, o deploy preserva todos.
 4. **Clientes > Detalhes > Sistema da escola**: veja a situação (matrículas, usuários, última ação) e clique em **Gerar acesso do administrador**. Anote e envie o endereço, o e-mail e a senha: a senha aparece uma única vez.
 5. Mude a **Situação** para **Ativo**. Com isso o endereço passa a abrir o sistema de verdade.
 

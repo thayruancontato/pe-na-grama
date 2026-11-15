@@ -9,19 +9,8 @@ binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 run_worker_first = true
 
-[[routes]]
-pattern = "esporte.thayruan.com.br"
-custom_domain = true
-
-# >>> escolas (gerado por provisionar-subdominios.mjs; não edite)
-[[routes]]
-pattern = "centro-esportivo-bosque-das-araucarias.thayruan.com.br"
-custom_domain = true
-
-[[routes]]
-pattern = "escolinha-craques-do-vale.thayruan.com.br"
-custom_domain = true
-# <<< escolas
+# Domínios (esporte.thayruan.com.br e os de cada escola) ficam no Cloudflare e são criados pela API (veja publicarDominio em worker/index.js).
+# NÃO liste [[routes]] aqui: com rotas no arquivo, `wrangler deploy` apaga os domínios que não estiverem listados.
 
 # Publicação automática do endereço de cada escola (API do Cloudflare). O segredo CF_API_TOKEN é gravado com `wrangler secret put CF_API_TOKEN`.
 [vars]
