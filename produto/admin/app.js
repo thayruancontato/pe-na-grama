@@ -3,7 +3,8 @@
   const E = PG.esc, I = PG.icon, brl = PG.brl, dt = PG.data;
   const $ = (s, r = document) => r.querySelector(s);
   const app = $('#app');
-  const NAV = [['painel', 'Painel', 'chart'], ['pedidos', 'Pedidos', 'inbox'], ['clientes', 'Clientes', 'cap'], ['faturas', 'Faturas', 'receipt'], ['contratos', 'Contratos', 'file'], ['planos', 'Planos', 'tag'], ['config', 'Configurações', 'settings']];
+  // [rota, rótulo, ícone, grupo do menu]
+  const NAV = [['painel', 'Painel', 'chart', ''], ['pedidos', 'Pedidos', 'inbox', 'Vendas'], ['contratos', 'Contratos', 'file', 'Vendas'], ['clientes', 'Clientes', 'cap', 'Escolas'], ['faturas', 'Faturas', 'receipt', 'Escolas'], ['planos', 'Planos', 'tag', 'Ajustes'], ['config', 'Configurações', 'settings', 'Ajustes']];
   const ST_LEAD = { novo: ['Novo', 'info'], proposta: ['Proposta enviada', 'warn'], contratado: ['Contratado', 'ok'], perdido: ['Perdido', ''] };
   const ST_CLI = { implantando: ['Implantando', 'warn'], ativo: ['Ativo', 'ok'], cancelado: ['Cancelado', ''] };
   const ST_FAT = { aberta: ['Em aberto', 'warn'], informada: ['Pagamento informado', 'info'], paga: ['Paga', 'ok'], cancelada: ['Cancelada', ''] };
@@ -67,7 +68,7 @@
   // ---------- estrutura ----------
   function shell() {
     app.innerHTML = `<div class="pg-app"><aside class="pg-side" id="side"><div class="pg-side-head"><img src="../assets/logo-branco.png" alt="Pé na Grama"></div>
-      <nav class="pg-nav" aria-label="Seções">${NAV.map(([id, t, ic]) => `<a class="pg-nav-item" data-r="${id}" href="#/${id}">${I(ic)}<span class="grow">${t}</span></a>`).join('')}</nav>
+      <nav class="pg-nav" aria-label="Seções">${NAV.map(([id, t, ic, g], i) => (g && g !== NAV[i - 1][3] ? `<div class="nav-sec">${g}</div>` : '') + `<a class="pg-nav-item" data-r="${id}" href="#/${id}">${I(ic)}<span class="grow">${t}</span><span class="nav-n" data-n="${id}"></span></a>`).join('')}</nav>
       <div class="pg-side-foot"><a class="pg-btn side" href="../ds/">Design system</a><button class="pg-btn exit" id="sair">${I('logout')} Sair</button></div></aside>
       <div class="ct-scrim" id="scrim"></div><main class="pg-main"><div class="ct-topm"><button class="pg-btn" id="menu2" aria-label="Abrir menu" aria-controls="side">${I('menu')}</button><b id="tit"></b></div><div class="pg-page" id="page"></div></main></div>`;
     $('#sair').onclick = sair;
@@ -86,12 +87,18 @@
     if (r === 'faturas' && q.has('f')) filtroFat = q.get('f');
     document.querySelectorAll('[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === r));
     const pg = $('#page'); if (!pg) return;
-    pg.innerHTML = '<div class="pg-empty">Carregando…</div>';
+    if (pg.children.length && !pg.querySelector('.pg-alert.bad')) pg.classList.add('trocando'); else pg.innerHTML = '<div class="pg-empty">Carregando…</div>';
     try { await (ROTAS[r] || painel)(pg); const ab = +q.get('abrir'); if (ab && r === 'pedidos') detalhePedido(ab); if (ab && r === 'clientes') detalheCliente(ab); } catch (e) { if (e.message !== 'sessao') pg.innerHTML = `<div class="pg-alert bad">${E(e.message)}</div>`; }
+    pg.classList.remove('trocando'); contagens();
     const m = $('#menu'); if (m) m.onclick = () => $('#side').classList.toggle('open');
     rotular(pg); const t = $('#tit'); if (t) t.textContent = (NAV.find(n => n[0] === r) || NAV[0])[1];
     window.scrollTo(0, 0);
   }
+  // Números ao lado do menu: pedidos novos e faturas que pedem atenção (atrasadas ou com pagamento informado).
+  const contagens = () => api('contagens').then(c => Object.entries(c).forEach(([k, n]) => { const e = document.querySelector(`[data-n="${k}"]`); if (e) e.textContent = n || ''; })).catch(() => {});
+  // Escola com a logo (ou as iniciais) ao lado do nome, usada em todas as listas.
+  const iniciais = s => E((String(s).match(/[A-Za-zÀ-ú0-9]+/g) || ['?']).slice(0, 2).map(w => w[0]).join('').toUpperCase());
+  const escolaCel = (nome, leadId, sub = '') => `<div class="ct-esc"><span class="cl-logo sm"><b>${iniciais(nome)}</b>${leadId ? `<img src="/api/admin/leads/${leadId}/logo" alt="" loading="lazy" onerror="this.remove()">` : ''}</span><div><b>${E(nome)}</b>${sub ? `<small>${sub}</small>` : ''}</div></div>`;
   // Cada célula de tabela leva o nome da coluna (usado quando a tabela vira lista de cartões no celular).
   function rotular(raiz) {
     raiz.querySelectorAll('table.pg-table').forEach(t => {
@@ -171,10 +178,10 @@
   async function pedidos(pg) {
     const lista = await api('leads' + (filtroPed ? '?status=' + filtroPed : ''));
     const chips = [['', 'Todos'], ['novo', 'Novos'], ['proposta', 'Proposta'], ['contratado', 'Contratados'], ['perdido', 'Perdidos']];
-    pg.innerHTML = cabeca('Pedidos de teste', 'Quem montou o teste no formulário do site.') +
+    pg.innerHTML = cabeca('Pedidos', 'Escolas que montaram o teste no formulário do site.') +
       `<div class="pg-stack"><div class="pg-chips">${chips.map(([k, t]) => `<button class="pg-chip ${filtroPed === k ? 'on info' : ''}" data-f="${k}">${t}</button>`).join('')}</div>
       <div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Escola</th><th>Contato</th><th>Alunos</th><th>Módulos</th><th>Recebido em</th><th>Situação</th><th></th></tr></thead><tbody>
-      ${lista.map(l => `<tr><td><b>${E(l.escola)}</b><small>${E([l.cidade, l.uf].filter(Boolean).join(' / '))}</small></td><td>${E(l.contato_nome)}<small><a class="pg-tag wa" target="_blank" rel="noopener" href="${E(waLink(l.contato_tel))}">WhatsApp</a> ${E(l.contato_tel)}</small></td><td>${E(l.resumo.alunos || '—')}</td><td>${l.resumo.modulos || 0}</td><td>${dt(l.criado)}</td><td>${badge(ST_LEAD, l.status)}</td><td class="ac"><button class="pg-btn detail" data-id="${l.id}">Detalhes</button></td></tr>`).join('')}
+      ${lista.map(l => `<tr><td>${escolaCel(l.escola, l.id, E([l.cidade, l.uf].filter(Boolean).join(' / ')))}</td><td>${E(l.contato_nome)}<small><a class="pg-tag wa" target="_blank" rel="noopener" href="${E(waLink(l.contato_tel))}">WhatsApp</a> ${E(l.contato_tel)}</small></td><td>${E(l.resumo.alunos || '—')}</td><td>${l.resumo.modulos || 0}</td><td>${dt(l.criado)}</td><td>${badge(ST_LEAD, l.status)}</td><td class="ac"><button class="pg-btn detail" data-id="${l.id}">Detalhes</button></td></tr>`).join('')}
       </tbody></table>${lista.length ? '' : vazio('Nenhum pedido ainda', 'Divulgue o endereço do site: os pedidos chegam aqui sozinhos.')}</div></div>`;
     pg.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filtroPed = b.dataset.f; rota(); });
     pg.querySelectorAll('[data-id]').forEach(b => b.onclick = () => detalhePedido(+b.dataset.id));
@@ -228,7 +235,7 @@
   let buscaCli = '', stCli = '';
   async function clientes(pg) {
     const lista = await api('clientes');
-    const ini = s => E((String(s).match(/[A-Za-zÀ-ú0-9]+/g) || ['?']).slice(0, 2).map(w => w[0]).join('').toUpperCase());
+    const ini = iniciais;
     const linha = c => { const feitos = CHECK.filter(k => c.checklist[k]).length, pc = Math.round(feitos / CHECK.length * 100);
       return `<article class="cl-card" data-id="${c.id}" tabindex="0">
         <div class="cl-top"><span class="cl-logo"><b>${ini(c.escola)}</b><img src="/api/admin/clientes/${c.id}/logo" alt="" loading="lazy" onerror="this.remove()"></span>
@@ -594,7 +601,7 @@
     pg.innerHTML = cabeca('Faturas', 'Mensalidades e cobranças de todas as escolas.', `<button class="pg-btn ok" id="gerar">${I('refresh')} Gerar mensalidades</button>`) +
       `<div class="pg-stack"><div class="pg-chips">${chips.map(([k, t, c]) => `<button class="pg-chip ${filtroFat === k ? 'on ' + c : ''}" data-f="${k}">${t}</button>`).join('')}</div>
       <div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Escola</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor</th><th>Situação</th><th></th></tr></thead><tbody>
-      ${lista.map(f => `<tr><td><b>${E(f.escola)}</b></td><td>${E(f.descricao)}</td><td>${dt(f.vencimento)}</td><td class="num">${brl(f.valor)}</td><td>${badge(ST_FAT, f.status)}${f.atrasada ? ' <span class="pg-badge bad">Atrasada</span>' : ''}${f.pago_em ? `<small>em ${dt(f.pago_em)}</small>` : ''}</td>
+      ${lista.map(f => `<tr><td>${escolaCel(f.escola, f.lead_id)}</td><td>${E(f.descricao)}</td><td>${dt(f.vencimento)}</td><td class="num">${brl(f.valor)}</td><td>${badge(ST_FAT, f.status)}${f.atrasada ? ' <span class="pg-badge bad">Atrasada</span>' : ''}${f.pago_em ? `<small>em ${dt(f.pago_em)}</small>` : ''}</td>
         <td class="ac">${f.status === 'aberta' || f.status === 'informada' ? `<button class="pg-btn detail" data-paga="${f.id}">Marcar paga</button> <button class="pg-btn detail" data-cancela="${f.id}">Cancelar</button> ` : ''}<button class="pg-btn detail" data-copia="${E(f.link)}">Copiar link</button></td></tr>`).join('')}</tbody></table>
       ${lista.length ? '' : vazio('Nenhuma fatura aqui', 'As faturas nascem quando o contrato é assinado e todo mês pelas mensalidades.')}</div></div>`;
     pg.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filtroFat = b.dataset.f; rota(); });
@@ -610,7 +617,7 @@
     const ST = { enviado: ['Aguardando assinatura', 'warn'], assinado: ['Assinado', 'ok'], cancelado: ['Cancelado', ''] };
     pg.innerHTML = cabeca('Contratos', 'Propostas enviadas e contratos assinados.') +
       `<div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Escola</th><th>Plano</th><th class="num">Mensalidade</th><th>Situação</th><th>Enviado</th><th>Assinado por</th><th></th></tr></thead><tbody>
-      ${lista.map(k => `<tr><td><b>${E(k.escola)}</b></td><td>${E(k.plano_nome)}</td><td class="num">${brl(k.mensal)}</td><td>${badge(ST, k.status)}</td><td>${dt(k.criado)}</td><td>${k.ass_nome ? E(k.ass_nome) + `<small>${dt(k.assinado_em)}</small>` : '—'}</td>
+      ${lista.map(k => `<tr><td>${escolaCel(k.escola, k.lead_id)}</td><td>${E(k.plano_nome)}</td><td class="num">${brl(k.mensal)}</td><td>${badge(ST, k.status)}</td><td>${dt(k.criado)}</td><td>${k.ass_nome ? E(k.ass_nome) + `<small>${dt(k.assinado_em)}</small>` : '—'}</td>
         <td class="ac"><button class="pg-btn detail" data-copia="${E(k.link)}">Copiar link</button> ${k.status === 'enviado' ? `<button class="pg-btn detail" data-cancela="${k.id}">Cancelar</button>` : ''}</td></tr>`).join('')}</tbody></table>
       ${lista.length ? '' : vazio('Nenhum contrato ainda', 'Abra um pedido e clique em "Criar proposta".')}</div>`;
     pg.querySelectorAll('[data-copia]').forEach(b => b.onclick = () => copiar(b.dataset.copia));
@@ -629,13 +636,18 @@
   }
 
   // ---------- configurações ----------
+  let abaCfg = 'empresa';
   async function config(pg) {
     const c = await api('config');
     const f = (id, rot, v, dica, ph = '') => `<div class="pg-field"><label class="pg-label" for="${id}">${rot}</label><input class="pg-input" id="${id}" value="${E(v)}" placeholder="${E(ph)}">${dica ? `<span class="pg-hint">${dica}</span>` : ''}</div>`;
+    const ABAS = [['empresa', 'Sua empresa', 'users'], ['pix', 'Pix para receber', 'dollar'], ['contrato', 'Texto do contrato', 'file']];
     pg.innerHTML = cabeca('Configurações', 'Seus dados, o Pix que recebe e o texto do contrato.', `<button class="pg-btn green" id="salvar">Salvar tudo</button>`) +
-      `<div class="pg-stack"><div class="pg-card"><div class="pg-card-title">${I('users')} Sua empresa</div><div class="ct-two" style="margin-top:14px">${f('empresa_nome', 'Nome', c.empresa_nome, 'Aparece no contrato e na fatura.')}${f('empresa_doc', 'CNPJ ou CPF', c.empresa_doc, 'Vai no texto do contrato.', '00.000.000/0000-00')}${f('empresa_email', 'E-mail', c.empresa_email, '')}${f('empresa_whats', 'WhatsApp (com 55 e DDD)', c.empresa_whats, 'Os clientes falam com você por aqui.', '5533999999999')}</div></div>
-      <div class="pg-card"><div class="pg-card-title">${I('dollar')} Pix para receber</div><p class="pg-sub" style="margin-bottom:14px">As faturas geram um Pix "copia e cola" com o valor certo. O dinheiro cai direto na sua conta; depois você marca a fatura como paga.</p><div class="ct-two">${f('pix_chave', 'Chave Pix', c.pix_chave, 'CPF, CNPJ, e-mail, telefone ou chave aleatória.')}${f('pix_nome', 'Nome que aparece no Pix', c.pix_nome, 'Até 25 letras.')}${f('pix_cidade', 'Cidade', c.pix_cidade, 'Até 15 letras.')}${f('dia_venc_padrao', 'Dia de vencimento padrão', c.dia_venc_padrao, 'De 1 a 28.')}</div></div>
-      <div class="pg-card"><div class="pg-card-title">${I('file')} Texto do contrato</div><p class="pg-sub" style="margin-bottom:12px">Este é um modelo-base. Peça para um advogado revisar antes de usar. Variáveis: <code>{{empresa}}</code> <code>{{doc_empresa}}</code> <code>{{escola}}</code> <code>{{assinante}}</code> <code>{{plano}}</code> <code>{{mensal}}</code> <code>{{implantacao}}</code> <code>{{dia}}</code> <code>{{data}}</code>. Cada contrato guarda o texto como estava na hora do envio.</p><textarea class="pg-textarea" id="contrato_texto" style="min-height:420px;font-size:13px">${E(c.contrato_texto)}</textarea></div></div>`;
+      `<div class="cf-tabs" role="tablist">${ABAS.map(([k, n, ic]) => `<button class="cf-tab ${k === abaCfg ? 'on' : ''}" role="tab" aria-selected="${k === abaCfg}" data-aba="${k}">${I(ic)} ${n}</button>`).join('')}</div>
+      <div class="pg-card cf-pane" data-pane="empresa"><div class="ct-two">${f('empresa_nome', 'Nome', c.empresa_nome, 'Aparece no contrato e na fatura.')}${f('empresa_doc', 'CNPJ ou CPF', c.empresa_doc, 'Vai no texto do contrato.', '00.000.000/0000-00')}${f('empresa_email', 'E-mail', c.empresa_email, '')}${f('empresa_whats', 'WhatsApp (com 55 e DDD)', c.empresa_whats, 'Os clientes falam com você por aqui.', '5533999999999')}</div></div>
+      <div class="pg-card cf-pane" data-pane="pix"><p class="pg-sub" style="margin-bottom:14px">As faturas geram um Pix "copia e cola" com o valor certo. O dinheiro cai direto na sua conta; depois você marca a fatura como paga.</p><div class="ct-two">${f('pix_chave', 'Chave Pix', c.pix_chave, 'CPF, CNPJ, e-mail, telefone ou chave aleatória.')}${f('pix_nome', 'Nome que aparece no Pix', c.pix_nome, 'Até 25 letras.')}${f('pix_cidade', 'Cidade', c.pix_cidade, 'Até 15 letras.')}${f('dia_venc_padrao', 'Dia de vencimento padrão', c.dia_venc_padrao, 'De 1 a 28.')}</div></div>
+      <div class="pg-card cf-pane" data-pane="contrato"><p class="pg-sub" style="margin-bottom:12px">Este é um modelo-base. Peça para um advogado revisar antes de usar. Variáveis: <code>{{empresa}}</code> <code>{{doc_empresa}}</code> <code>{{escola}}</code> <code>{{assinante}}</code> <code>{{plano}}</code> <code>{{mensal}}</code> <code>{{implantacao}}</code> <code>{{dia}}</code> <code>{{data}}</code>. Cada contrato guarda o texto como estava na hora do envio.</p><textarea class="pg-textarea" id="contrato_texto" style="min-height:420px;font-size:13px">${E(c.contrato_texto)}</textarea></div>`;
+    const mostra = () => { pg.querySelectorAll('[data-pane]').forEach(x => x.hidden = x.dataset.pane !== abaCfg); pg.querySelectorAll('[data-aba]').forEach(x => { x.classList.toggle('on', x.dataset.aba === abaCfg); x.setAttribute('aria-selected', x.dataset.aba === abaCfg); }); };
+    pg.querySelectorAll('[data-aba]').forEach(x => x.onclick = () => { abaCfg = x.dataset.aba; mostra(); }); mostra();
     $('#salvar').onclick = async () => { const b = {}; ['empresa_nome', 'empresa_doc', 'empresa_email', 'empresa_whats', 'pix_chave', 'pix_nome', 'pix_cidade', 'dia_venc_padrao', 'contrato_texto'].forEach(k => b[k] = $('#' + k).value);
       if (!b.contrato_texto.trim()) delete b.contrato_texto; try { await api('config', { m: 'PUT', b }); toast('Configurações salvas'); } catch (e) { falha(e); } };
   }

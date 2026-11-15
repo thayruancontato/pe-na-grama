@@ -334,9 +334,18 @@ async function rotaAdmin(req, env, url, caminho) {
   const body = async () => { try { return await req.json(); } catch { return {}; } };
 
   if (rec === 'resumo' && m === 'GET') return resumo(env, url.searchParams.get('mes'));
+  if (rec === 'contagens' && m === 'GET') { // números do menu: o que está esperando o dono
+    const [l, f] = await Promise.all([env.DB.prepare("SELECT COUNT(*) n FROM leads WHERE status='novo'").first(), env.DB.prepare("SELECT COUNT(*) n FROM faturas WHERE status='informada' OR (status='aberta' AND vencimento<?)").bind(tz()).first()]);
+    return J({ pedidos: l.n, faturas: f.n });
+  }
   if (rec === 'sys-import' && m === 'POST') { try { return J(await importarSistema(env, await body())); } catch (e) { return erro(e.message); } }
 
   if (rec === 'leads') {
+    if (id && acao === 'logo' && m === 'GET') { // logo leve para as listas (imagem de verdade, com cache)
+      const l = await env.DB.prepare('SELECT logo FROM leads WHERE id=?').bind(id).first();
+      const mm = l && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(l.logo || ''); if (!mm) return erro('Sem logo.', 404);
+      return new Response(Uint8Array.from(atob(mm[2]), (ch) => ch.charCodeAt(0)), { headers: { 'content-type': mm[1], 'cache-control': 'private, max-age=300' } });
+    }
     if (!id && m === 'GET') {
       const st = url.searchParams.get('status');
       const q = st ? env.DB.prepare('SELECT id,criado,status,escola,cidade,uf,contato_nome,contato_tel,contato_email,config FROM leads WHERE status=? ORDER BY id DESC LIMIT 300').bind(st) : env.DB.prepare('SELECT id,criado,status,escola,cidade,uf,contato_nome,contato_tel,contato_email,config FROM leads ORDER BY id DESC LIMIT 300');
@@ -544,7 +553,7 @@ async function rotaAdmin(req, env, url, caminho) {
     if (!id && acao == null && P[2] === 'gerar' && m === 'POST') return J({ ok: true, criadas: await gerarMensais(env) });
     if (!id && m === 'GET') {
       const st = url.searchParams.get('status');
-      let sql = 'SELECT f.*, c.escola FROM faturas f JOIN clientes c ON c.id=f.cliente_id', args = [];
+      let sql = 'SELECT f.*, c.escola, c.lead_id FROM faturas f JOIN clientes c ON c.id=f.cliente_id', args = [];
       if (st === 'atrasada') { sql += " WHERE f.status IN ('aberta','informada') AND f.vencimento<?"; args = [hoje]; }
       else if (st) { sql += ' WHERE f.status=?'; args = [st]; }
       const { results } = await env.DB.prepare(sql + ' ORDER BY f.vencimento DESC, f.id DESC LIMIT 400').bind(...args).all();
@@ -664,6 +673,8 @@ export default {
       let r;
       // públicas
       if (p === '/api/leads' && m === 'POST') r = await postLead(req, env);
+      // Planos ativos, para a página de vendas mostrar o preço (desative um plano na Central e ele some do site).
+      else if (p === '/api/planos' && m === 'GET') r = J((await env.DB.prepare('SELECT nome,mensal,implantacao,descricao FROM planos WHERE ativo=1 ORDER BY mensal').all()).results, 200, { 'cache-control': 'public, max-age=300' });
       else if (/^\/api\/contrato\/[0-9a-f]{48}$/.test(p) && m === 'GET') r = await getContrato(env, p.split('/')[3]);
       else if (/^\/api\/contrato\/[0-9a-f]{48}\/assinar$/.test(p) && m === 'POST') r = await assinar(req, env, p.split('/')[3]);
       else if (/^\/api\/fatura\/[0-9a-f]{32}$/.test(p) && m === 'GET') r = await getFatura(env, p.split('/')[3]);

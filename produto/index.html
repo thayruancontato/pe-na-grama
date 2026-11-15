@@ -15,7 +15,7 @@
 
 <nav><div class="wrap">
   <a class="logo" href="#"><img src="assets/logo-branco.png" alt="Pé na Grama" width="98" height="50"></a>
-  <ul><li><a href="#sistema">O sistema</a></li><li><a href="#calculo">Quanto você perde</a></li><li><a href="#faq">Dúvidas</a></li></ul>
+  <ul><li><a href="#sistema">O sistema</a></li><li><a href="#calculo">Quanto você perde</a></li><li id="navPlanos" hidden><a href="#planos">Planos</a></li><li><a href="#faq">Dúvidas</a></li></ul>
   <a class="btn g" href="testar.html" style="padding:11px 22px;font-size:.98rem">Testar grátis</a>
 </div></nav>
 
@@ -52,7 +52,7 @@
   <div><b>Pix e boleto</b><span>Baixa automática quando o pagamento cai</span></div>
   <div><b>WhatsApp</b><span>Lembrete antes, no dia e depois do vencimento</span></div>
   <div><b>No celular</b><span>Abre no navegador, sem instalar nada</span></div>
-  <div><b>Com a sua cara</b><span>Nome, logo e cores da sua escola</span></div>
+  <div><b>Com a sua cara</b><span>Nome, logo, cores e endereço próprio da sua escola</span></div>
 </div></section>
 
 <section class="lp-sec lp-wa"><div class="wrap lp-wa-in">
@@ -121,7 +121,27 @@
   </div>
 </div></section>
 
-<section class="lp-sec alt"><div class="wrap lp-steps">
+<section class="lp-sec" id="planos" hidden><div class="wrap">
+  <h2>Preço claro, sem taxa por cobrança</h2>
+  <p class="sub">O dinheiro das mensalidades cai direto na conta da sua escola. Você paga só o plano, e a gente faz a implantação com você.</p>
+  <div class="lp-planos" id="planosLista"></div>
+  <ul class="lp-incl"><li>Financeiro, turmas, chamada e WhatsApp no mesmo sistema</li><li>Portal do responsável e carteirinha com QR</li><li>Implantação acompanhada: endereço, marca, WhatsApp e Pix</li><li>Seus dados podem ser exportados quando você quiser</li></ul>
+</div></section>
+
+<section class="lp-sec alt" id="seguranca"><div class="wrap">
+  <h2>Os dados da sua escola ficam protegidos</h2>
+  <p class="sub">Informação de criança e de pagamento pede cuidado. O sistema já nasce com isso.</p>
+  <div class="lp-more" style="margin-top:40px">
+    <div><b>Cópia de segurança todo dia</b><span>Automática, com as 7 mais recentes guardadas para restaurar.</span></div>
+    <div><b>Cada um vê só o que precisa</b><span>Acessos separados para administração, professor e responsável.</span></div>
+    <div><b>Seu endereço, seus dados</b><span>Cada escola tem o próprio endereço e pode exportar tudo quando quiser.</span></div>
+    <div><b>Registro do que foi feito</b><span>As ações importantes ficam anotadas com data e autor.</span></div>
+    <div><b>Entrada com senha protegida</b><span>Senhas guardadas de forma protegida e sessões que podem ser encerradas.</span></div>
+    <div><b>Você recebe direto</b><span>O Pix cai na conta da escola. O sistema só emite a cobrança e dá baixa.</span></div>
+  </div>
+</div></section>
+
+<section class="lp-sec"><div class="wrap lp-steps">
   <div>
     <h2>Como é o teste</h2>
     <ol>
@@ -137,7 +157,9 @@
 <section class="lp-sec" id="faq"><div class="wrap lp-faq">
   <h2>Dúvidas comuns</h2>
   <div style="margin-top:28px">
-    <details><summary>Quanto custa?</summary><p>Depende do tamanho da escola e dos módulos que você usa. Monte o teste e a gente passa o valor pelo WhatsApp, sem compromisso.</p></details>
+    <details><summary>Quanto custa?</summary><p id="faqPreco">Depende do tamanho da escola e dos módulos que você usa. Monte o teste e a gente passa o valor pelo WhatsApp, sem compromisso.</p></details>
+    <details><summary>Vocês cobram taxa em cima das mensalidades?</summary><p>Não. O pagamento do responsável vai direto para a conta da escola. Você paga só o plano do sistema.</p></details>
+    <details><summary>Quem configura o sistema?</summary><p>A gente. Depois do contrato, você acompanha a implantação pelo endereço da sua escola e recebe o acesso quando estiver tudo pronto.</p></details>
     <details><summary>Preciso instalar alguma coisa?</summary><p>Não. Roda no navegador e pode ser colocado na tela inicial do celular como um aplicativo.</p></details>
     <details><summary>O WhatsApp é o meu número?</summary><p>Sim. Você conecta o número da escola lendo um QR code, e as mensagens saem por ele.</p></details>
     <details><summary>Como recebo o dinheiro?</summary><p>Direto na conta da sua escola, via Pix ou boleto. O sistema só emite a cobrança e dá baixa.</p></details>
@@ -204,5 +226,9 @@ function calc(){const a=+$('c1').value,m=+$('c2').value||0,p=+$('c3').value,r=+$
   $('o1').textContent=a;$('o3').textContent=p+'%';$('o4').textContent=r+'%';
   const lost=a*m*p/100,rec=lost*r/100;$('r1').textContent=brl(lost);$('r2').textContent=brl(rec);$('r3').textContent=brl(rec*12);}
 ['c1','c2','c3','c4'].forEach(i=>$(i).oninput=calc);calc();
+// planos: preço público vindo da Central (some se não houver plano ativo)
+fetch('/api/planos').then(r=>r.ok?r.json():[]).then(l=>{if(!l.length)return;const real=c=>(c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  $('planosLista').innerHTML=l.map(p=>`<div class="lp-plano"><b>${esc(p.nome)}</b><div class="v">${real(p.mensal)}<small> /mês</small></div><p>${esc(p.descricao||'Tudo o que a escola precisa para cobrar e organizar.')}</p><span>${p.implantacao?'Implantação única de '+real(p.implantacao):'Implantação sem custo'}</span><a class="btn g" href="testar.html">Testar grátis</a></div>`).join('');
+  $('planos').hidden=false;$('navPlanos').hidden=false;$('faqPreco').innerHTML='Os planos começam em <b>'+real(l[0].mensal)+' por mês</b>. Veja a seção <a href="#planos">Planos</a>. O teste é grátis e sem compromisso.';}).catch(()=>{});
 </script>
 </body></html>
