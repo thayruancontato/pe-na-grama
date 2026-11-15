@@ -143,6 +143,19 @@ tr.lin-click{cursor:pointer}
 .ct-rail button[aria-selected=true] svg{opacity:1}
 .ct-rail .dot{position:absolute;right:8px;top:8px;width:9px;height:9px;border-radius:50%;background:#f4c20d;box-shadow:0 0 0 2px #fff}
 .ct-main{min-width:0}
+.ct-logobox{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;padding:16px;border:1px solid var(--line-soft);border-radius:12px;background:#fff;margin-bottom:12px}
+.ct-logobox .lg-prev{width:120px;height:120px;flex:none;border-radius:12px;border:1px solid var(--line-soft);display:grid;place-items:center;background:repeating-conic-gradient(#e8eef7 0 25%,#fff 0 50%) 50%/14px 14px;overflow:hidden}
+.ct-logobox .lg-prev img{max-width:100%;max-height:100%;object-fit:contain}
+.ct-logobox .lg-prev span{font:700 13px var(--font-primary);color:var(--medium-gray)}
+.ct-logobox .lg-body{flex:1;min-width:240px}
+.ct-logobox b{font:900 15px/1.2 var(--font-primary);text-transform:uppercase;color:var(--slate-900)}
+.ct-logobox p{margin:6px 0 12px;color:var(--medium-gray);font-size:13.5px;line-height:1.5}
+.lg-btns{display:flex;gap:8px;flex-wrap:wrap}
+.lg-pal{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.lg-pal .sw{display:flex;flex-direction:column;align-items:center;gap:4px}
+.lg-pal .sw i{width:46px;height:46px;border-radius:12px;border:1px solid rgba(0,0,0,.12)}
+.lg-pal .sw em{font:700 11px var(--font-primary);color:var(--medium-gray);font-style:normal}
+.ct-logobox .help{margin:8px 0 0;font-size:12.5px}
 @media(min-width:901px){.ct-main .ct-foot{margin-left:-12px;margin-right:-24px}}
 .ct-head{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px}
 .ct-head h3{margin:0;font:900 18px/1.2 var(--font-primary);color:var(--slate-900)}
@@ -203,6 +216,6 @@ tr.lin-click{cursor:pointer}
 <body class="pg">
 <div id="app"></div>
 <script src="../ds/icons.js"></script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>

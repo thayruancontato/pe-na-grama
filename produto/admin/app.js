@@ -289,9 +289,47 @@
   }
   const ATALHO_TXT = { 'suspensa:true': 'O endereço da escola sai do ar e mostra a mensagem de suspensão.', 'suspensa:false': 'A escola volta ao ar.', 'manutencao:true': 'Só administradores conseguem entrar enquanto durar.', 'manutencao:false': 'Todos voltam a entrar.', 'somente_leitura:true': 'Ninguém consegue gravar nada até você liberar.', 'somente_leitura:false': 'A gravação volta ao normal.' };
   // ---------- controle total da escola (dono master) ----------
+  // ---- logo e paleta ----
+  const hsl = (r, g, b) => { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let h = 0, s = 0; if (mx !== mn) { const d = mx - mn; s = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; } return [h, s, l]; };
+  const hex = (h, s, l) => { h = ((h % 360) + 360) % 360; const a = s * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, '0'); }; return '#' + f(0) + f(8) + f(4); };
+  const dist = (a, b) => { const d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; };
+  const carregaImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('Não consegui ler essa imagem.')); i.src = src; });
+  // Reduz a imagem (a logo vai no banco, então tem limite de tamanho) e mantém a transparência do PNG.
+  async function logoDeArquivo(f) {
+    if (!/^image\/(png|jpeg|webp)$/.test(f.type)) throw new Error('Use uma imagem PNG, JPEG ou WebP.');
+    const url = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error('Não consegui abrir o arquivo.')); r.readAsDataURL(f); });
+    const img = await carregaImg(url);
+    for (const max of [640, 480, 320]) {
+      const k = Math.min(1, max / Math.max(img.width, img.height)), cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(img.width * k)); cv.height = Math.max(1, Math.round(img.height * k));
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+      const out = cv.toDataURL(f.type === 'image/jpeg' ? 'image/jpeg' : 'image/png', .88);
+      if (out.length < 600000) return out;
+    }
+    throw new Error('A imagem é pesada demais. Use uma menor.');
+  }
+  // Paleta a partir dos pixels: agrupa por cor, ignora fundo branco/transparente e escolhe 4 papéis com contraste para texto branco.
+  async function paletaDaLogo(src) {
+    const img = await carregaImg(src), cv = document.createElement('canvas'), N = 72; cv.width = cv.height = N;
+    const cx = cv.getContext('2d', { willReadFrequently: true }); const k = Math.min(N / img.width, N / img.height); cx.drawImage(img, 0, 0, img.width * k, img.height * k);
+    const px = cx.getImageData(0, 0, N, N).data, grupos = new Map();
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i + 3] < 140) continue; const [h, sa, l] = hsl(px[i], px[i + 1], px[i + 2]); if (l > .93 || l < .06) continue;
+      const kk = Math.round(h / 12) + '_' + Math.round(sa * 4) + '_' + Math.round(l * 4), g = grupos.get(kk) || { n: 0, h: 0, s: 0, l: 0 }; g.n++; g.h += h; g.s += sa; g.l += l; grupos.set(kk, g);
+    }
+    const cores = [...grupos.values()].map(g => ({ h: g.h / g.n, s: g.s / g.n, l: g.l / g.n, n: g.n })).map(c => ({ ...c, peso: c.n * (.25 + c.s) * (c.l > .15 && c.l < .85 ? 1 : .4) })).sort((a, b) => b.peso - a.peso);
+    if (!cores.length) throw new Error('Não achei cores nessa imagem (talvez seja só branca ou transparente).');
+    const vivas = cores.filter(c => c.s > .22), base = vivas.length ? vivas : cores;
+    const p = base[0], sec = base.find(c => dist(c.h, p.h) > 28) || { h: p.h + 200, s: p.s, l: p.l }, dest = base.find(c => dist(c.h, p.h) > 35 && dist(c.h, sec.h) > 35) || { h: p.h + 150, s: .9, l: .5 };
+    const sat = x => Math.max(.45, Math.min(.95, x));
+    return { cor_primaria: hex(p.h, sat(p.s), Math.min(.42, Math.max(.28, p.l))), cor_secundaria: hex(sec.h, sat(sec.s), Math.min(.34, Math.max(.2, sec.l))), cor_escura: hex(sec.h, Math.min(.85, sat(sec.s)), .14), cor_destaque: hex(dest.h, sat(dest.s), Math.min(.58, Math.max(.46, dest.l))) };
+  }
+  const ROT_COR = { cor_primaria: 'Primária', cor_secundaria: 'Secundária', cor_escura: 'Escura', cor_destaque: 'Destaque' };
+
   async function controleEscola(c) {
     const id = c.id, base = 'clientes/' + id + '/';
     let ctl; try { ctl = await api(base + 'controle'); } catch (e) { return falha(e); }
+    let logoAtual = ''; try { logoAtual = (await api('clientes/' + id)).logo || ''; } catch { /* sem logo */ }
+    let logoPend = null, paleta = null;
     const grupos = [...new Set(ctl.catalogo.map(o => o.g))], mudou = {}, internoMud = {};
     const PERIGO = k => /^(suspensa|manutencao|somente_leitura|bloq_)/.test(k);
     const padrao = o => o.d, difere = o => ctl.valores[o.k] !== padrao(o);
@@ -307,7 +345,8 @@
         : `<input class="pg-input" id="k_${k}" data-k="${k}" value="${E(v)}" placeholder="${E(o.a || '')}" maxlength="400">`;
       return rot + ent + (o.t === 'txt' ? '' : aj || (o.t === 'num' && o.d === 0 ? '<span class="help">0 = sem limite</span>' : ''));
     };
-    const opcao = o => `<div class="ct-op" data-k="${E(o.k)}" data-txt="${E((o.r + ' ' + (o.a || '')).toLowerCase())}">${campo(o)}<span class="ct-tags"></span></div>`;
+    const caixaLogo = () => `<div class="ct-logobox" id="logoBox" data-gi="g${grupos.indexOf('Marca e aparência')}"><div class="lg-prev" id="lgPrev"></div><div class="lg-body"><b>Logo da escola</b><p>Aparece no menu, nos documentos e no ícone do aplicativo. PNG, JPEG ou WebP; fundo transparente fica melhor.</p><div class="lg-btns"><input type="file" id="lgFile" accept="image/png,image/jpeg,image/webp" hidden><button class="pg-btn" id="lgEsc">Trocar logo</button><button class="pg-btn green" id="lgSalva" hidden>Salvar logo</button><button class="pg-btn" id="lgCanc" hidden>Cancelar</button></div><div id="lgPal"></div></div></div>`;
+    const opcao = o => `<div class="ct-op" data-op="${E(o.k)}" data-txt="${E((o.r + ' ' + (o.a || '')).toLowerCase())}">${campo(o)}<span class="ct-tags"></span></div>`;
     const CURTO = { 'Módulos do painel da escola': 'Módulos do painel', 'Portais de pais e professores': 'Portais', 'Estado da escola': 'Estado', 'Avisos na tela': 'Avisos', 'Marca e aparência': 'Marca', 'Limites do plano': 'Limites', 'Segurança e senhas': 'Segurança', 'Permissões do administrador da escola': 'Permissões' };
     const META = {
       'Módulos do painel da escola': ['pie', 'Desligou, a tela some do menu e o endereço fica bloqueado para todos os administradores da escola.'],
@@ -329,7 +368,7 @@
       const corpo = $('#corpoAba', el);
       const marca = () => { // destaca o que mudou e mostra o contador no rodapé
         corpo.querySelectorAll('.ct-op').forEach(d => {
-          const o = ctl.catalogo.find(x => x.k === d.dataset.k), tem = o.k in mudou, per = !tem && difere(o);
+          const o = ctl.catalogo.find(x => x.k === d.dataset.op), tem = o.k in mudou, per = !tem && difere(o);
           d.classList.toggle('mod', tem);
           d.querySelector('.ct-tags').innerHTML = (tem ? '<span class="tag">não salvo</span>' : per ? '<span class="tag" style="background:#e0f2fe;color:#075985">personalizado</span>' : '') + ((tem ? mudou[o.k] !== padrao(o) : per) ? ' <button class="pg-btn detail" style="min-height:24px;padding:2px 8px;font-size:12px" data-reset="' + E(o.k) + '">Voltar ao padrão</button>' : '');
         });
@@ -342,7 +381,7 @@
       };
       const rodape = txt => `<div class="ct-foot"><span class="ct-foot-info" id="fInfo" aria-live="polite"></span><button class="pg-btn" id="descarta">Descartar</button><button class="pg-btn green" id="salva">${txt}</button></div>`;
       const abas = {
-        opcoes: () => `<div class="ct-find" style="margin-bottom:12px"><input class="pg-input" id="busca" type="search" placeholder="Buscar em todas as ${ctl.catalogo.length} opções (ex.: senha, WhatsApp, turmas)…" aria-label="Buscar opção"><label class="ct-sw" style="font-weight:600;font-size:14px"><input type="checkbox" id="soMud"><span>Só personalizadas</span></label></div><div id="ops" class="solo">${grupos.map((g, gi) => `<details class="ct-grp" data-gi="g${gi}" open><summary>${E(g)} <span class="c">${ctl.catalogo.filter(o => o.g === g).length} opções</span> <span class="c alt" style="color:#92400e"></span></summary><div class="gb">${ctl.catalogo.filter(o => o.g === g).map(opcao).join('')}</div></details>`).join('')}</div><div class="ct-none" id="nenhuma" hidden>Nenhuma opção encontrada. Tente outra palavra.</div>${rodape('Salvar opções')}`,
+        opcoes: () => `<div class="ct-find" style="margin-bottom:12px"><input class="pg-input" id="busca" type="search" placeholder="Buscar em todas as ${ctl.catalogo.length} opções (ex.: senha, WhatsApp, turmas)…" aria-label="Buscar opção"><label class="ct-sw" style="font-weight:600;font-size:14px"><input type="checkbox" id="soMud"><span>Só personalizadas</span></label></div><div id="ops" class="solo">${caixaLogo()}${grupos.map((g, gi) => `<details class="ct-grp" data-gi="g${gi}" open><summary>${E(g)} <span class="c">${ctl.catalogo.filter(o => o.g === g).length} opções</span> <span class="c alt" style="color:#92400e"></span></summary><div class="gb">${ctl.catalogo.filter(o => o.g === g).map(opcao).join('')}</div></details>`).join('')}</div><div class="ct-none" id="nenhuma" hidden>Nenhuma opção encontrada. Tente outra palavra.</div>${rodape('Salvar opções')}`,
         usuarios: () => '<div id="usu"><div class="pg-empty">Carregando…</div></div>',
         dados: () => '<div id="dad"><div class="pg-empty">Carregando…</div></div>',
         ficha: () => `<p class="pg-sub" style="margin:0 0 14px">Anotações só suas. Nada daqui aparece para a escola.</p><div class="ct-two">${ctl.interno_campos.map(([k, r]) => `<div class="pg-field"><label class="pg-label" for="i_${E(k)}">${E(r)}</label><input class="pg-input" id="i_${E(k)}" data-i="${E(k)}" value="${E(internoMud[k] != null ? internoMud[k] : (ctl.interno[k] || ''))}" maxlength="300"></div>`).join('')}</div>${rodape('Salvar ficha')}`,
@@ -357,17 +396,34 @@
       };
       grupos.forEach((g, i) => { abas['g' + i] = abas.opcoes; });
       const liga = () => {
-        corpo.querySelectorAll('[data-k]').forEach(i => { if (i.dataset.reset !== undefined) return; i.onchange = i.oninput = () => { const o = ctl.catalogo.find(x => x.k === i.dataset.k), val = i.type === 'checkbox' ? i.checked : i.type === 'number' ? Math.max(0, Math.floor(+i.value || 0)) : i.value; if (val === ctl.valores[o.k]) delete mudou[o.k]; else mudou[o.k] = val; marca(); }; });
+        corpo.querySelectorAll('input[data-k],select[data-k]').forEach(i => { if (i.dataset.reset !== undefined) return; i.onchange = i.oninput = () => { const o = ctl.catalogo.find(x => x.k === i.dataset.k), val = i.type === 'checkbox' ? i.checked : i.type === 'number' ? Math.max(0, Math.floor(+i.value || 0)) : i.value; if (val === ctl.valores[o.k]) delete mudou[o.k]; else mudou[o.k] = val; marca(); }; });
         corpo.querySelectorAll('[data-i]').forEach(i => i.oninput = () => { if (i.value === (ctl.interno[i.dataset.i] || '')) delete internoMud[i.dataset.i]; else internoMud[i.dataset.i] = i.value; marca(); });
         corpo.querySelectorAll('[data-bulk]').forEach(bt => bt.onclick = () => { corpo.querySelectorAll('.ct-grp[data-gi="' + aberta + '"] .ct-op input[type=checkbox]').forEach(i => { if (i.checked !== (bt.dataset.bulk === '1')) { i.checked = bt.dataset.bulk === '1'; i.dispatchEvent(new Event('change')); } }); });
         const b = $('#busca', corpo);
         if (b) {
-          const filtra = () => { const q = b.value.trim().toLowerCase(), so = $('#soMud', corpo).checked, todos = !!(q || so); let ach = 0; $('#ops', corpo).classList.toggle('solo', !todos);
-            corpo.querySelectorAll('.ct-op').forEach(d => { const o = ctl.catalogo.find(x => x.k === d.dataset.k), ok = (!q || d.dataset.txt.includes(q)) && (!so || difere(o) || o.k in mudou); d.style.display = ok ? '' : 'none'; if (ok) ach++; });
+          const filtra = () => { const q = b.value.trim().toLowerCase(), so = $('#soMud', corpo).checked, todos = !!(q || so); let ach = 0; $('#ops', corpo).classList.toggle('solo', !todos); const lbx = $('#logoBox', corpo); if (lbx) lbx.style.display = !todos && lbx.dataset.gi === aberta ? '' : 'none';
+            corpo.querySelectorAll('.ct-op').forEach(d => { const o = ctl.catalogo.find(x => x.k === d.dataset.op), ok = (!q || d.dataset.txt.includes(q)) && (!so || difere(o) || o.k in mudou); d.style.display = ok ? '' : 'none'; if (ok) ach++; });
             corpo.querySelectorAll('.ct-grp').forEach(g => { const ve = [...g.querySelectorAll('.ct-op')].some(d => d.style.display !== 'none'); g.style.display = ve && (todos || g.dataset.gi === aberta) ? '' : 'none'; if (ve) g.open = true; });
             $('#nenhuma', corpo).hidden = ach > 0; };
           b.oninput = filtra; $('#soMud', corpo).onchange = filtra;
           filtra();
+        }
+        const lb = $('#logoBox', corpo);
+        if (lb) {
+          const prev = $('#lgPrev', lb), pal = $('#lgPal', lb), fonte = () => logoPend || logoAtual;
+          const pinta = async () => {
+            prev.innerHTML = fonte() ? `<img src="${E(fonte())}" alt="Logo da escola">` : '<span>Sem logo</span>';
+            $('#lgSalva', lb).hidden = $('#lgCanc', lb).hidden = !logoPend;
+            if (!fonte()) { pal.innerHTML = ''; return; }
+            try { paleta = await paletaDaLogo(fonte()); } catch (e) { paleta = null; pal.innerHTML = `<p class="help">${E(e.message)}</p>`; return; }
+            pal.innerHTML = `<div class="lg-pal">${Object.entries(paleta).map(([k, v]) => `<span class="sw" title="${E(v)}"><i style="background:${E(v)}"></i><em>${ROT_COR[k]}</em></span>`).join('')}<button class="pg-btn detail" id="lgAplica">Aplicar paleta da logo</button></div><p class="help">As cores são sugestões geradas da imagem e entram como alterações não salvas. Ajuste se quiser e clique em Salvar opções.</p>`;
+            $('#lgAplica', lb).onclick = () => { for (const [k, v] of Object.entries(paleta)) { const i = corpo.querySelector('[data-k="' + k + '"]'); if (i) { i.value = v; i.dispatchEvent(new Event('change')); } } toast('Paleta aplicada nos campos de cor. Clique em Salvar opções.'); };
+          };
+          $('#lgEsc', lb).onclick = () => $('#lgFile', lb).click();
+          $('#lgFile', lb).onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { logoPend = await logoDeArquivo(f); await pinta(); } catch (er) { falha(er); } };
+          $('#lgCanc', lb).onclick = () => { logoPend = null; pinta(); };
+          $('#lgSalva', lb).onclick = async e => { e.target.disabled = true; try { await api('clientes/' + id, { m: 'PATCH', b: { logo: logoPend } }); logoAtual = logoPend; logoPend = null; toast('Logo salva — já vale na escola'); await pinta(); } catch (er) { falha(er); } e.target.disabled = false; };
+          pinta();
         }
         const sv = $('#salva', corpo), ds = $('#descarta', corpo);
         if (sv) sv.onclick = async () => {
