@@ -26,6 +26,8 @@ export const sobre = (fundo: string, claro = '#ffffff', escuro = '#10213f') => (
 const contraste = (a: string, b: string) => { const x = luz(a), y = luz(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 /** Cor de destaque que aparece sobre o fundo dado: tenta o destaque, a secundária e a primária da escola; se nenhuma servir, branco ou amarelo. */
 export const acento = (fundo: string) => [ESCOLA.destaque, ESCOLA.secundaria, ESCOLA.primaria].find((c) => contraste(c, fundo) >= 3) || (luz(fundo) > 0.45 ? '#10213f' : '#ffd23f');
+/** Cor da marca (primária, secundária, escura, destaque) que aparece sobre o fundo dado; sem nenhuma, a cor de texto. */
+export const marcaSobre = (fundo: string) => [ESCOLA.primaria, ESCOLA.secundaria, ESCOLA.escura, ESCOLA.destaque].find((c) => contraste(c, fundo) >= 3) || sobre(fundo);
 /** Garante que a cor aparece sobre branco (uma primária muito clara é escurecida). */
 export const visivel = (h: string) => (luz(h) > 0.6 ? mistura(h, '#000000', 0.45) : h);
 

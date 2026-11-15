@@ -136,18 +136,28 @@
 
   /* ---------- seletor de modelo de arte (SeletorModelo) ---------- */
   .sm-box { background: #fff; border: 1px solid var(--ux-line); border-radius: var(--ux-r-card); padding: 18px; margin-bottom: 20px; box-shadow: var(--ux-sh-card); }
-  .sm-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; margin-bottom: 14px; }
-  .sm-head b { font-size: 1.05rem; color: var(--ux-ink); }
+  .sm-head { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+  .sm-head b { display: block; font-size: 1.05rem; color: var(--ux-ink); }
   .sm-head span { color: var(--ux-muted); font-size: .92rem; }
-  .sm-grade { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(150px, 190px); gap: 12px; overflow-x: auto; padding: 4px 4px 10px; scroll-snap-type: x proximity; }
-  .sm-item { appearance: none; font-family: inherit; text-align: left; cursor: pointer; background: #fff; border: 2px solid var(--ux-line); border-radius: 12px; padding: 8px; display: grid; gap: 6px; scroll-snap-align: start; align-content: start;
+  .sm-abrir, .sm-chip { appearance: none; font-family: inherit; cursor: pointer; border-radius: 999px; font-weight: 700; transition: background-color .15s, color .15s, border-color .15s; }
+  .sm-abrir { min-height: 40px; padding: 0 18px; border: 0; background: #00a63a; color: #fff; font-size: 14px; }
+  .sm-abrir:hover { filter: brightness(.95); }
+  .sm-atual { display: flex; align-items: center; gap: 14px; margin-top: 14px; color: var(--ux-muted); font-size: .95rem; }
+  .sm-atual b { color: var(--ux-ink); }
+  .sm-mini { width: 120px; flex: none; }
+  .sm-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 12px; }
+  .sm-chip { min-height: 34px; padding: 0 14px; border: 1px solid var(--ux-line); background: #fff; color: var(--ux-ink); font-size: 13px; }
+  .sm-chip:hover { border-color: #b4c3d6; }
+  .sm-chip.on { background: var(--ux-ink); border-color: var(--ux-ink); color: #fff; }
+  .sm-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; max-height: 560px; overflow-y: auto; padding: 4px; animation: ux-entra .2s ease-out; }
+  .sm-item { appearance: none; font-family: inherit; text-align: left; cursor: pointer; background: #fff; border: 2px solid var(--ux-line); border-radius: 12px; padding: 8px; display: grid; gap: 6px; align-content: start;
     transition: border-color .15s, box-shadow .15s, transform .15s; }
   .sm-item:hover { border-color: #b4c3d6; transform: translateY(-2px); }
   .sm-item.on { border-color: #00a63a; box-shadow: 0 0 0 3px rgba(0, 166, 58, .16); }
-  .sm-item:focus-visible { outline: none; box-shadow: var(--ux-ring); }
-  .sm-nome { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 800; color: var(--ux-ink); }
+  .sm-item:focus-visible, .sm-chip:focus-visible, .sm-abrir:focus-visible { outline: none; box-shadow: var(--ux-ring); }
+  .sm-nome { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; color: var(--ux-ink); line-height: 1.25; }
   .sm-item.on .sm-nome { color: #00a63a; }
-  .sm-item small { color: var(--ux-muted); font-size: 12px; line-height: 1.3; }
+  @media (max-width: 768px) { .sm-grade { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); max-height: 70vh; } .sm-abrir { width: 100%; } }
 
   /* ---------- microanimações ---------- */
   @keyframes ux-entra { from { opacity: 0; } }

@@ -9,7 +9,7 @@ import PageContainer from '../components/PageContainer';
 
 import Tabs from '../components/Tabs';
 import SeletorModelo from '../components/SeletorModelo';
-import { A as CART_A, L as CART_L, MODELOS_CARTEIRINHA, desenharCarteirinha, pdfCarteirinhas, type DadosCarteirinha } from '../artes/carteirinha';
+import { A_DUPLA as CART_A, L as CART_L, MODELOS_CARTEIRINHA, desenharCarteirinhaDupla, pdfCarteirinhas, type DadosCarteirinha } from '../artes/carteirinha';
 import { salvarArte, useArtes } from '../artes/config';
 
 // Aluno de exemplo para a galeria de modelos.
@@ -186,7 +186,7 @@ export default function AdminCarteirinhas() {
 
                 <SeletorModelo titulo="Modelo da carteirinha" ajuda="Vale para todas as carteirinhas, no painel, no portal do aluno e no PDF." modelos={MODELOS_CARTEIRINHA} atual={modelo}
 
-                    proporcao={CART_A / CART_L} desenhar={(id) => desenharCarteirinha(id, EXEMPLO)} onEscolher={(id) => salvarArte('carteirinha', id).catch(() => alert('Não consegui salvar o modelo.'))} />
+                    proporcao={CART_A / CART_L} largura={210} desenhar={(id) => desenharCarteirinhaDupla(id, EXEMPLO)} onEscolher={(id) => salvarArte('carteirinha', id).catch(() => alert('Não consegui salvar o modelo.'))} />
 
                 <Tabs items={[{ id: 'futebol', label: 'Futebol' }]} active={modalityFilter} onChange={setModalityFilter} />
             </div>
