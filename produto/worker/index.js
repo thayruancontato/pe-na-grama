@@ -491,6 +491,11 @@ async function rotaAdmin(req, env, url, caminho) {
       await env.DB.prepare('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data').bind(new URL(c.url_sistema).host, 'sys_owner', 'limites', JSON.stringify({ maxMatriculas: max })).run();
       return J({ ok: true, limite: max });
     }
+    if (id && acao === 'logo' && m === 'GET') { // logo leve para a lista de clientes (imagem de verdade, com cache)
+      const l = await env.DB.prepare('SELECT l.logo FROM clientes c JOIN leads l ON l.id=c.lead_id WHERE c.id=?').bind(id).first();
+      const mm = l && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(l.logo || ''); if (!mm) return erro('Sem logo.', 404);
+      return new Response(Uint8Array.from(atob(mm[2]), (ch) => ch.charCodeAt(0)), { headers: { 'content-type': mm[1], 'cache-control': 'private, max-age=300' } });
+    }
     if (id && m === 'GET') {
       const c = await env.DB.prepare('SELECT * FROM clientes WHERE id=?').bind(id).first(); if (!c) return erro('Cliente não encontrado.', 404);
       const f = await env.DB.prepare('SELECT id,token,descricao,competencia,valor,vencimento,status,pago_em,informado_em FROM faturas WHERE cliente_id=? ORDER BY id DESC').bind(id).all();

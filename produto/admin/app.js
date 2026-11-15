@@ -228,24 +228,87 @@
   let buscaCli = '', stCli = '';
   async function clientes(pg) {
     const lista = await api('clientes');
-    const linha = c => { const feitos = CHECK.filter(k => c.checklist[k]).length; return `<tr class="lin-click" data-id="${c.id}" tabindex="0"><td><b>${E(c.escola)}</b><small>${E(c.contato_nome)} · ${E(c.contato_tel)}</small></td><td>${E(c.plano_nome)}</td><td class="num">${brl(c.mensal)}</td>
-        <td>${badge(ST_CLI, c.status)}${c.atrasadas ? ` <span class="pg-badge bad">Em atraso · ${brl(c.valor_atrasado)}</span>` : ''}</td><td>${c.proximo ? dt(c.proximo) : '—'}</td>
-        <td><div class="pg-track" style="width:110px"><i style="width:${Math.round(feitos / CHECK.length * 100)}%"></i></div><small>${feitos} de ${CHECK.length}</small></td><td class="ac">${btnPainel(c.url_sistema, true).replace('Abrir painel da escola', 'Abrir painel')} ${c.url_sistema ? `<button class="pg-btn detail" data-ctl="${c.id}">${I('settings')} Controle</button>` : ''} <button class="pg-btn detail" data-det="${c.id}">Detalhes</button></td></tr>`; };
+    const ini = s => E((String(s).match(/[A-Za-zÀ-ú0-9]+/g) || ['?']).slice(0, 2).map(w => w[0]).join('').toUpperCase());
+    const linha = c => { const feitos = CHECK.filter(k => c.checklist[k]).length, pc = Math.round(feitos / CHECK.length * 100);
+      return `<article class="cl-card" data-id="${c.id}" tabindex="0">
+        <div class="cl-top"><span class="cl-logo"><b>${ini(c.escola)}</b><img src="/api/admin/clientes/${c.id}/logo" alt="" loading="lazy" onerror="this.remove()"></span>
+          <div class="cl-id"><h3>${E(c.escola)}</h3><small>${E(c.contato_nome)}${c.contato_tel ? ' · ' + E(c.contato_tel) : ''}</small></div>
+          <div class="cl-st">${badge(ST_CLI, c.status)}${c.atrasadas ? `<span class="pg-badge bad">Em atraso · ${brl(c.valor_atrasado)}</span>` : ''}</div></div>
+        <dl class="cl-meta"><div><dt>Plano</dt><dd>${E(c.plano_nome)}</dd></div><div><dt>Mensalidade</dt><dd>${brl(c.mensal)}</dd></div><div><dt>Próxima cobrança</dt><dd>${c.proximo ? dt(c.proximo) : '—'}</dd></div></dl>
+        <button class="cl-prog" data-imp="${c.id}" title="Abrir o roteiro de implantação"><div class="pg-track"><i style="width:${pc}%"></i></div><small>${feitos === CHECK.length ? 'Implantada' : 'Implantação · ' + feitos + ' de ' + CHECK.length + ' — continuar'}</small></button>
+        <div class="cl-ac">${btnPainel(c.url_sistema, true).replace('Abrir painel da escola', 'Abrir painel')}${c.url_sistema ? `<button class="pg-btn detail" data-ctl="${c.id}">${I('settings')} Controle</button>` : ''}<button class="pg-btn detail" data-det="${c.id}">Detalhes</button></div></article>`; };
     pg.innerHTML = cabeca('Clientes', 'Escolas que assinaram o contrato e o andamento de cada uma.') +
       (lista.length ? `<div class="ct-find"><input class="pg-input" id="cb" type="search" placeholder="Buscar escola ou contato…" aria-label="Buscar cliente" value="${E(buscaCli)}"><select class="pg-select" id="cs" aria-label="Filtrar por situação"><option value="">Todas as situações</option>${Object.entries(ST_CLI).map(([k, v]) => `<option value="${k}" ${stCli === k ? 'selected' : ''}>${v[0]}</option>`).join('')}<option value="atraso" ${stCli === 'atraso' ? 'selected' : ''}>Com fatura em atraso</option></select><span class="n" id="cn" aria-live="polite"></span></div>` : '') +
-      `<div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Escola</th><th>Plano</th><th class="num">Mensalidade</th><th>Situação</th><th>Próxima cobrança</th><th>Implantação</th><th></th></tr></thead><tbody id="cl"></tbody></table>
-      ${lista.length ? '' : vazio('Nenhum cliente ainda', 'Quando uma escola assinar o contrato, ela aparece aqui já com a primeira fatura.')}<div id="cv"></div></div>`;
+      `<div class="cl-grid" id="cl"></div>${lista.length ? '' : vazio('Nenhum cliente ainda', 'Quando uma escola assinar o contrato, ela aparece aqui já com a primeira fatura.')}<div id="cv"></div>`;
     const desenha = () => {
       const q = buscaCli.trim().toLowerCase(), v = lista.filter(c => (!q || (c.escola + ' ' + c.contato_nome + ' ' + c.contato_tel).toLowerCase().includes(q)) && (!stCli || (stCli === 'atraso' ? c.atrasadas > 0 : c.status === stCli)));
-      $('#cl', pg).innerHTML = v.map(linha).join(''); rotular(pg);
+      $('#cl', pg).innerHTML = v.map(linha).join('');
       const n = $('#cn', pg); if (n) n.textContent = v.length + ' de ' + lista.length + ' escola(s)';
       $('#cv', pg).innerHTML = lista.length && !v.length ? vazio('Nenhuma escola encontrada', 'Mude a busca ou o filtro de situação.') : '';
+      pg.querySelectorAll('[data-imp]').forEach(b => b.onclick = e => { e.stopPropagation(); implantar(+b.dataset.imp).catch(falha); });
       pg.querySelectorAll('[data-det]').forEach(b => b.onclick = e => { e.stopPropagation(); detalheCliente(+b.dataset.det); });
       pg.querySelectorAll('[data-ctl]').forEach(b => b.onclick = async e => { e.stopPropagation(); const c = lista.find(x => x.id === +b.dataset.ctl); b.disabled = true; try { await controleEscola(c); } finally { b.disabled = false; } });
-      pg.querySelectorAll('tr.lin-click').forEach(tr => { const abre = e => { if (e.target.closest('a,button')) return; detalheCliente(+tr.dataset.id); }; tr.onclick = abre; tr.onkeydown = e => { if (e.key === 'Enter' && e.target === tr) detalheCliente(+tr.dataset.id); }; });
+      pg.querySelectorAll('.cl-card').forEach(tr => { const abre = e => { if (e.target.closest('a,button')) return; detalheCliente(+tr.dataset.id); }; tr.onclick = abre; tr.onkeydown = e => { if (e.key === 'Enter' && e.target === tr) detalheCliente(+tr.dataset.id); }; });
     };
     const cb = $('#cb', pg); if (cb) { cb.oninput = () => { buscaCli = cb.value; desenha(); }; $('#cs', pg).onchange = e => { stCli = e.target.value; desenha(); }; }
     desenha();
+  }
+
+
+  // Roteiro de implantação: cada passo mostra se já está feito (detectado sozinho quando dá) e tem o botão que resolve.
+  async function implantar(id) {
+    const c = await api('clientes/' + id), feitos = { ...c.checklist }, tem = !!c.url_sistema;
+    const [saude, dom] = tem ? await Promise.all([api('clientes/' + id + '/saude').catch(() => null), api('clientes/' + id + '/dominio').catch(() => null)]) : [null, null];
+    const auto = { [CHECK[0]]: saude && saude.usuarios > 0, [CHECK[2]]: tem && dom && dom.estado === 'ok', [CHECK[5]]: saude && saude.matriculas > 0 };
+    let mudou = false; for (const [k, v] of Object.entries(auto)) if (v && !feitos[k]) { feitos[k] = true; mudou = true; }
+    const grava = () => api('clientes/' + id, { m: 'PATCH', b: { checklist: feitos } }).then(() => rota()).catch(falha);
+    if (mudou) grava();
+    const PASSOS = [
+      [CHECK[0], 'Cria o login do administrador e mostra a senha para você enviar.', 'Gerar acesso', 'acesso', tem],
+      [CHECK[1], 'Troque logo, cores e nome da escola (até gerar a paleta a partir da logo).', 'Abrir controle', 'ctl', tem],
+      [CHECK[2], tem ? 'Coloca o endereço da escola no ar.' : 'Digite o endereço da escola (ex.: https://escola.thayruan.com.br).', tem ? 'Publicar endereço' : 'Salvar endereço', 'url', true],
+      [CHECK[3], 'Entre no painel da escola em Mensagens e leia o QR Code com o celular dela.', 'Abrir painel da escola', 'painel', tem],
+      [CHECK[4], 'No painel da escola, em Configurações, informe a chave Pix para receber.', 'Abrir painel da escola', 'painel', tem],
+      [CHECK[5], 'Cadastre ou importe os alunos no painel da escola.', 'Abrir painel da escola', 'painel', tem],
+      [CHECK[6], 'Combine um horário e mostre o sistema para a escola.', 'Chamar no WhatsApp', 'zap', true]];
+    const prox = () => PASSOS.findIndex(p => !feitos[p[0]]);
+    const html = () => {
+      const n = CHECK.filter(k => feitos[k]).length, pr = prox();
+      return `<div class="imp-top"><div class="pg-track"><i style="width:${Math.round(n / CHECK.length * 100)}%"></i></div><b>${n} de ${CHECK.length}</b></div>` +
+        (pr < 0 ? '<div class="pg-alert ok">Tudo pronto! Esta escola está implantada.</div>' : '') +
+        PASSOS.map((p, i) => `<div class="imp-step ${feitos[p[0]] ? 'done' : i === pr ? 'next' : ''}"><label class="imp-ck"><input type="checkbox" data-k="${i}" ${feitos[p[0]] ? 'checked' : ''} aria-label="Marcar como feito"></label>
+          <div class="imp-tx"><b>${i + 1}. ${E(p[0])}</b><span>${E(p[1])}</span>${p[3] === 'url' && !tem ? '<input class="pg-input" id="impUrl" placeholder="https://escola.thayruan.com.br" style="margin-top:8px">' : ''}<div id="res${i}"></div></div>
+          ${feitos[p[0]] && auto[p[0]] ? '<small class="imp-auto">detectado</small>' : `<button class="pg-btn ${i === pr ? 'green' : 'detail'}" data-a="${i}" ${p[4] ? '' : 'disabled title="Defina o endereço primeiro"'}>${p[2]}</button>`}</div>`).join('');
+    };
+    modal('Implantar · ' + c.escola, '<div class="pg-stack" id="imp"></div>', (el, fechar) => {
+      const box = $('#imp', el);
+      const pinta = () => { box.innerHTML = html(); liga(); };
+      const abrePainel = async () => { const w = window.open('', '_blank'); try { const r = await api('clientes/' + id + '/entrar', { m: 'POST', b: {} }); if (w) w.location = r.url; else toast('Libere pop-ups para abrir a escola.', 'err'); } catch (e) { if (w) w.close(); falha(e); } };
+      const acoes = {
+        acesso: async i => {
+          try {
+            const r = await api('clientes/' + id + '/acesso', { m: 'POST', b: {} }); feitos[CHECK[0]] = true; grava();
+            const msg = `Olá, ${c.contato_nome}! Seu acesso ao sistema da ${c.escola}: ${r.url}\nE-mail: ${r.email}\nSenha: ${r.senha}`;
+            pinta(); $('#res' + i, box).innerHTML = `<div class="pg-alert ok" style="margin-top:8px">Anote agora, a senha não aparece de novo.<br>E-mail: <b>${E(r.email)}</b><br>Senha: <b>${E(r.senha)}</b></div><p style="margin-top:8px"><a class="pg-btn ok" target="_blank" rel="noopener" href="${E(waLink(c.contato_tel, msg))}">${I('whats')} Enviar pelo WhatsApp</a></p>`;
+          } catch (e) { falha(e); }
+        },
+        ctl: () => controleEscola(c),
+        url: async () => {
+          try {
+            if (!tem) { const u = ($('#impUrl', box).value || '').trim(); if (!u) return toast('Digite o endereço.', 'err'); await api('clientes/' + id, { m: 'PATCH', b: { url_sistema: u } }); toast('Endereço salvo'); fechar(); return implantar(id); }
+            const r = await api('clientes/' + id + '/publicar', { m: 'POST', b: {} });
+            if (r.ok) { feitos[CHECK[2]] = true; grava(); toast('Endereço publicado'); pinta(); } else toast(r.motivo || 'Não foi possível publicar.', 'err');
+          } catch (e) { falha(e); }
+        },
+        painel: abrePainel,
+        zap: () => window.open(waLink(c.contato_tel, `Olá, ${c.contato_nome}! Vamos combinar o treinamento do sistema da ${c.escola}?`), '_blank', 'noopener')
+      };
+      function liga() {
+        box.querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { b.disabled = true; try { await acoes[PASSOS[+b.dataset.a][3]](+b.dataset.a); } finally { b.disabled = false; } });
+        box.querySelectorAll('[data-k]').forEach(x => x.onchange = () => { feitos[PASSOS[+x.dataset.k][0]] = x.checked; grava(); pinta(); });
+      }
+      pinta();
+    });
   }
 
   async function detalheCliente(id) {
