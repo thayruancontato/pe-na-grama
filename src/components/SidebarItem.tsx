@@ -13,167 +13,55 @@ interface SidebarItemProps {
     onNavigate: () => void;
 }
 
+const semBarra = (p: string) => p.endsWith('/') ? p.slice(0, -1) : p;
+
+// Item do menu lateral (admin e professor). O visual fica nas classes sb-* de styles/consistencia.css.
 export default function SidebarItem({ to, label, icon, badge, subItems, collapsed, isMobile: _isMobile, onNavigate }: SidebarItemProps) {
     const navigate = useNavigate();
     const location = useLocation();
+    const atual = semBarra(location.pathname), alvo = semBarra(to);
 
-    const normalizePath = (p: string) => p.endsWith('/') ? p.slice(0, -1) : p;
-    const currentPath = normalizePath(location.pathname);
-    const targetPath = normalizePath(to);
+    // O subitem ativo é o de caminho mais longo que casa com a tela atual (ex.: /admin/turmas/chamadas e não /admin/turmas).
+    const subAtivo = subItems?.map(s => semBarra(s.to)).filter(s => atual === s || atual.startsWith(s + '/')).sort((a, b) => b.length - a.length)[0];
+    const ativo = subItems ? Boolean(subAtivo) : atual === alvo || (alvo !== '/admin/dashboard' && alvo !== '/professor/turmas' && atual.startsWith(alvo + '/'));
+    const [aberto, setAberto] = useState(ativo);
+    useEffect(() => { if (ativo) setAberto(true); }, [ativo]);
 
-    const isPathActive = currentPath === targetPath || (targetPath !== '/admin/dashboard' && targetPath !== '/professor/turmas' && currentPath.startsWith(`${targetPath}/`)) || (currentPath === targetPath);
+    const ir = (caminho: string) => { navigate(caminho); onNavigate(); };
+    const selo = (n?: number) => n !== undefined && n > 0 && <span className="sb-badge">{n}</span>;
 
-    const isSubItemActive = subItems?.some((sub: any) => {
-        const subTo = normalizePath(sub.to);
-        return currentPath === subTo || currentPath.startsWith(`${subTo}/`);
-    });
-
-    const isActive = isPathActive || isSubItemActive;
-    const [isOpen, setIsOpen] = useState(isActive);
-
-    useEffect(() => {
-        if (isActive) setIsOpen(true);
-    }, [isActive]);
-
-    if (subItems) {
+    if (!subItems) {
         return (
-            <>
-                <div style={{ marginBottom: '4px', padding: collapsed ? '0 5px' : '0 10px' }}>
-                    <button
-                        className="touch-feedback"
-                        onClick={() => {
-                            if (collapsed) {
-                                navigate(to);
-                                onNavigate();
-                            } else {
-                                setIsOpen(!isOpen);
-                            }
-                        }}
-                        title={collapsed ? label : ''}
-                        style={{
-                            width: '100%',
-                            padding: collapsed ? '12px 0' : '8px 16px',
-                            border: 'none',
-                            background: isActive ? 'linear-gradient(135deg, rgba(23,66,143,0.10), rgba(0,166,58,0.10))' : 'transparent',
-                            color: isActive ? '#09245c' : '#17428f',
-                            textAlign: collapsed ? 'center' : 'left',
-                            cursor: 'pointer',
-                            fontSize: '0.82rem',
-                            fontWeight: '700',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: collapsed ? 'center' : 'flex-start',
-                            gap: collapsed ? '0' : '10px',
-                            borderRadius: '8px',
-                            transition: 'all 0.2s',
-                            borderLeft: isActive && !collapsed ? '3px solid #f4c20d' : '3px solid transparent'
-                        }}
-                    >
-                        <span style={{ color: isActive ? '#00a63a' : '#17428f', display: 'flex' }}>{icon}</span>
-                        {!collapsed && <span style={{ flex: 1, textTransform: 'uppercase' }}>{label}</span>}
-                        {!collapsed && <ChevronRight size={16} style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />}
-                    </button>
-                    {isOpen && !collapsed && (
-                        <div style={{ paddingLeft: '20px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            {subItems.map((sub: any) => {
-                                const isSubActive = location.pathname === sub.to;
-                                return (
-                                    <button
-                                        key={sub.to}
-                                        onClick={() => {
-                                            navigate(sub.to);
-                                            onNavigate();
-                                        }}
-                                        style={{
-                                            padding: '6px 15px',
-                                            border: 'none',
-                                            background: isSubActive ? 'linear-gradient(135deg, #00a63a 0%, #17428f 100%)' : 'transparent',
-                                            color: isSubActive ? '#fff' : '#17428f',
-                                            borderRadius: '8px',
-                                            textAlign: 'left',
-                                            cursor: 'pointer',
-                                            fontSize: '0.78rem',
-                                            fontWeight: isSubActive ? '700' : '500',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
-                                            <div style={{ width: '6px', height: '6px', background: isSubActive ? '#fff' : '#17428f', borderRadius: '50%', opacity: isSubActive ? 1 : 0.4 }} />
-                                            <span style={{ textTransform: 'uppercase', flex: 1 }}>{sub.label}</span>
-                                        </div>
-                                        {sub.badge !== undefined && sub.badge > 0 && (
-                                            <span style={{
-                                                background: isSubActive ? '#f4c20d' : '#00a63a',
-                                                color: isSubActive ? '#09245c' : '#fff',
-                                                fontSize: '0.65rem',
-                                                fontWeight: 'bold',
-                                                padding: '1px 6px',
-                                                borderRadius: '8px',
-                                                minWidth: '18px',
-                                                textAlign: 'center'
-                                            }}>
-                                                {sub.badge}
-                                            </span>
-                                        )}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    )}
-                </div>
-                {!collapsed && <div style={{ height: '1px', background: 'rgba(23, 66, 143, 0.10)', margin: '4px -10px' }} />}
-            </>
+            <div className="sb-wrap">
+                <button type="button" className={`sb-item${ativo ? ' on' : ''}${collapsed ? ' mini' : ''}`} onClick={() => ir(to)} title={collapsed ? label : undefined} aria-current={ativo ? 'page' : undefined}>
+                    <span className="sb-ico">{icon}</span>
+                    {!collapsed && <span className="sb-label">{label}</span>}
+                    {!collapsed && selo(badge)}
+                </button>
+            </div>
         );
     }
 
     return (
-        <div style={{ marginBottom: '4px', padding: collapsed ? '0 5px' : '0 10px' }}>
-            <button
-                className="touch-feedback"
-                onClick={() => {
-                    navigate(to);
-                    onNavigate();
-                }}
-                title={collapsed ? label : ''}
-                style={{
-                    width: '100%',
-                    padding: collapsed ? '12px 0' : '8px 16px',
-                    border: 'none',
-                    background: isActive ? 'linear-gradient(135deg, #00a63a 0%, #17428f 100%)' : 'transparent',
-                    color: isActive ? '#fff' : '#17428f',
-                    textAlign: collapsed ? 'center' : 'left',
-                    cursor: 'pointer',
-                    fontSize: '0.82rem',
-                    fontWeight: isActive ? '700' : '600',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    gap: collapsed ? '0' : '10px',
-                    minHeight: '36px',
-                    borderRadius: '8px',
-                    transition: 'all 0.2s'
-                }}
-                onMouseOver={e => !isActive && (e.currentTarget.style.background = '#eef8ff')}
-                onMouseOut={e => !isActive && (e.currentTarget.style.background = 'transparent')}
-            >
-                <span style={{ color: isActive ? '#fff' : '#17428f', display: 'flex' }}>{icon}</span>
-                {!collapsed && <span style={{ flex: 1, textTransform: 'uppercase' }}>{label}</span>}
-                {badge !== undefined && badge > 0 && !collapsed && (
-                    <span style={{
-                        background: isActive ? '#f4c20d' : '#17428f',
-                        color: isActive ? '#09245c' : '#fff',
-                        fontSize: '0.7rem',
-                        fontWeight: 'bold',
-                        padding: '2px 8px',
-                        borderRadius: '10px'
-                    }}>
-                        {badge}
-                    </span>
-                )}
+        <div className="sb-wrap">
+            <button type="button" className={`sb-item grupo${ativo ? ' dentro' : ''}${collapsed ? ' mini' : ''}`} onClick={() => collapsed ? ir(to) : setAberto(!aberto)} title={collapsed ? label : undefined} aria-expanded={collapsed ? undefined : aberto}>
+                <span className="sb-ico">{icon}</span>
+                {!collapsed && <span className="sb-label">{label}</span>}
+                {!collapsed && <ChevronRight size={16} className={`sb-seta${aberto ? ' aberta' : ''}`} />}
             </button>
-            {!collapsed && <div style={{ height: '1px', background: 'rgba(23, 66, 143, 0.10)', margin: '4px -10px' }} />}
+            {aberto && !collapsed && (
+                <div className="sb-subs">
+                    {subItems.map(sub => {
+                        const on = semBarra(sub.to) === subAtivo;
+                        return (
+                            <button type="button" key={sub.to} className={`sb-sub${on ? ' on' : ''}`} onClick={() => ir(sub.to)} aria-current={on ? 'page' : undefined}>
+                                <span className="sb-label">{sub.label}</span>
+                                {selo(sub.badge)}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }

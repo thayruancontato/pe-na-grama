@@ -179,7 +179,15 @@ function varre(raiz: ParentNode) {
 
 let agendado = 0;
 // no máximo uma varredura a cada 250 ms, para não pesar em telas com animação
-const agenda = () => { if (agendado) return; agendado = window.setTimeout(() => { agendado = 0; try { varre(document); } catch { /* nunca quebra a tela */ } }, 250); };
+let ultima = 0;
+// A primeira varredura depois de uma mudança sai no quadro seguinte (a tela nova já nasce no padrão, sem "pulo");
+// mudanças em sequência ficam limitadas a uma varredura a cada 250 ms.
+const agenda = () => {
+    if (agendado) return;
+    const roda = () => { agendado = 0; ultima = performance.now(); try { varre(document); } catch { /* nunca quebra a tela */ } };
+    const espera = 250 - (performance.now() - ultima);
+    agendado = espera > 0 ? window.setTimeout(roda, espera) : window.requestAnimationFrame(roda);
+};
 
 const iniciar = () => {
     new MutationObserver(agenda).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });

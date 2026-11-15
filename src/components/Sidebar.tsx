@@ -83,7 +83,7 @@ export default function Sidebar({
                                 <div style={{ display: 'flex', gap: '2px' }}>
                                     {[1, 2].map(i => <div key={i} style={{ width: '3px', height: '12px', background: '#59c8df', borderRadius: '10px' }} />)}
                                 </div>
-                                <span>RECOLHER</span>
+                                <span>Recolher menu</span>
                             </>
                         )}
                     </button>

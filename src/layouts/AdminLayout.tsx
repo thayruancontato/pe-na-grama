@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -26,6 +26,7 @@ export default function AdminLayout() {
     // Global QR Scanner - works from any page
     const { modalData: scannerModalData, loading: scannerLoading, closeModal: closeScannerModal } = useGlobalQRScanner();
 
+    const ultimaContagem = useRef(0);
     const [birthdayCount, setBirthdayCount] = useState(0);
     const [pendingCount, setPendingCount] = useState(0);
     const [activeCount, setActiveCount] = useState(0);
@@ -42,6 +43,8 @@ export default function AdminLayout() {
 
         // Compute Birthday Badge
         const fetchBirthdays = async () => {
+            if (Date.now() - ultimaContagem.current < 60000) return; // os números do menu valem por 1 minuto
+            ultimaContagem.current = Date.now();
             try {
                 const q = query(collection(db, "rumo_ao_esporte_2026_registrations"));
                 const snap = await getDocs(q);
@@ -128,15 +131,11 @@ export default function AdminLayout() {
     // We check if the current path is allowed.
     // Exception: /admin/login is not covered here (it's outside layout).
     // Exception: /admin root usually redirects to dashboard, which is checked.
-    // Route Guard: Protect against URL manipulation
-    // We check if the current path is allowed.
-    // Exception: /admin/login is not covered here (it's outside layout).
-    // Exception: /admin root usually redirects to dashboard, which is checked.
     if (!isAllowed(location.pathname) && location.pathname !== '/admin') {
-        const firstAllowed = ADMIN_MENU_ITEMS.find(item => isAllowed(item.path));
+        const firstAllowed = ADMIN_MENU_ITEMS.flatMap(item => item.subItems ? item.subItems.map(s => s.to) : [item.path]).find(isAllowed);
 
         if (firstAllowed) {
-            return <Navigate to={firstAllowed.path} replace />;
+            return <Navigate to={firstAllowed} replace />;
         } else {
             return (
                 <div style={{ display: 'flex', minHeight: '100vh', background: 'linear-gradient(180deg, #f4f8fc 0%, #eef8ff 100%)', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -190,56 +189,34 @@ export default function AdminLayout() {
                     onLogout={handleLogout}
                     logoutLabel={user?.nome ? `Sair (${user.nome.split(' ')[0]})` : "Sair do Sistema"}
                 >
-                    {ADMIN_MENU_ITEMS.map((item) => {
-                        // Check permission for top-level item
-                        if (!isAllowed(item.path)) return null;
+                    {(() => {
+                        let secaoAnterior: string | undefined;
+                        return ADMIN_MENU_ITEMS.map((item) => {
+                            // Grupo: aparece se pelo menos um subitem é permitido. Item simples: pela própria rota.
+                            const subs = (item.subItems || []).filter(sub => !(sub.to === '/admin/financeiro/bancos' && !showAdvancedFinanceMenu) && isAllowed(sub.to));
+                            if (item.subItems ? subs.length === 0 : !isAllowed(item.path)) return null;
 
-                        // Add badges dynamically if needed
-                        let badgeValue = undefined;
-                        if (item.path === '/admin/aniversariantes') badgeValue = birthdayCount;
+                            const BADGES: Record<string, number> = { '/admin/dashboard': activeCount, '/admin/cadastros/pendentes': pendingCount, '/admin/cadastros/desativados': inactiveCount };
+                            const titulo = item.section !== secaoAnterior ? item.section : undefined;
+                            secaoAnterior = item.section;
 
-                        // Filter subitems based on permissions
-                        const allowedSubItems = item.subItems?.filter(sub => {
-                            if (sub.to === '/admin/financeiro/bancos' && !showAdvancedFinanceMenu) {
-                                return false;
-                            }
-
-                            return isAllowed(sub.to);
-                        }) || [];
-
-                        // Handle subItems badges (e.g. Pendentes, Cadastrados, Desativados)
-                        const subItemsWithBadges = allowedSubItems.map(sub => {
-                            if (sub.to === '/admin/dashboard') {
-                                return { ...sub, badge: activeCount };
-                            }
-                            if (sub.to === '/admin/cadastros/pendentes') {
-                                return { ...sub, badge: pendingCount };
-                            }
-                            if (sub.to === '/admin/cadastros/desativados') {
-                                return { ...sub, badge: inactiveCount };
-                            }
-                            return sub;
+                            return (
+                                <div key={item.path}>
+                                    {titulo && (collapsed ? <div className="sb-sep" /> : <div className="sb-section">{titulo}</div>)}
+                                    <SidebarItem
+                                        to={item.subItems ? subs[0].to : item.path}
+                                        label={item.label}
+                                        icon={<item.icon size={19} />}
+                                        badge={item.path === '/admin/aniversariantes' ? birthdayCount : undefined}
+                                        collapsed={collapsed}
+                                        isMobile={isMobile}
+                                        onNavigate={() => isMobile && setSidebarOpen(false)}
+                                        subItems={item.subItems ? subs.map(sub => sub.to in BADGES ? { ...sub, badge: BADGES[sub.to] } : sub) : undefined}
+                                    />
+                                </div>
+                            );
                         });
-
-                        // If item has subItems but none are allowed, hide the whole group
-                        if (item.subItems && item.subItems.length > 0 && subItemsWithBadges.length === 0) {
-                            return null;
-                        }
-
-                        return (
-                            <SidebarItem
-                                key={item.path}
-                                to={item.path}
-                                label={item.label}
-                                icon={<item.icon size={20} />}
-                                badge={badgeValue}
-                                collapsed={collapsed}
-                                isMobile={isMobile}
-                                onNavigate={() => isMobile && setSidebarOpen(false)}
-                                subItems={item.subItems ? subItemsWithBadges : undefined}
-                            />
-                        );
-                    })}
+                    })()}
 
                     {/* Employee Management - Removed by user request */}
                 </Sidebar>
