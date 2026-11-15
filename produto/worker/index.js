@@ -185,6 +185,26 @@ async function getContrato(env, t) {
   return J({ escola: c.escola, plano: c.plano_nome, mensal: c.mensal, implantacao: c.implantacao, dia: c.dia_venc, texto: c.texto, status: c.status, assinado_em: c.assinado_em, assinante: c.ass_nome, sugestao_nome: l ? l.contato_nome : '', empresa: cfg.empresa_nome, fatura });
 }
 
+/** Publica o endereço da escola como domínio do Worker pela API do Cloudflare (precisa do segredo CF_API_TOKEN).
+ *  O Cloudflare cria o DNS e o certificado sozinho. Devolve { ok, motivo } e nunca lança: o pedido que chamou não pode falhar por isso. */
+async function publicarDominio(env, urlSistema) {
+  if (!env.CF_API_TOKEN) return { ok: false, motivo: 'Chave de API do Cloudflare ainda não configurada (segredo CF_API_TOKEN).' };
+  let host; try { host = new URL(urlSistema).host; } catch { return { ok: false, motivo: 'Endereço inválido.' }; }
+  if (!host.endsWith('.' + DOMINIO)) return { ok: false, motivo: 'Só subdomínios de ' + DOMINIO + ' são publicados automaticamente.' };
+  const cf = async (m, p, b) => { const r = await fetch('https://api.cloudflare.com/client/v4' + p, { method: m, headers: { authorization: 'Bearer ' + env.CF_API_TOKEN, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined, signal: AbortSignal.timeout(15000) }); const j = await r.json().catch(() => ({})); if (!r.ok || j.success === false) throw new Error((j.errors && j.errors[0] && j.errors[0].message) || 'Cloudflare respondeu ' + r.status); return j.result; };
+  try {
+    const z = await cf('GET', '/zones?name=' + DOMINIO + '&account.id=' + env.CF_ACCOUNT_ID);
+    if (!z.length) throw new Error('Zona ' + DOMINIO + ' não encontrada nesta conta.');
+    await cf('PUT', '/accounts/' + env.CF_ACCOUNT_ID + '/workers/domains', { hostname: host, service: env.CF_WORKER_NAME || 'esporte-thayruan', environment: 'production', zone_id: z[0].id });
+    await env.DB.prepare('INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').bind('dominio:' + host, 'ok').run();
+    await log(env, 'sistema', 'Endereço publicado: ' + host);
+    return { ok: true };
+  } catch (e) {
+    await env.DB.prepare('INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').bind('dominio:' + host, 'erro: ' + e.message).run();
+    return { ok: false, motivo: e.message };
+  }
+}
+
 async function assinar(req, env, t) {
   let b; try { b = await req.json(); } catch { return erro('Corpo inválido.'); }
   const c = await env.DB.prepare('SELECT * FROM contratos WHERE token=?').bind(t).first();
@@ -202,7 +222,9 @@ async function assinar(req, env, t) {
   const cli = await env.DB.prepare('INSERT INTO clientes(lead_id,contrato_id,escola,contato_nome,contato_tel,contato_email,plano_nome,mensal,dia_venc,status,criado) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
     .bind(c.lead_id, c.id, c.escola, lead ? lead.contato_nome : nome, lead ? lead.contato_tel : '', lead ? lead.contato_email : '', c.plano_nome, c.mensal, c.dia_venc, 'implantando', quando).run();
   const cid = cli.meta.last_row_id, hoje = tz(), ym = hoje.slice(0, 7);
-  await env.DB.prepare('UPDATE clientes SET url_sistema=? WHERE id=?').bind(await novoSubdominio(env, c.escola), cid).run();
+  const urlNova = await novoSubdominio(env, c.escola);
+  await env.DB.prepare('UPDATE clientes SET url_sistema=? WHERE id=?').bind(urlNova, cid).run();
+  await publicarDominio(env, urlNova); // sem a chave do Cloudflare apenas registra o motivo; o dono pode tentar de novo na Central
   await env.DB.prepare('UPDATE contratos SET status=?,assinado_em=?,ass_nome=?,ass_doc=?,ass_ip=?,ass_ua=?,ass_hash=?,cliente_id=? WHERE id=?').bind('assinado', quando, nome, doc, ass_ip, ua, h, cid, c.id).run();
   if (c.lead_id) await env.DB.prepare("UPDATE leads SET status='contratado' WHERE id=?").bind(c.lead_id).run();
   const valor = c.mensal + c.implantacao;
@@ -366,6 +388,15 @@ async function rotaAdmin(req, env, url, caminho) {
         n("SELECT data FROM sys_docs WHERE tenant=? AND col='auditoria' ORDER BY json_extract(data,'$.quando') DESC LIMIT 1", t),
         n("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_owner' AND id='limites'", t)]);
       return J({ matriculas: reg.n || 0, usuarios: usu.n || 0, documentos: doc.n || 0, kb: Math.round((doc.bytes || 0) / 1024), ultima_acao: ult.data ? JSON.parse(ult.data) : null, limite: lim.data ? JSON.parse(lim.data).maxMatriculas || 0 : 0 });
+    }
+    if (id && acao === 'publicar' && m === 'POST') { // (re)publica o endereço da escola no Cloudflare
+      const c = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
+      return J(await publicarDominio(env, c.url_sistema));
+    }
+    if (id && acao === 'dominio' && m === 'GET') {
+      const c = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return J({ estado: 'sem endereço' });
+      const h = new URL(c.url_sistema).host, v = await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('dominio:' + h).first();
+      return J({ host: h, estado: v ? v.v : 'não publicado pela automação', chave_configurada: Boolean(env.CF_API_TOKEN) });
     }
     if (id && acao === 'acesso' && m === 'POST') { // gera (ou refaz) o acesso do administrador da escola; a senha aparece só agora
       const c = await env.DB.prepare('SELECT escola,contato_email,url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);

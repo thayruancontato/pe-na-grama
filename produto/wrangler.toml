@@ -23,6 +23,11 @@ pattern = "escolinha-craques-do-vale.thayruan.com.br"
 custom_domain = true
 # <<< escolas
 
+# Publicação automática do endereço de cada escola (API do Cloudflare). O segredo CF_API_TOKEN é gravado com `wrangler secret put CF_API_TOKEN`.
+[vars]
+CF_ACCOUNT_ID = "0971703730b0e95fa6dee6211f497131"
+CF_WORKER_NAME = "esporte-thayruan"
+
 # Banco de vendas (SQLite dentro do Worker; não usa os bancos D1 da conta)
 [[durable_objects.bindings]]
 name = "BANCO"
