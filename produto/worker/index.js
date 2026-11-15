@@ -389,6 +389,16 @@ async function rotaAdmin(req, env, url, caminho) {
         n("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_owner' AND id='limites'", t)]);
       return J({ matriculas: reg.n || 0, usuarios: usu.n || 0, documentos: doc.n || 0, kb: Math.round((doc.bytes || 0) / 1024), ultima_acao: ult.data ? JSON.parse(ult.data) : null, limite: lim.data ? JSON.parse(lim.data).maxMatriculas || 0 : 0 });
     }
+    if (id && ['backups', 'backup', 'restaurar'].includes(acao)) { // cópias automáticas diárias (7 mais recentes) e restauração
+      const c = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
+      const tenant = new URL(c.url_sistema).host, b = m === 'GET' ? {} : await body();
+      const op = acao === 'backups' ? { op: 'backup-lista', tenant } : acao === 'backup' ? { op: 'backup-agora', tenant } : { op: 'backup-restaurar', tenant, quando: String(b.quando || '') };
+      if (acao === 'restaurar' && b.confirmar !== true) return erro('Confirme a restauração (substitui os dados atuais da escola).');
+      const r = await env.BANCO.get(env.BANCO.idFromName('principal')).fetch('https://banco/', { method: 'POST', body: JSON.stringify(op) }), j = await r.json();
+      if (!r.ok) return erro(j.erro || 'Falha no backup.', 500);
+      if (acao === 'restaurar') await log(env, 'sistema', 'Dados de ' + tenant + ' restaurados do backup de ' + op.quando);
+      return J(j);
+    }
     if (id && acao === 'publicar' && m === 'POST') { // (re)publica o endereço da escola no Cloudflare
       const c = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
       return J(await publicarDominio(env, c.url_sistema));
@@ -503,11 +513,36 @@ function resumoLead(cfgJson) {
 }
 
 // ---------- banco: SQLite dentro de um Durable Object, com a mesma interface do D1 (prepare/bind/first/all/run) ----------
+// Backup automático: o alarme do Durable Object (não precisa de cron) tira uma cópia diária dos dados de cada escola e guarda as 7 mais recentes.
+// shortcut: a cópia fica no mesmo banco (protege de erro humano e de exclusão, não de perda do próprio Worker); para isso baixe o backup da escola.
+const DIA = 24 * 3600e3, FILTRO_BACKUP = "NOT (col='system_settings' AND id='whatsapp_evolution') AND col<>'sys_flags'";
 export class Banco {
-  constructor(state) { this.sql = state.storage.sql; state.blockConcurrencyWhile(async () => { for (const s of SCHEMA) this.sql.exec(s); }); }
+  constructor(state) { this.state = state; this.sql = state.storage.sql; state.blockConcurrencyWhile(async () => { for (const s of SCHEMA) this.sql.exec(s); if (!(await state.storage.getAlarm())) await state.storage.setAlarm(Date.now() + DIA); }); }
+  async alarm() { try { for (const { tenant } of this.sql.exec('SELECT DISTINCT tenant FROM sys_docs').toArray()) this.backup(tenant); } finally { await this.state.storage.setAlarm(Date.now() + DIA); } }
+  backup(tenant) {
+    const quando = new Date().toISOString(), json = JSON.stringify(this.sql.exec(`SELECT col,id,data FROM sys_docs WHERE tenant=? AND ${FILTRO_BACKUP}`, tenant).toArray().map((x) => [x.col, x.id, x.data]));
+    for (let i = 0, parte = 0; i < json.length || parte === 0; i += 400000) this.sql.exec('INSERT INTO backups(tenant,quando,parte,data) VALUES(?,?,?,?)', tenant, quando, parte++, json.slice(i, i + 400000));
+    for (const v of this.sql.exec('SELECT DISTINCT quando FROM backups WHERE tenant=? ORDER BY quando DESC LIMIT -1 OFFSET 7', tenant).toArray()) this.sql.exec('DELETE FROM backups WHERE tenant=? AND quando=?', tenant, v.quando);
+    return quando;
+  }
+  restaurar(tenant, quando) {
+    const partes = this.sql.exec('SELECT data FROM backups WHERE tenant=? AND quando=? ORDER BY parte', tenant, quando).toArray();
+    if (!partes.length) throw new Error('Backup não encontrado.');
+    const docs = JSON.parse(partes.map((p) => p.data).join(''));
+    this.state.storage.transactionSync(() => {
+      this.backup(tenant); // guarda o estado de agora antes de substituir
+      this.sql.exec(`DELETE FROM sys_docs WHERE tenant=? AND ${FILTRO_BACKUP}`, tenant);
+      for (const [col, id, data] of docs) this.sql.exec('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?)', tenant, col, id, data);
+    });
+    return docs.length;
+  }
   async fetch(req) {
     try {
-      const { sql, binds, modo } = await req.json(), cur = this.sql.exec(sql, ...binds), linhas = cur.toArray();
+      const corpo = await req.json();
+      if (corpo.op === 'backup-lista') return Response.json({ lista: this.sql.exec('SELECT quando, SUM(LENGTH(data)) bytes FROM backups WHERE tenant=? GROUP BY quando ORDER BY quando DESC', corpo.tenant).toArray(), proximo: await this.state.storage.getAlarm() });
+      if (corpo.op === 'backup-agora') return Response.json({ quando: this.backup(corpo.tenant) });
+      if (corpo.op === 'backup-restaurar') return Response.json({ docs: this.restaurar(corpo.tenant, corpo.quando) });
+      const { sql, binds, modo } = corpo, cur = this.sql.exec(sql, ...binds), linhas = cur.toArray();
       if (modo === 'all') return Response.json({ results: linhas });
       if (modo === 'first') return Response.json({ row: linhas[0] || null });
       return Response.json({ meta: { last_row_id: this.sql.exec('SELECT last_insert_rowid() id').one().id, changes: cur.rowsWritten } });

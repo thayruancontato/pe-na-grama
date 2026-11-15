@@ -13,5 +13,6 @@ export const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS idx_tent ON tentativas(chave, quando)",
   "CREATE TABLE IF NOT EXISTS atividade (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  quando TEXT NOT NULL,\n  tipo TEXT NOT NULL,\n  texto TEXT NOT NULL\n)",
   "CREATE TABLE IF NOT EXISTS sys_docs (tenant TEXT NOT NULL, col TEXT NOT NULL, id TEXT NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tenant, col, id))",
-  "CREATE TABLE IF NOT EXISTS sys_users (tenant TEXT NOT NULL, email TEXT NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL, uid TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'user', PRIMARY KEY (tenant, email))"
+  "CREATE TABLE IF NOT EXISTS sys_users (tenant TEXT NOT NULL, email TEXT NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL, uid TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'user', PRIMARY KEY (tenant, email))",
+  "CREATE TABLE IF NOT EXISTS backups (tenant TEXT NOT NULL, quando TEXT NOT NULL, parte INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (tenant, quando, parte))"
 ];
