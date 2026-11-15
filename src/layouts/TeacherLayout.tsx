@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { bloqueado } from '../shim/controle';
 import { Users, Calendar, Trophy } from 'lucide-react';
 import { query, collection, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -9,6 +10,7 @@ import '../App.css';
 
 export default function TeacherLayout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const [collapsed, setCollapsed] = useState(false);
@@ -165,7 +167,7 @@ export default function TeacherLayout() {
                 </Sidebar>
 
                 <main style={{ flex: 1, padding: '20px', overflowX: 'hidden' }}>
-                    <Outlet />
+                    {bloqueado(location.pathname) ? <div className="native-card" style={{ padding: '24px', textAlign: 'center' }}><h2>Recurso indisponível</h2><p>Esta área foi desativada pela escola.</p></div> : <Outlet />}
                 </main>
             </div>
         </div>

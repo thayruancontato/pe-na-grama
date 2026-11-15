@@ -5,6 +5,7 @@ import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { isRunningAsInstalledApp, openPWAInstallPrompt } from '../utils/pwaInstall';
+import { bloqueado, valorControle } from '../shim/controle';
 import { configureAuthPersistence } from '../utils/authPersistence';
 import {
     clearResponsavelKey,
@@ -216,6 +217,7 @@ export default function StudentLayout() {
     };
 
     const NavItem = ({ to, label, icon, badge, subItems }: any) => {
+        if (to && bloqueado(to)) return null;
         const normalizePath = (p: string) => p.endsWith('/') ? p.slice(0, -1) : p;
         const currentPath = normalizePath(location.pathname);
         const targetPath = normalizePath(to);
@@ -408,7 +410,7 @@ export default function StudentLayout() {
         </>
     );
 
-    const MenuGridItem = ({ icon: Icon, label, onClick, link }: any) => (
+    const MenuGridItem = ({ icon: Icon, label, onClick, link }: any) => (link && bloqueado(link)) ? null : (
         <div
             onClick={() => {
                 if (link) navigate(link);
@@ -638,7 +640,7 @@ export default function StudentLayout() {
 
                 {/* Main Content */}
                 <main style={{ flex: 1, padding: isMobile ? '15px' : '20px', overflowX: 'hidden' }}>
-                    <Outlet />
+                    {bloqueado(location.pathname) ? <div className="native-card" style={{ padding: '24px', textAlign: 'center' }}><h2>Recurso indisponível</h2><p>Esta área foi desativada pela escola.</p></div> : <Outlet />}
                 </main>
             </div>
 
@@ -782,7 +784,7 @@ export default function StudentLayout() {
 
                         {/* Section 3: Institucional */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                            <MenuGridItem icon={Instagram} label="Instagram" onClick={() => window.open('https://www.instagram.com/rumoaoesporte2025/', '_blank')} />
+                            {/^https?:\/\//i.test(String(valorControle('instagram_url') || '')) && <MenuGridItem icon={Instagram} label="Instagram" onClick={() => window.open(String(valorControle('instagram_url')), '_blank', 'noopener')} />}
                         </div>
 
                         <div style={{ marginTop: '10px' }}>

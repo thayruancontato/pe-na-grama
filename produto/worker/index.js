@@ -1,4 +1,5 @@
-import { rotaSistema, servirSistema, importarSistema } from './sistema.js';
+import { rotaSistema, servirSistema, importarSistema, tokenParaDono, revogar, auditar } from './sistema.js';
+import { CATALOGO, INTERNO, limparControle, limparInterno, controleDe, esquecerControle } from './controle.js';
 // Worker do Pé na Grama: recebe os pedidos do formulário, gera proposta e contrato, cobra por Pix e alimenta a Central do dono.
 // Tudo no mesmo domínio: /api/* cai aqui; o resto é servido como arquivo estático.
 
@@ -417,6 +418,69 @@ async function rotaAdmin(req, env, url, caminho) {
       await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: 'admin' }] });
       await log(env, 'sistema', 'Acesso do administrador gerado para ' + c.escola);
       return J({ email, senha, url: c.url_sistema + '/admin/login' });
+    }
+    // ---- Dono master: controle total da escola (opções, usuários, dados, sessões, entrar como a escola) ----
+    if (id && ['controle', 'usuarios', 'usuario', 'sessoes', 'dados', 'limpar-dados', 'auditoria', 'exportar', 'entrar'].includes(acao)) {
+      const c0 = await env.DB.prepare('SELECT escola,url_sistema FROM clientes WHERE id=?').bind(id).first();
+      if (!c0 || !c0.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
+      const t = new URL(c0.url_sistema).host, q = (sql, ...a) => env.DB.prepare(sql).bind(...a);
+      const doc = async (nome) => { const x = await q("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_owner' AND id=?", t, nome).first(); return x ? JSON.parse(x.data) : null; };
+      const salvarDoc = (nome, v) => q('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data', t, 'sys_owner', nome, JSON.stringify(v)).run();
+      const senhaNova = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'[b % 54]).join('');
+      if (acao === 'controle' && m === 'GET') {
+        const salvo = await doc('controle'); esquecerControle(t);
+        return J({ catalogo: CATALOGO.map(({ paths, ...o }) => ({ ...o, modulo: Boolean(paths) })), valores: await controleDe(env, t), definidos: salvo ? salvo.valores || {} : {}, interno_campos: INTERNO, interno: salvo ? salvo.interno || {} : {} });
+      }
+      if (acao === 'controle' && m === 'PUT') {
+        const b = await body(), salvo = (await doc('controle')) || {}, novo = { valores: { ...(salvo.valores || {}), ...limparControle(b.valores) }, interno: { ...(salvo.interno || {}), ...limparInterno(b.interno) } };
+        await salvarDoc('controle', novo); esquecerControle(t);
+        await log(env, 'sistema', 'Controle de ' + c0.escola + ' alterado (' + Object.keys(limparControle(b.valores)).length + ' opções)');
+        return J({ ok: true, valores: await controleDe(env, t) });
+      }
+      if (acao === 'usuarios' && m === 'GET') {
+        const r = await q('SELECT email,role,uid,rowid FROM sys_users WHERE tenant=? ORDER BY rowid', t).all(), fl = await q("SELECT id,data FROM sys_docs WHERE tenant=? AND col='sys_flags'", t).all();
+        const bloq = new Set((fl.results || []).filter((x) => JSON.parse(x.data).bloqueado).map((x) => x.id));
+        return J({ usuarios: (r.results || []).map((u, i) => ({ email: u.email, role: u.role, bloqueado: bloq.has(u.email), principal: u.role === 'admin' && !(r.results || []).slice(0, i).some((x) => x.role === 'admin') })) });
+      }
+      if (acao === 'usuario' && m === 'POST') {
+        const b = await body(), email = String(b.email || '').trim().toLowerCase(), papel = ['admin', 'professor', 'user'].includes(b.papel) ? b.papel : 'user';
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return erro('E-mail inválido.');
+        const u = await q('SELECT email,role FROM sys_users WHERE tenant=? AND email=?', t, email).first();
+        const primeiro = await q("SELECT email FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1", t).first();
+        const ehPrincipal = Boolean(u && primeiro && primeiro.email === email);
+        const bloqueio = async (v) => q('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data', t, 'sys_flags', email, JSON.stringify({ ...(JSON.parse(((await q("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_flags' AND id=?", t, email).first()) || { data: '{}' }).data)), bloqueado: v })).run();
+        if (b.acao === 'criar') {
+          if (u) return erro('E-mail já cadastrado.', 409);
+          const senha = String(b.senha || '') || senhaNova(); await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: papel === 'admin' ? 'admin' : papel === 'professor' ? 'professor' : 'user' }] });
+          await q("UPDATE sys_users SET role=? WHERE tenant=? AND email=?", papel, t, email).run();
+          await log(env, 'sistema', 'Usuário ' + email + ' (' + papel + ') criado em ' + c0.escola); return J({ ok: true, email, senha });
+        }
+        if (!u) return erro('Usuário não encontrado.', 404);
+        if (b.acao === 'senha') { const senha = String(b.senha || '') || senhaNova(); await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: u.role === 'admin' ? 'admin' : u.role }] }); await q('UPDATE sys_users SET role=? WHERE tenant=? AND email=?', u.role, t, email).run(); await revogar(env, t, email); await log(env, 'sistema', 'Senha de ' + email + ' redefinida em ' + c0.escola); return J({ ok: true, senha }); }
+        if (b.acao === 'papel') { if (ehPrincipal) return erro('O administrador principal não pode mudar de papel.'); await q('UPDATE sys_users SET role=? WHERE tenant=? AND email=?', papel, t, email).run(); await revogar(env, t, email); return J({ ok: true }); }
+        if (b.acao === 'bloquear') { if (ehPrincipal) return erro('O administrador principal não pode ser bloqueado.'); await bloqueio(true); await revogar(env, t, email); return J({ ok: true }); }
+        if (b.acao === 'desbloquear') { await bloqueio(false); return J({ ok: true }); }
+        if (b.acao === 'sessoes') { await revogar(env, t, email); return J({ ok: true }); }
+        if (b.acao === 'excluir') { if (ehPrincipal) return erro('O administrador principal não pode ser excluído.'); await q('DELETE FROM sys_users WHERE tenant=? AND email=?', t, email).run(); await log(env, 'sistema', 'Usuário ' + email + ' excluído de ' + c0.escola); return J({ ok: true }); }
+        return erro('Ação desconhecida.');
+      }
+      if (acao === 'sessoes' && m === 'POST') { const r = await q('SELECT email FROM sys_users WHERE tenant=?', t).all(); for (const u of r.results || []) await revogar(env, t, u.email); await log(env, 'sistema', 'Todas as sessões de ' + c0.escola + ' encerradas'); return J({ ok: true, usuarios: (r.results || []).length }); }
+      if (acao === 'dados' && m === 'GET') { const r = await q('SELECT col, COUNT(*) n, COALESCE(SUM(LENGTH(data)),0) b FROM sys_docs WHERE tenant=? GROUP BY col ORDER BY b DESC', t).all(); return J({ colecoes: (r.results || []).map((x) => ({ col: x.col, n: x.n, kb: Math.round(x.b / 1024) })) }); }
+      if (acao === 'limpar-dados' && m === 'POST') {
+        const b = await body(); if (!['auditoria', 'rumo_ao_esporte_2026_chamadas'].includes(b.col) || b.confirmar !== true) return erro('Só dá para limpar o registro de ações e as chamadas, com confirmação.');
+        const r = await q('DELETE FROM sys_docs WHERE tenant=? AND col=?', t, b.col).run(); await log(env, 'sistema', 'Coleção ' + b.col + ' de ' + c0.escola + ' limpa'); return J({ ok: true, apagados: r.meta ? r.meta.changes : 0 });
+      }
+      if (acao === 'auditoria' && m === 'GET') { const r = await q("SELECT data FROM sys_docs WHERE tenant=? AND col='auditoria' ORDER BY json_extract(data,'$.quando') DESC LIMIT 80", t).all(); return J({ registros: (r.results || []).map((x) => JSON.parse(x.data)) }); }
+      if (acao === 'exportar' && m === 'GET') {
+        const r = await q("SELECT col,id,data FROM sys_docs WHERE tenant=? AND NOT (col='system_settings' AND id='whatsapp_evolution') AND substr(col,1,4)<>'sys_'", t).all();
+        await log(env, 'sistema', 'Dados de ' + c0.escola + ' exportados pelo dono');
+        return new Response(JSON.stringify({ tenant: t, geradoEm: new Date().toISOString(), docs: (r.results || []).map((x) => ({ col: x.col, id: x.id, data: JSON.parse(x.data) })) }), { headers: { 'content-type': 'application/json; charset=utf-8', 'content-disposition': 'attachment; filename="dados-' + t.split('.')[0] + '.json"' } });
+      }
+      if (acao === 'entrar' && m === 'POST') {
+        const a = await q("SELECT email,uid FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1", t).first(); if (!a) return erro('A escola ainda não tem administrador. Gere o acesso primeiro.', 409);
+        const tk = await tokenParaDono(env, t, { email: a.email, uid: a.uid, role: 'admin' }, 0.5);
+        await log(env, 'sistema', 'Dono entrou como administrador de ' + c0.escola); return J({ url: c0.url_sistema + '/__entrar#t=' + tk });
+      }
     }
     if (id && acao === 'limite' && m === 'PUT') { // limite de matrículas do plano (0 = sem limite)
       const c = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);

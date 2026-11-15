@@ -1,3 +1,4 @@
+import { bloqueado } from '../shim/controle';
 import { useState, useEffect } from 'react';
 import type { Employee } from '../types/user';
 import { DEFAULT_ADMIN_PERMISSIONS } from '../types/user';
@@ -121,6 +122,7 @@ export function useAdminPermissions() {
     }, []);
 
     const isAllowed = (path: string) => {
+        if (bloqueado(path)) return false; // módulo desligado pela Central
         if (permissions.allowedRoutes.includes('*')) return true;
         // Check exact match or if the path starts with an allowed route (for sub-routes)
         return permissions.allowedRoutes.some(allowed => path.startsWith(allowed));

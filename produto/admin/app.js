@@ -222,6 +222,7 @@
       ${c.url_sistema ? `<div><div class="ad-sec" style="margin-top:0">Sistema da escola</div><div id="saude" class="pg-alert" style="margin-bottom:10px">Carregando situação…</div>
         <div class="ad-two"><div class="pg-field"><label class="pg-label" for="lm">Limite de matrículas (0 = sem limite)</label><div class="ad-copy"><input class="pg-input" id="lm" type="number" min="0" value="0"><button class="pg-btn" id="lmb">Salvar limite</button></div></div>
         <div class="pg-field"><label class="pg-label">Acesso do administrador</label><button class="pg-btn" id="acesso">Gerar acesso do administrador</button></div></div>
+        <div class="pg-field"><button class="pg-btn green" id="ctl">Controle total da escola (módulos, marca, limites, segurança, usuários, dados)</button></div>
         <div class="pg-field"><label class="pg-label">Endereço no ar</label><div class="ad-copy"><span id="dom" style="flex:1;align-self:center">Verificando…</span><button class="pg-btn" id="pub">Publicar endereço</button></div></div><div class="pg-field"><label class="pg-label">Cópias de segurança (automáticas, 1 por dia; ficam as 7 mais recentes)</label><div id="bks" style="margin-bottom:8px">Carregando…</div><button class="pg-btn" id="bkn">Fazer cópia agora</button></div><div id="acessoRes"></div></div>` : ''}
       <div><div class="ad-sec" style="margin-top:0">Implantação</div>${CHECK.map(k => `<label class="pg-check ${c.checklist[k] ? 'done' : ''}"><input type="checkbox" data-ck="${E(k)}" ${c.checklist[k] ? 'checked' : ''}><span>${E(k)}</span></label>`).join('')}</div>
       <div class="pg-field"><label class="pg-label" for="nt">Anotações</label><textarea class="pg-textarea" id="nt" style="min-height:80px">${E(c.notas)}</textarea></div>
@@ -239,6 +240,7 @@
         listaBk();
         $('#bkn', el).onclick = async () => { try { await api('clientes/' + id + '/backup', { m: 'POST', b: {} }); toast('Cópia feita'); listaBk(); } catch (e) { falha(e); } };
         $('#pub', el).onclick = async () => { try { const r = await api('clientes/' + id + '/publicar', { m: 'POST', b: {} }); if (r.ok) toast('Endereço publicado'); else alert(r.motivo); estadoDom(); } catch (e) { falha(e); } };
+        $('#ctl', el).onclick = () => controleEscola(c);
         $('#lmb', el).onclick = async () => { try { await api('clientes/' + id + '/limite', { m: 'PUT', b: { max: +$('#lm', el).value || 0 } }); toast('Limite salvo'); } catch (e) { falha(e); } };
         $('#acesso', el).onclick = async () => { if (!confirm('Gerar um novo acesso? A senha anterior do administrador deixa de valer.')) return; try { const r = await api('clientes/' + id + '/acesso', { m: 'POST', b: {} }); $('#acessoRes', el).innerHTML = `<div class="pg-alert ok" style="margin-top:10px">Anote agora, a senha não aparece de novo.<br>Endereço: <b>${E(r.url)}</b><br>E-mail: <b>${E(r.email)}</b><br>Senha: <b>${E(r.senha)}</b></div>`; } catch (e) { falha(e); } };
       }
@@ -246,6 +248,69 @@
         const checklist = {}; el.querySelectorAll('[data-ck]').forEach(i => checklist[i.dataset.ck] = i.checked);
         try { await api('clientes/' + id, { m: 'PATCH', b: { status: $('#st', el).value, url_sistema: $('#ur', el).value, mensal: money($('#mn', el).value), dia_venc: +$('#dv', el).value, notas: $('#nt', el).value, checklist } }); toast('Cliente salvo'); fechar(); rota(); } catch (e) { falha(e); } };
     });
+  }
+  // ---------- controle total da escola (dono master) ----------
+  async function controleEscola(c) {
+    const id = c.id, base = 'clientes/' + id + '/';
+    let ctl; try { ctl = await api(base + 'controle'); } catch (e) { return falha(e); }
+    const grupos = [...new Set(ctl.catalogo.map(o => o.g))], mudou = {}, internoMud = {};
+    const campo = o => {
+      const v = ctl.valores[o.k], k = E(o.k);
+      if (o.t === 'bool') return `<label class="pg-check"><input type="checkbox" data-k="${k}" ${v ? 'checked' : ''}><span>${E(o.r)}</span></label>`;
+      const ent = o.t === 'num' ? `<input class="pg-input" type="number" min="0" data-k="${k}" value="${E(v)}">` : o.t === 'cor' ? `<input type="color" data-k="${k}" value="${E(v)}" style="width:60px;height:36px">` : o.t === 'sel' ? `<select class="pg-select" data-k="${k}">${o.o.map(x => `<option value="${E(x[0])}" ${v === x[0] ? 'selected' : ''}>${E(x[1])}</option>`).join('')}</select>` : `<input class="pg-input" data-k="${k}" value="${E(v)}" placeholder="${E(o.a || '')}">`;
+      return `<div class="pg-field"><label class="pg-label">${E(o.r)}${o.a && o.t !== 'txt' ? ` <small style="font-weight:400;color:var(--medium-gray)">· ${E(o.a)}</small>` : ''}</label>${ent}</div>`;
+    };
+    const aba = { opcoes: '', usuarios: '<div id="usu">Carregando…</div>', dados: '<div id="dad">Carregando…</div>', ficha: '', acoes: '' };
+    aba.opcoes = `<div class="pg-field"><input class="pg-input" id="busca" type="search" placeholder="Buscar entre ${ctl.catalogo.length} opções…"></div><div id="ops">${grupos.map(g => `<details class="grp" open><summary class="ad-sec" style="cursor:pointer">${E(g)} <small style="font-weight:400">(${ctl.catalogo.filter(o => o.g === g).length})</small></summary><div class="ad-two">${ctl.catalogo.filter(o => o.g === g).map(o => `<div class="op" data-txt="${E((o.r + ' ' + (o.a || '')).toLowerCase())}">${campo(o)}</div>`).join('')}</div></details>`).join('')}</div><div class="pg-actions" style="justify-content:flex-end;margin-top:14px"><button class="pg-btn green" id="salvaOp">Salvar opções</button></div>`;
+    aba.ficha = `<div class="ad-two">${ctl.interno_campos.map(([k, r]) => `<div class="pg-field"><label class="pg-label">${E(r)}</label><input class="pg-input" data-i="${E(k)}" value="${E(ctl.interno[k] || '')}"></div>`).join('')}</div><div class="pg-actions" style="justify-content:flex-end;margin-top:14px"><button class="pg-btn green" id="salvaFi">Salvar ficha</button></div>`;
+    aba.acoes = `<div class="pg-stack"><div class="pg-field"><label class="pg-label">Entrar no painel da escola como administrador (30 minutos)</label><button class="pg-btn" id="entrarEsc">Entrar como a escola</button></div>
+      <div class="pg-field"><label class="pg-label">Encerrar as sessões de todos os usuários da escola</label><button class="pg-btn" id="sessTodas">Encerrar todas as sessões</button></div>
+      <div class="pg-field"><label class="pg-label">Baixar todos os dados da escola (arquivo JSON)</label><a class="pg-btn" href="/api/admin/${base}exportar" id="expDados">Baixar dados</a></div>
+      <div class="pg-field"><label class="pg-label">Atalhos de estado</label><div class="ad-copy"><button class="pg-btn" data-atalho="suspensa:true">Suspender escola</button><button class="pg-btn" data-atalho="suspensa:false">Reativar escola</button><button class="pg-btn" data-atalho="manutencao:true">Ligar manutenção</button><button class="pg-btn" data-atalho="manutencao:false">Desligar manutenção</button><button class="pg-btn" data-atalho="somente_leitura:true">Somente leitura</button><button class="pg-btn" data-atalho="somente_leitura:false">Liberar gravação</button></div></div><div id="acRes"></div></div>`;
+    modal('Controle total · ' + c.escola, `<div class="pg-stack"><div class="ad-copy" id="abas" style="flex-wrap:wrap">${[['opcoes', 'Opções (' + ctl.catalogo.length + ')'], ['usuarios', 'Usuários'], ['dados', 'Dados e registro'], ['ficha', 'Ficha interna'], ['acoes', 'Ações']].map(([k, r], i) => `<button class="pg-btn ${i ? '' : 'green'}" data-aba="${k}">${r}</button>`).join('')}</div><div id="corpoAba"></div></div>`, (el) => {
+      const corpo = $('#corpoAba', el);
+      const liga = () => {
+        corpo.querySelectorAll('[data-k]').forEach(i => i.onchange = () => { mudou[i.dataset.k] = i.type === 'checkbox' ? i.checked : i.value; });
+        corpo.querySelectorAll('[data-i]').forEach(i => i.onchange = () => { internoMud[i.dataset.i] = i.value; });
+        const b = $('#busca', corpo); if (b) b.oninput = () => { const q = b.value.toLowerCase(); corpo.querySelectorAll('.op').forEach(d => d.style.display = d.dataset.txt.includes(q) ? '' : 'none'); };
+        const sv = $('#salvaOp', corpo); if (sv) sv.onclick = async () => { try { const r = await api(base + 'controle', { m: 'PUT', b: { valores: mudou } }); Object.assign(ctl.valores, r.valores); toast(Object.keys(mudou).length + ' opção(ões) salva(s)'); for (const k in mudou) delete mudou[k]; } catch (e) { falha(e); } };
+        const sf = $('#salvaFi', corpo); if (sf) sf.onclick = async () => { try { await api(base + 'controle', { m: 'PUT', b: { interno: internoMud } }); Object.assign(ctl.interno, internoMud); toast('Ficha salva'); } catch (e) { falha(e); } };
+        const usu = $('#usu', corpo); if (usu) listaUsuarios(usu);
+        const dad = $('#dad', corpo); if (dad) painelDados(dad);
+        const ent = $('#entrarEsc', corpo); if (ent) {
+          ent.onclick = async () => { const w = window.open('', '_blank'); try { const r = await api(base + 'entrar', { m: 'POST', b: {} }); if (w) w.location = r.url; else toast('Libere pop-ups para abrir a escola.'); } catch (e) { if (w) w.close(); falha(e); } };
+          $('#sessTodas', corpo).onclick = async () => { if (!confirm('Encerrar as sessões de todos os usuários desta escola?')) return; try { const r = await api(base + 'sessoes', { m: 'POST', b: {} }); toast('Sessões encerradas (' + r.usuarios + ' usuários)'); } catch (e) { falha(e); } };
+          corpo.querySelectorAll('[data-atalho]').forEach(b => b.onclick = async () => { const [k, v] = b.dataset.atalho.split(':'); if (!confirm('Confirmar: ' + b.textContent + '?')) return; try { const r = await api(base + 'controle', { m: 'PUT', b: { valores: { [k]: v === 'true' } } }); Object.assign(ctl.valores, r.valores); toast('Feito: ' + b.textContent); } catch (e) { falha(e); } });
+        }
+      };
+      const mostra = k => { corpo.innerHTML = aba[k]; el.querySelectorAll('[data-aba]').forEach(b => b.classList.toggle('green', b.dataset.aba === k)); liga(); };
+      el.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => mostra(b.dataset.aba));
+      mostra('opcoes');
+    });
+    async function listaUsuarios(box) {
+      try {
+        const r = await api(base + 'usuarios');
+        box.innerHTML = `<div class="ad-copy" style="flex-wrap:wrap;margin-bottom:10px"><input class="pg-input" id="nuE" placeholder="e-mail do novo usuário" style="flex:2;min-width:180px"><select class="pg-select" id="nuP" style="flex:1"><option value="admin">Administrador</option><option value="professor">Professor</option><option value="user">Responsável</option></select><button class="pg-btn" id="nuB">Criar usuário</button></div><div id="usRes"></div>
+          <div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>E-mail</th><th>Papel</th><th></th></tr></thead><tbody>${r.usuarios.map(u => `<tr><td>${E(u.email)}${u.principal ? ' <span class="pg-badge">principal</span>' : ''}${u.bloqueado ? ' <span class="pg-badge bad">bloqueado</span>' : ''}</td><td>${E({ admin: 'Administrador', professor: 'Professor', user: 'Responsável' }[u.role] || u.role)}</td><td class="ac"><button class="pg-btn detail" data-u="senha" data-e="${E(u.email)}">Nova senha</button> <button class="pg-btn detail" data-u="sessoes" data-e="${E(u.email)}">Sair dos aparelhos</button> ${u.bloqueado ? `<button class="pg-btn detail" data-u="desbloquear" data-e="${E(u.email)}">Desbloquear</button>` : `<button class="pg-btn detail" data-u="bloquear" data-e="${E(u.email)}">Bloquear</button>`} ${u.principal ? '' : `<button class="pg-btn detail" data-u="papel" data-e="${E(u.email)}">Mudar papel</button> <button class="pg-btn detail" data-u="excluir" data-e="${E(u.email)}">Excluir</button>`}</td></tr>`).join('')}</tbody></table></div>`;
+        const mostra = (t, senha) => { $('#usRes', box).innerHTML = `<div class="pg-alert ok" style="margin-bottom:10px">${E(t)}<br>Senha: <b>${E(senha)}</b> (anote agora; não aparece de novo)</div>`; };
+        $('#nuB', box).onclick = async () => { try { const x = await api(base + 'usuario', { m: 'POST', b: { acao: 'criar', email: $('#nuE', box).value, papel: $('#nuP', box).value } }); mostra('Usuário criado: ' + x.email, x.senha); listaUsuarios(box); } catch (e) { falha(e); } };
+        box.querySelectorAll('[data-u]').forEach(b => b.onclick = async () => {
+          const acao = b.dataset.u, email = b.dataset.e; let papel;
+          if (acao === 'papel') { papel = prompt('Novo papel para ' + email + ': admin, professor ou user', 'professor'); if (!papel) return; }
+          if (['excluir', 'bloquear'].includes(acao) && !confirm((acao === 'excluir' ? 'Excluir ' : 'Bloquear ') + email + '?')) return;
+          try { const x = await api(base + 'usuario', { m: 'POST', b: { acao, email, papel } }); if (x.senha) mostra('Nova senha de ' + email, x.senha); else toast('Feito'); if (acao !== 'senha' && acao !== 'sessoes') listaUsuarios(box); } catch (e) { falha(e); }
+        });
+      } catch (e) { box.textContent = 'Não consegui listar.'; }
+    }
+    async function painelDados(box) {
+      try {
+        const [d, a] = await Promise.all([api(base + 'dados'), api(base + 'auditoria')]);
+        box.innerHTML = `<div class="ad-sec" style="margin-top:0">Dados armazenados</div><div class="pg-table-wrap"><table class="pg-table"><thead><tr><th>Coleção</th><th class="num">Registros</th><th class="num">KB</th></tr></thead><tbody>${d.colecoes.map(x => `<tr><td>${E(x.col)}</td><td class="num">${x.n}</td><td class="num">${x.kb}</td></tr>`).join('')}</tbody></table></div>
+          <div class="ad-copy" style="margin:10px 0"><button class="pg-btn" data-l="auditoria">Limpar registro de ações</button><button class="pg-btn" data-l="rumo_ao_esporte_2026_chamadas">Limpar histórico de chamadas</button></div>
+          <div class="ad-sec">Últimas ações na escola</div>${a.registros.length ? a.registros.map(x => `<div style="font-size:13px;margin:3px 0"><b>${E((x.quando || '').slice(0, 16).replace('T', ' '))}</b> · ${E(x.quem)} · ${E(x.acao)}</div>`).join('') : 'Nenhuma ação registrada.'}`;
+        box.querySelectorAll('[data-l]').forEach(b => b.onclick = async () => { if (!confirm('Apagar tudo de "' + b.dataset.l + '" desta escola? Não dá para desfazer (só restaurando um backup).')) return; try { const r = await api(base + 'limpar-dados', { m: 'POST', b: { col: b.dataset.l, confirmar: true } }); toast(r.apagados + ' registro(s) apagado(s)'); painelDados(box); } catch (e) { falha(e); } });
+      } catch (e) { box.textContent = 'Não consegui carregar.'; }
+    }
   }
   function cobrancaAvulsa(c, fecharAntes) {
     modal('Cobrança avulsa · ' + c.escola, `<div class="pg-stack"><div class="pg-field"><label class="pg-label" for="d">Descrição</label><input class="pg-input" id="d" value="Cobrança avulsa"></div><div class="ad-two"><div class="pg-field"><label class="pg-label" for="v">Valor (R$)</label><input class="pg-input" id="v" inputmode="decimal"></div><div class="pg-field"><label class="pg-label" for="w">Vencimento</label><input class="pg-input" id="w" type="date" value="${new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10)}"></div></div><div id="r"></div><div class="pg-actions" style="justify-content:flex-end"><button class="pg-btn green" id="g">Criar cobrança</button></div></div>`, el => {

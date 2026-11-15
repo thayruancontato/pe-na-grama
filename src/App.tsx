@@ -38,6 +38,7 @@ import StudentContract from './pages/StudentContract';
 import { CustomDialogProvider } from './context/CustomDialogContext';
 import MaintenanceGuard from './components/MaintenanceGuard';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import { valorControle } from './shim/controle';
 import NewVersionPrompt from './components/NewVersionPrompt';
 import './App.css';
 
@@ -113,7 +114,7 @@ function App() {
     <CustomDialogProvider>
       <LoadingProvider>
         <BrowserRouter>
-          <PWAInstallPrompt />
+          {!valorControle('ocultar_instalar_app') && <PWAInstallPrompt />}
           <NewVersionPrompt />
           <Routes>
             <Route path="/" element={<PublicForm />} />
