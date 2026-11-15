@@ -49,5 +49,20 @@ confere('token do responsável cai após "sair de todos"', (await req('GET', '/s
 const [, l2] = await req('POST', '/sys/auth/login', null, { email: 'pais.teste@example.com', password: '11144477735' });
 confere('novo login depois de revogar funciona', (await req('GET', '/sys/auth/me', l2.token))[0] === 200);
 
+// professor: entra pelo cadastro, enxerga só o necessário para a chamada e registra chamadas
+const [, ct] = await req('POST', '/sys/db/teachers', tk, { data: { nome: 'Prof Teste', email: 'prof.auto@example.com', cpf: '', senha: 'senha-prof-1', active: true } });
+const [, lpf] = await req('POST', '/sys/auth/login', null, { email: 'prof.auto@example.com', password: 'senha-prof-1' });
+confere('professor entra com a senha do cadastro', lpf.role === 'professor');
+confere('professor com senha errada recusado', (await req('POST', '/sys/auth/login', null, { email: 'prof.auto@example.com', password: 'errada-1' }))[0] === 401);
+confere('professor não lê o financeiro', ((await req('GET', '/sys/db/financial_payments', lpf.token))[1].docs || []).length === 0);
+confere('professor não edita inscrição', (await req('PUT', '/sys/db/' + REG + '/x', lpf.token, { data: { status: 'x' }, update: true }))[0] === 403);
+confere('professor lê a própria ficha sem a senha', JSON.stringify((await req('GET', '/sys/db/teachers', lpf.token))[1]).includes('senha-prof-1') === false);
+const [, cc] = await req('POST', '/sys/db/rumo_ao_esporte_2026_chamadas', lpf.token, { data: { turmaId: 'teste', presentCount: 0, totalCount: 0 } });
+confere('professor registra chamada', !!cc.id);
+await req('DELETE', '/sys/db/rumo_ao_esporte_2026_chamadas/' + cc.id, tk);
+await req('PUT', '/sys/db/teachers/' + ct.id, tk, { data: { active: false }, update: true });
+confere('professor desativado não entra', (await req('POST', '/sys/auth/login', null, { email: 'prof.auto@example.com', password: 'senha-prof-1' }))[0] === 401);
+await req('DELETE', '/sys/db/teachers/' + ct.id, tk);
+
 console.log(falhas ? `\n${falhas} falha(s)` : '\nTudo certo');
 process.exit(falhas ? 1 : 0);

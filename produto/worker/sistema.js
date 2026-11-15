@@ -193,6 +193,34 @@ async function portalPais(env, tenant, s, m, partes, corpo) {
   return erro('Sem permissão.', 403);
 }
 
+// Acesso do professor (role 'professor'): lê turmas, a própria ficha e os alunos (só o que a chamada precisa) e registra chamadas; nada além.
+const CHAMADAS = 'rumo_ao_esporte_2026_chamadas';
+async function portalProfessor(env, tenant, s, m, partes, corpo) {
+  const [, col, id] = partes, REG = 'rumo_ao_esporte_2026_registrations';
+  if (partes[0] !== 'db' || !colOk(col || '')) return erro('Sem permissão.', 403);
+  const limpa = (d) => ({ contractStatus: d.contractStatus, status: d.status, responsavel: { nome: d.responsavel && d.responsavel.nome, telefonePrincipal: d.responsavel && d.responsavel.telefonePrincipal },
+    alunos: (d.alunos || []).map((a) => ({ nome: a.nome, dataNascimento: a.dataNascimento, fotoUrl: a.fotoUrl, turmaId: a.turmaId, camisa: a.camisa, medicamentos: a.medicamentos, alergias: a.alergias })) });
+  if (m === 'GET') {
+    if (col === REG || col === 'teachers') {
+      const r = await env.DB.prepare('SELECT id,data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, col).all();
+      let docs = (r.results || []).map((x) => ({ id: x.id, data: JSON.parse(x.data) }));
+      if (col === REG) docs = docs.map((x) => ({ id: x.id, data: limpa(x.data) }));
+      else docs = docs.filter((x) => String(x.data.email || '').trim().toLowerCase() === s.email).map((x) => { const { senha, cpf, ...resto } = x.data; return { id: x.id, data: resto }; });
+      if (id) { const x = docs.find((d) => d.id === id); return J(x ? { existe: true, data: x.data } : { existe: false }); }
+      return J({ docs });
+    }
+    if (col === CHAMADAS || LEITURA_PAIS.has(col) || (col === 'system_settings' && id !== 'whatsapp_evolution')) return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
+    return J(id ? { existe: false } : { docs: [] });
+  }
+  if (m === 'POST' && col === CHAMADAS && !id) {
+    const novo = idNovo();
+    try { await gravar(env, tenant, { op: 'set', col, id: novo, data: corpo.data }); } catch (e) { return erro(e.message); }
+    await auditar(env, tenant, s, `professor registrou chamada ${novo}`);
+    return J({ id: novo });
+  }
+  return erro('Sem permissão.', 403);
+}
+
 /** Rotas /sys/* do tenant (host da escola). */
 export async function rotaSistema(req, env, tenant, p) {
   const m = req.method, partes = p.split('/').filter(Boolean).slice(1); // tira "sys"
@@ -213,6 +241,18 @@ export async function rotaSistema(req, env, tenant, p) {
       const fi = await env.DB.prepare('SELECT COUNT(*) n FROM tentativas WHERE chave=? AND quando>?').bind(chaveIp, desde).first();
       if (f.n >= 8 || fi.n >= 30) return erro('Muitas tentativas. Espere 15 minutos.', 429);
       let u = await env.DB.prepare('SELECT * FROM sys_users WHERE tenant=? AND email=?').bind(tenant, email).first();
+      if (email) { // professor: o cadastro em "teachers" manda (senha ou CPF digitados batem); a conta nasce ou é realinhada no login
+        const t = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='teachers' AND lower(trim(json_extract(data,'$.email')))=? LIMIT 1").bind(tenant, email).first();
+        const td = t && JSON.parse(t.data), bruta = String(corpo.password || ''), pw = bruta.trim(), cpfT = String(td && td.cpf || '').replace(/\D/g, ''), senhaT = String(td && td.senha || '').trim();
+        if (td && (!u || u.role !== 'admin')) {
+          if (td.active === false) u = null;
+          else if (((senhaT && senhaT === pw) || (cpfT.length === 11 && cpfT === pw.replace(/\D/g, ''))) && (!u || u.role !== 'professor' || (await pbkdf2(bruta, u.salt)) !== u.hash)) {
+            const { salt, hash } = await hashSenha(bruta), uid = u ? u.uid : idNovo();
+            await env.DB.prepare('INSERT INTO sys_users(tenant,email,salt,hash,uid,role) VALUES(?,?,?,?,?,?) ON CONFLICT(tenant,email) DO UPDATE SET salt=excluded.salt,hash=excluded.hash,role=excluded.role').bind(tenant, email, salt, hash, uid, 'professor').run();
+            u = { tenant, email, salt, hash, uid, role: 'professor' };
+          }
+        }
+      }
       if (!u && email) { // primeiro acesso do responsável: e-mail do cadastro + CPF como senha (o mesmo padrão do sistema original)
         const cpf = String(corpo.password || '').replace(/\D/g, '');
         const reg = cpf.length === 11 && await env.DB.prepare("SELECT 1 x FROM sys_docs WHERE tenant=? AND col='rumo_ao_esporte_2026_registrations' AND lower(trim(json_extract(data,'$.responsavel.email')))=? AND replace(replace(replace(json_extract(data,'$.responsavel.cpf'),'.',''),'-',''),' ','')=? LIMIT 1").bind(tenant, email, cpf).first();
@@ -312,6 +352,7 @@ export async function rotaSistema(req, env, tenant, p) {
       if (partes[0] === 'db' && m === 'POST' && col === 'rumo_ao_esporte_2026_registrations' && !id) return novaInscricao(req, env, tenant, corpo);
       return m === 'GET' ? J(id ? { existe: false } : { docs: [] }) : erro('Faça login.', 401);
     }
+    if (s.role === 'professor') return portalProfessor(env, tenant, s, m, partes, corpo);
     if (s.role !== 'admin') return portalPais(env, tenant, s, m, partes, corpo);
     try {
       if (partes[0] === 'batch' && m === 'POST') {
