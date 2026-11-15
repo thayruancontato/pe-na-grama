@@ -5,6 +5,12 @@ import '../styles/consistencia.css';
 const IGNORA = 'aside, nav, [data-ux-skip], [class*="print"], [class*="contract"], [class*="termo"], canvas';
 const lum = (c: string) => { const m = c.match(/[\d.]+/g); return m ? (0.299 * +m[0] + 0.587 * +m[1] + 0.114 * +m[2]) : 255; };
 const alfa = (c: string) => { const m = c.match(/[\d.]+/g); return m && m.length > 3 ? +m[3] : c === 'transparent' ? 0 : 1; };
+// verde sólido "solto" (não é WhatsApp nem status) segue a cor primária da escola
+const verdeSolto = (c: string) => {
+    const m = c.match(/[\d.]+/g); if (!m || alfa(c) < 0.9) return false;
+    const [r, g, b] = m.slice(0, 3).map((x) => +x / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    return mx === g && mx - mn > 0.25 && mx > 0.3 && (g - b) > 0.1 && (g - r) > 0.15;
+};
 const px = (v: string) => parseFloat(v) || 0;
 const marca = (el: Element, cls: string) => { el.classList.add(cls); el.setAttribute('data-ux', '1'); };
 const nada = (el: Element) => el.setAttribute('data-ux', '-');
@@ -21,6 +27,8 @@ function botao(el: HTMLElement) {
     else if (t.length <= 48) {
         marca(el, 'ux-btn'); if (sm) el.classList.add('ux-btn-sm');
         // botão sem estilo nenhum (borda 3D do navegador) vira botão secundário
+        const grad = cs.backgroundImage.includes('gradient') && (cs.backgroundImage.match(/rgba?\([^)]*\)/g) || []).some((c) => verdeSolto(c));
+        if ((grad || verdeSolto(cs.backgroundColor)) && !/whats|aprov|pag|ativ|confirm/i.test(t) && !/25d366|37,\s*211,\s*102/i.test(cs.backgroundColor)) el.classList.add('ux-btn-primary');
         if (el.closest('.ux-modal, .ux-overlay')) {
             if (/^(cancelar|fechar|voltar|não|nao)$/i.test(t)) el.classList.add('ux-btn-cancel');
             else if (/^(salvar|criar|adicionar|confirmar|enviar|gerar|finalizar|ok|aplicar|atualizar|continuar|sim)/i.test(t) && alfa(cs.backgroundColor) > 0.9 && lum(cs.backgroundColor) < 235) el.classList.add('ux-btn-primary');

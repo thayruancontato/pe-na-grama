@@ -442,8 +442,8 @@ export default function AdminCarteirinhas() {
                     title="CARTEIRINHAS"
                     subtitle="Visualize e exporte as carteirinhas de todos os alunos"
                 >
-                    <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                        <div style={{ position: 'relative' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '640px' }}>
+                        <div style={{ position: 'relative', flex: '1 1 220px' }}>
                             <input
                                 type="text"
                                 placeholder="Buscar por nome, cota ou CPF..."
@@ -455,7 +455,8 @@ export default function AdminCarteirinhas() {
                                     borderRadius: '8px',
                                     border: '1px solid #ddd',
                                     fontSize: '0.9rem',
-                                    width: '300px',
+                                    width: '100%',
+                                    boxSizing: 'border-box',
                                     outline: 'none'
                                 }}
                             />

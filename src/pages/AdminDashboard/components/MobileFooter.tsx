@@ -16,22 +16,21 @@ export const MobileFooter: React.FC<MobileFooterProps> = ({
 }) => {
     return (
         <div style={{
-            position: 'fixed',
+            position: 'sticky',
             bottom: 0,
-            left: 0,
-            right: 0,
+            margin: '16px -16px -16px',
             background: '#fff',
             borderTop: '1px solid #eee',
-            padding: '12px 15px env(safe-area-inset-bottom)',
+            padding: '8px 16px calc(12px + env(safe-area-inset-bottom))',
             zIndex: 100,
             boxShadow: '0 -4px 12px rgba(0,0,0,0.05)'
         }}>
-            <ModalityTabs
+            <div style={{ marginBottom: '-10px' }}><ModalityTabs
                 activeModality={activeModality}
                 allStudents={allStudents}
                 filterStatus={filterStatus}
                 onModalityClick={onModalityClick}
-            />
+            /></div>
 
             <button
                 onClick={onExportClick}

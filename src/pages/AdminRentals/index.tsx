@@ -46,15 +46,15 @@ const AdminRentals: React.FC = () => {
     };
 
     return (
-        <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#fcfcfc', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
             {/* Header Area */}
-            <div style={{ padding: '15px 25px', background: '#fff', borderBottom: '1px solid #eee', flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ marginBottom: '22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
                 <div>
-                    <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#17428f' }}>ALUGUEL DE ESPAÇOS</h1>
-                    <p style={{ margin: '5px 0 0', color: '#666' }}>Gerencie reservas de quadras e quiosques</p>
+                    <h1>Aluguel de Espaços</h1>
+                    <p className="ux-sub">Gerencie reservas de quadras e quiosques</p>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     {/* Toggle Button */}
                     <div style={{
                         display: 'flex',
@@ -140,7 +140,7 @@ const AdminRentals: React.FC = () => {
             </div>
 
             {/* Content Area - Full Width & Scrolled */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+            <div>
                 {activeTab === 'calendar' ? <RentalCalendar /> : <LocationManager />}
             </div>
         </div>

@@ -78,7 +78,7 @@ const LocationManager: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
                 <h3 style={{ margin: 0, color: '#333' }}>Locais Cadastrados</h3>
                 <button

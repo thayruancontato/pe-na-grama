@@ -69,7 +69,7 @@ const RentalCalendar: React.FC = () => {
     };
 
     return (
-        <div style={{ padding: '20px' }}>
+        <div style={{ padding: '0' }}>
             {/* Header / Controls */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', alignItems: 'center', marginBottom: '20px' }}>
 

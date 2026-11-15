@@ -44,7 +44,7 @@
   .ux-btn-ico { box-sizing: border-box; display: inline-flex !important; align-items: center; justify-content: center; width: 40px; height: 40px; min-height: 0; padding: 0 !important; border-radius: var(--ux-r-ctl) !important; cursor: pointer; }
   .ux-btn-ico.ux-btn-sm { width: 34px; height: 34px; }
   .ux-btn-cancel { background: #fff !important; color: var(--ux-ink) !important; border: 1px solid var(--ux-line) !important; box-shadow: none !important; }
-  .ux-btn-primary { background: #00a63a !important; color: #fff !important; border: 0 !important; }
+  .ux-btn-primary { background: #00a63a !important; background-image: none !important; color: #fff !important; border: 0 !important; }
   .ux-btn-raw { background: #fff !important; color: var(--ux-ink) !important; border: 1px solid var(--ux-line) !important; box-shadow: none !important; }
   .ux-btn:hover:not(:disabled), .ux-btn-ico:hover:not(:disabled) { filter: brightness(.95); }
   .ux-btn:active:not(:disabled), .ux-btn-ico:active:not(:disabled) { transform: translateY(1px); }
