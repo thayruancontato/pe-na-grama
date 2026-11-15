@@ -63,6 +63,7 @@ export const ALL_SYSTEM_ROUTES: RouteCategory[] = [
             { path: '/admin/contratos/modelo', label: 'Modelo de Contrato' },
             { path: '/admin/portaria', label: 'Portaria' },
             { path: '/admin/escola-controle', label: 'Inscrições e backup' },
+            { path: '/admin/dados-escola', label: 'Dados da escola' },
             { path: '/admin/whatsapp-servidor', label: 'Servidor WhatsApp da escola' },
             { path: '/admin/patrocinadores', label: 'Patrocinadores (logos e faixa de divulgação)' },
             { path: '/admin/alugueis', label: 'Aluguel de Espaços' },

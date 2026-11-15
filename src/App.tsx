@@ -28,6 +28,7 @@ import AdminPaymentProviderSettings from './pages/AdminPaymentProviderSettings';
 import AdminPatrocinadores from './pages/AdminPatrocinadores';
 import AdminWhatsappServidor from './pages/AdminWhatsappServidor';
 import AdminEscolaControle from './pages/AdminEscolaControle';
+import AdminDadosEscola from './pages/AdminDadosEscola';
 import AdminGastos from './pages/AdminGastos';
 import AdminNovoCadastro from './pages/AdminNovoCadastro';
 import AdminMigrateTurmas from './pages/AdminMigrateTurmas'; // Migration tool
@@ -190,6 +191,7 @@ function App() {
               <Route path="patrocinadores" element={<AdminPatrocinadores />} />
               <Route path="whatsapp-servidor" element={<AdminWhatsappServidor />} />
               <Route path="escola-controle" element={<AdminEscolaControle />} />
+              <Route path="dados-escola" element={<AdminDadosEscola />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="whatsapp" element={<AdminWhatsApp />} />
               <Route path="details/:id" element={<AdminDetails />} />

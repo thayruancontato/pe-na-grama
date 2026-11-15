@@ -341,7 +341,8 @@ export async function rotaSistema(req, env, tenant, p) {
 // Nome antigo do sistema ("Rumo ao Esporte", "... e ao Lazer - REAL", "... 2026") vira o nome da escola do subdomínio.
 const NOME_ANTIGO = /Rumo ao Esporte( e ao Lazer\s*[-–]\s*REAL)?( 2026)?/gi;
 const LOGOS = new Set(['/rumo-ao-esporte-logo.png', '/logo-dashboard.png', '/real-logo-transparente.svg', '/escola/pwa/icon-192.png', '/escola/pwa/icon-512.png']);
-const PNG_VAZIO = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+const PNG_TRANSPARENTE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+const PNG_VAZIO ='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 const attr = (x) => String(x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 async function marcaDaEscola(env, host) {
@@ -349,7 +350,16 @@ async function marcaDaEscola(env, host) {
   if (!c) return null;
   const l = c.lead_id ? await env.DB.prepare('SELECT logo FROM leads WHERE id=?').bind(c.lead_id).first() : null;
   const a = await env.DB.prepare("SELECT email FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1").bind(host).first();
-  return { nome: c.escola, logo: l && l.logo ? l.logo : '', adminEmail: a ? a.email : '' };
+  const pf = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='system_settings' AND id='school_profile'").bind(host).first();
+  const f = pf ? JSON.parse(pf.data) : {}, t = (v) => String(v == null ? '' : v).trim();
+  const cidade = t(f.cidade), uf = t(f.uf), foroC = t(f.foroCidade) || cidade, foroU = t(f.foroUf) || uf;
+  // Campos prontos para os documentos (vazio = o campo [..DA ESCOLA] continua aparecendo); a assinatura (imagem grande) vai por /assinatura-associacao.png
+  const perfil = {
+    cnpj: t(f.cnpj), cep: t(f.cep), email: t(f.email), telefone: t(f.telefone),
+    endereco: [t(f.rua) && t(f.rua) + (t(f.numero) ? ', ' + t(f.numero) : ''), t(f.bairro), cidade && cidade + (uf ? '/' + uf : '')].filter(Boolean).join(', '),
+    foro: foroC ? foroC + (foroU ? '/' + foroU : '') : '',
+  };
+  return { nome: c.escola, logo: l && l.logo ? l.logo : '', adminEmail: a ? a.email : '', perfil, assinatura: t(f.assinatura) };
 }
 // Sem logo enviada, um selo com as iniciais da escola (SVG serve em qualquer <img>).
 function selo(nome) {
@@ -368,7 +378,11 @@ export async function servirSistema(req, env, p, host) {
 async function servirSistemaBase(req, env, p, host) {
   // Sem PWA offline neste sistema: um service worker que se desinstala limpa qualquer versão antiga do navegador.
   if (p === '/sw.js') return new Response("self.addEventListener('install',()=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.registration.unregister().then(()=>caches.keys()).then(k=>Promise.all(k.map(x=>caches.delete(x))))));", { headers: { 'content-type': 'text/javascript', 'cache-control': 'no-store' } });
-  if (p === '/assinatura-associacao.png' || p === '/escola/assinatura-associacao.png') return new Response(Uint8Array.from(atob(PNG_VAZIO), (ch) => ch.charCodeAt(0)), { headers: { 'content-type': 'image/png', 'cache-control': 'no-cache' } }); // sem assinatura da escola antiga
+  if (p === '/assinatura-associacao.png' || p === '/escola/assinatura-associacao.png') { // assinatura da associação (página "Dados da escola"); sem ela, um PNG transparente
+    const m = await marcaDaEscola(env, host), d = m && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(m.assinatura);
+    const bytes = d ? Uint8Array.from(atob(d[2]), (ch) => ch.charCodeAt(0)) : Uint8Array.from(atob(PNG_TRANSPARENTE), (ch) => ch.charCodeAt(0));
+    return new Response(bytes, { headers: { 'content-type': d ? d[1] : 'image/png', 'cache-control': 'no-cache' } });
+  }
   if (LOGOS.has(p) || p.startsWith('/escola/pwa/')) {
     const m = await marcaDaEscola(env, host);
     const d = m && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(m.logo);
@@ -386,7 +400,7 @@ async function servirSistemaBase(req, env, p, host) {
   const m = await marcaDaEscola(env, host);
   if (!m) return r;
   let html = (await r.text()).replace(NOME_ANTIGO, (x) => attr(x === x.toUpperCase() ? m.nome.toUpperCase() : m.nome));
-  html = html.replace('</head>', '<script>window.__MARCA__=' + JSON.stringify({ nome: m.nome, adminEmail: m.adminEmail }).replace(/</g, '\\u003c') + '</script></head>');
+  html = html.replace('</head>', '<script>window.__MARCA__=' + JSON.stringify({ nome: m.nome, adminEmail: m.adminEmail, perfil: m.perfil }).replace(/</g, '\\u003c') + '</script></head>');
   return new Response(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }
 

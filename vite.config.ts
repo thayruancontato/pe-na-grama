@@ -20,6 +20,9 @@ const DADOS_ANTIGOS: [RegExp, string][] = [
 ]
 const NOME_RE = /Rumo ao Esporte(?: e ao Lazer\s*[-–]\s*REAL)?(?: 2026)?/g
 const NOME_RT = "${(globalThis as any).__MARCA__?.nome ?? 'Escola'}"
+const CAMPO_CHAVE: Record<string, string> = { '[CNPJ DA ESCOLA]': 'cnpj', '[ENDEREÇO DA ESCOLA]': 'endereco', '[CEP DA ESCOLA]': 'cep', '[E-MAIL DA ESCOLA]': 'email', '[TELEFONE DA ESCOLA]': 'telefone', '[CIDADE/UF]': 'foro' }
+const CAMPO_RE = /\[(?:CNPJ DA ESCOLA|ENDEREÇO DA ESCOLA|CEP DA ESCOLA|E-MAIL DA ESCOLA|TELEFONE DA ESCOLA|CIDADE\/UF)\]/g
+const CAMPO_TESTE = /\[(?:CNPJ DA ESCOLA|ENDEREÇO DA ESCOLA|CEP DA ESCOLA|E-MAIL DA ESCOLA|TELEFONE DA ESCOLA|CIDADE\/UF)\]/
 const ARQUIVOS_ANTIGOS = ['assinatura-associacao.png', 'estatuto-social-real.pdf', 'timbrado-real.jpg', 'horarios-natacao.jpeg', 'aniversario.png',
   'carteirinha.png', 'carteirinha-arena.png', 'verso-carteirinha.png', 'real-logo-transparente.svg', 'patrocinadores', 'rumo-ao-esporte-logo.png', 'logo-dashboard.png', 'pwa']
 
@@ -39,6 +42,12 @@ const semDadosDaEscolaAntiga = (outDir: string): Plugin => ({
       // atributo JSX (alt="...") é consumido sem mudar, para o par de aspas não se desencontrar; o DOM (marca.ts) cuida desses
       out = out.replace(/(['"])((?:(?!\1)[^\\\n`])*)\1/g, (lit, _q, corpo, pos, todo) => (!(todo[pos - 1] === '=' && /[\w-]/.test(todo[pos - 2] || '')) && /Rumo ao Esporte/.test(corpo) ? '`' + corpo.replace(NOME_RE, NOME_RT) + '`' : lit))
       out = out.split('\n').map((linha) => linha.split('`').map((trecho, i) => (i % 2 === 1 ? trecho.replace(NOME_RE, NOME_RT) : trecho)).join('`')).join('\n')
+    }
+    // Campos [CNPJ DA ESCOLA], [ENDEREÇO DA ESCOLA]... (os dados reais viraram campos acima): em textos de código viram o valor da página "Dados da escola".
+    if (!id.split(String.fromCharCode(92)).join('/').endsWith('/src/shim/marca.ts') && CAMPO_TESTE.test(out)) {
+      const rt = (c: string) => '${(globalThis as any).__MARCA__?.perfil?.' + CAMPO_CHAVE[c] + " || '" + c.slice(0, -1) + "' + ']'}" // o campo é cortado em dois pedaços para o segundo passe não trocá-lo de novo
+      out = out.replace(/(['"])((?:(?!\1)[^\\\n`])*)\1/g, (lit, _q, corpo, pos, todo) => (!(todo[pos - 1] === '=' && /[\w-]/.test(todo[pos - 2] || '')) && CAMPO_TESTE.test(corpo) ? '`' + corpo.replace(CAMPO_RE, rt) + '`' : lit))
+      out = out.split('\n').map((linha) => linha.split('`').map((trecho, i) => (i % 2 === 1 ? trecho.replace(CAMPO_RE, rt) : trecho)).join('`')).join('\n')
     }
     return out === code ? null : { code: out, map: null }
   },

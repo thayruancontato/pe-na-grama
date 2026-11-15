@@ -1,9 +1,14 @@
 // Versão "sem-firebase": o Worker injeta window.__MARCA__ = { nome } (a escola do subdomínio).
 // Aqui o nome antigo do sistema ("Rumo ao Esporte...") é trocado pelo da escola em tudo o que aparece na tela.
 const NOME_ANTIGO = /Rumo ao Esporte( e ao Lazer\s*[-–]\s*REAL)?( 2026)?/gi;
-const trocaNome = (t: string) => t.replace(NOME_ANTIGO, (x) => (x === x.toUpperCase() ? nome!.toUpperCase() : nome!));
-const TEM_NOME = /rumo ao esporte/i;
-const nome = (window as unknown as { __MARCA__?: { nome: string } }).__MARCA__?.nome;
+const trocaNome = (t: string) => trocaCampos(t.replace(NOME_ANTIGO, (x) => (x === x.toUpperCase() ? nome!.toUpperCase() : nome!)));
+const TEM_NOME = { test: (t: string) => /rumo ao esporte/i.test(t) || (!!marca?.perfil && TEM_CAMPO.test(t)) };
+const marca = (window as unknown as { __MARCA__?: { nome: string; perfil?: Record<string, string> } }).__MARCA__;
+const nome = marca?.nome;
+// Dados da escola (página "Dados da escola"): os campos entre colchetes do contrato, dos termos e dos recibos viram o valor preenchido; vazio mantém o campo.
+const CAMPOS: [string, string][] = [['[CNPJ DA ESCOLA]', 'cnpj'], ['[ENDEREÇO DA ESCOLA]', 'endereco'], ['[CEP DA ESCOLA]', 'cep'], ['[E-MAIL DA ESCOLA]', 'email'], ['[TELEFONE DA ESCOLA]', 'telefone'], ['[CIDADE/UF]', 'foro']];
+const TEM_CAMPO = /\[(?:CNPJ DA ESCOLA|ENDEREÇO DA ESCOLA|CEP DA ESCOLA|E-MAIL DA ESCOLA|TELEFONE DA ESCOLA|CIDADE\/UF)\]/;
+const trocaCampos = (t: string) => CAMPOS.reduce((s, [campo, k]) => (marca?.perfil?.[k] ? s.split(campo).join(marca.perfil[k]) : s), t);
 const ATRIBUTOS = ['alt', 'title', 'placeholder', 'aria-label'];
 
 function trocar(no: Node) {

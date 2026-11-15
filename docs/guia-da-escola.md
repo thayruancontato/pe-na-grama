@@ -6,6 +6,7 @@
 3. Vá em **Inscrições e backup > Minha conta** e troque a senha por uma só sua.
 
 ## O que configurar primeiro
+- **Dados da escola**: preencha em *Dados da escola* o CNPJ, o endereço, o e-mail, o telefone, o foro e a assinatura da associação (desenhada na tela ou foto). Eles entram sozinhos no contrato, na ficha, nos termos e nos recibos.
 - **Planos e turmas**: crie os planos (valor, modalidade, horário) e as turmas.
 - **Patrocinadores**: cadastre as logos. Sem nenhum ativo, a faixa não aparece.
 - **Servidor WhatsApp**: informe o endereço, a instância e a chave do servidor da escola, gere o QR Code e leia com o WhatsApp da escola.

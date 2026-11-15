@@ -14,7 +14,8 @@ import {
     Medal,
     Handshake,
     Server,
-    ShieldCheck
+    ShieldCheck,
+    Building2
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -112,7 +113,7 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         icon: FolderOpen
     },
     // O servidor de WhatsApp próprio de cada escola só existe na versão sem Firebase (rotas /sys/wa).
-    ...(import.meta.env.MODE === 'sem-firebase' ? [{ path: '/admin/whatsapp-servidor', label: 'Servidor WhatsApp', icon: Server }, { path: '/admin/escola-controle', label: 'Inscrições e backup', icon: ShieldCheck }] : []),
+    ...(import.meta.env.MODE === 'sem-firebase' ? [{ path: '/admin/whatsapp-servidor', label: 'Servidor WhatsApp', icon: Server }, { path: '/admin/escola-controle', label: 'Inscrições e backup', icon: ShieldCheck }, { path: '/admin/dados-escola', label: 'Dados da escola', icon: Building2 }] : []),
     {
         path: '/admin/patrocinadores',
         label: 'Patrocinadores',
