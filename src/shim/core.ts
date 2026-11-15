@@ -172,6 +172,7 @@ const restaurar = async () => {
     if (restaurado) return; restaurado = true;
     if (token()) { try { auth.currentUser = usuario(await chamar('GET', '/auth/me')); } catch { limparToken(); } }
 };
+auth.onAuthStateChanged = (cb: Ouvinte) => onAuthStateChanged(auth, cb); // as telas do aluno e do professor chamam auth.onAuthStateChanged(cb) no objeto
 export const getAuth = () => auth;
 export const connectAuthEmulator = () => undefined;
 export function onAuthStateChanged(_a: unknown, cb: Ouvinte) { ouvintes.add(cb); restaurar().then(() => cb(auth.currentUser)); return () => { ouvintes.delete(cb); }; }

@@ -21,8 +21,10 @@ await req('PUT', '/sys/db/system_settings/inscricoes', tk, { data: { abertas: tr
 const [si, ins] = await req('POST', '/sys/db/' + REG, null, { data: { responsavel: { nome: 'Maria Teste Pais', email: 'pais.teste@example.com', cpf: '11144477735' }, alunos: [{ nome: 'Joao Teste', cpf: '52998224725' }] } });
 confere('inscrição aceita com formulário aberto', si === 200 && !!ins.id);
 
-await req('POST', '/sys/auth/create', tk, { email: 'pais.teste@example.com', password: 'Teste-pais-123' });
-const [, lp] = await req('POST', '/sys/auth/login', null, { email: 'pais.teste@example.com', password: 'Teste-pais-123' });
+// Primeiro acesso do responsável: e-mail do cadastro + CPF como senha (a conta é criada no servidor).
+// Se o usuário de teste já existe de uma execução anterior, o admin devolve a senha dele ao CPF (404 na primeira vez é normal).
+await req('POST', '/sys/auth/reset', tk, { email: 'pais.teste@example.com', password: '11144477735' });
+const [, lp] = await req('POST', '/sys/auth/login', null, { email: 'pais.teste@example.com', password: '11144477735' });
 confere('login do responsável', lp.role === 'user');
 const todas = (await req('GET', '/sys/db/' + REG, tk))[1].docs || [];
 const minhas = (await req('GET', '/sys/db/' + REG, lp.token))[1].docs || [];
@@ -44,7 +46,7 @@ confere('backup sem a chave do WhatsApp', ex.status === 200 && !exj.docs.some((d
 // sessões revogáveis: por último, porque derruba o token do responsável de teste
 await req('POST', '/sys/auth/logout-all', lp.token, {});
 confere('token do responsável cai após "sair de todos"', (await req('GET', '/sys/auth/me', lp.token))[0] === 401);
-const [, l2] = await req('POST', '/sys/auth/login', null, { email: 'pais.teste@example.com', password: 'Teste-pais-123' });
+const [, l2] = await req('POST', '/sys/auth/login', null, { email: 'pais.teste@example.com', password: '11144477735' });
 confere('novo login depois de revogar funciona', (await req('GET', '/sys/auth/me', l2.token))[0] === 200);
 
 console.log(falhas ? `\n${falhas} falha(s)` : '\nTudo certo');

@@ -172,6 +172,13 @@ async function portalPais(env, tenant, s, m, partes, corpo) {
       const r = await env.DB.prepare('SELECT id,data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, col).all();
       return J({ docs: (r.results || []).map((x) => ({ id: x.id, data: JSON.parse(x.data) })).filter((x) => meu(x.data)) });
     }
+    if (col === 'financial_payments') { // só as cobranças dos alunos deste responsável
+      const rs = await env.DB.prepare("SELECT id,data FROM sys_docs WHERE tenant=? AND col=?").bind(tenant, REG).all();
+      const meus = new Set((rs.results || []).filter((x) => meu(JSON.parse(x.data))).map((x) => x.id));
+      if (id) { const x = await env.DB.prepare('SELECT data FROM sys_docs WHERE tenant=? AND col=? AND id=?').bind(tenant, col, id).first(); const d = x && JSON.parse(x.data); return J(d && meus.has(d.studentId) ? { existe: true, data: d } : { existe: false }); }
+      const r = await env.DB.prepare('SELECT id,data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, col).all();
+      return J({ docs: (r.results || []).map((x) => ({ id: x.id, data: JSON.parse(x.data) })).filter((x) => meus.has(x.data.studentId)) });
+    }
     if (LEITURA_PAIS.has(col) || (col === 'system_settings' && id !== 'whatsapp_evolution')) return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
     return J(id ? { existe: false } : { docs: [] });
   }
@@ -205,8 +212,17 @@ export async function rotaSistema(req, env, tenant, p) {
       const f = await env.DB.prepare('SELECT COUNT(*) n FROM tentativas WHERE chave=? AND quando>?').bind(chave, desde).first();
       const fi = await env.DB.prepare('SELECT COUNT(*) n FROM tentativas WHERE chave=? AND quando>?').bind(chaveIp, desde).first();
       if (f.n >= 8 || fi.n >= 30) return erro('Muitas tentativas. Espere 15 minutos.', 429);
-      const u = await env.DB.prepare('SELECT * FROM sys_users WHERE tenant=? AND email=?').bind(tenant, email).first();
-      if (!u || (await pbkdf2(String(corpo.password || ''), u.salt)) !== u.hash) {
+      let u = await env.DB.prepare('SELECT * FROM sys_users WHERE tenant=? AND email=?').bind(tenant, email).first();
+      if (!u && email) { // primeiro acesso do responsável: e-mail do cadastro + CPF como senha (o mesmo padrão do sistema original)
+        const cpf = String(corpo.password || '').replace(/\D/g, '');
+        const reg = cpf.length === 11 && await env.DB.prepare("SELECT 1 x FROM sys_docs WHERE tenant=? AND col='rumo_ao_esporte_2026_registrations' AND lower(trim(json_extract(data,'$.responsavel.email')))=? AND replace(replace(replace(json_extract(data,'$.responsavel.cpf'),'.',''),'-',''),' ','')=? LIMIT 1").bind(tenant, email, cpf).first();
+        if (reg) {
+          const { salt, hash } = await hashSenha(cpf), uid = idNovo();
+          await env.DB.prepare('INSERT INTO sys_users(tenant,email,salt,hash,uid,role) VALUES(?,?,?,?,?,?)').bind(tenant, email, salt, hash, uid, 'user').run();
+          u = { tenant, email, salt, hash, uid, role: 'user' };
+        }
+      }
+      if (!u ||(await pbkdf2(String(corpo.password || ''), u.salt)) !== u.hash) {
         await env.DB.prepare('INSERT INTO tentativas(chave,quando) VALUES(?,?)').bind(chave, Date.now()).run();
         await env.DB.prepare('INSERT INTO tentativas(chave,quando) VALUES(?,?)').bind(chaveIp, Date.now()).run();
         return erro('Credenciais inválidas.', 401);
