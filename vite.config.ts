@@ -32,6 +32,8 @@ const semDadosDaEscolaAntiga = (outDir: string): Plugin => ({
     // lista fixa de patrocinadores (comércios reais, com telefone) da escola original: fora do sistema das outras
     if (id.split(String.fromCharCode(92)).join('/').endsWith('/src/data/sponsors.ts')) out = out.replace(/export const sponsors: Sponsor\[\] = \[[\s\S]*?\n\];/, 'export const sponsors: Sponsor[] = [];')
     for (const [re, novo] of DADOS_ANTIGOS) out = out.replace(re, novo)
+    // Administrador principal por escola: o Worker injeta window.__MARCA__.adminEmail (o primeiro admin do tenant)
+    out = out.split("(import.meta.env.VITE_MAIN_ADMIN_EMAIL as string) || 'rumoaoesporte@admin.com'").join("(globalThis as any).__MARCA__?.adminEmail || (import.meta.env.VITE_MAIN_ADMIN_EMAIL as string) || 'rumoaoesporte@admin.com'")
     // O nome antigo do sistema, em textos de código (mensagens de WhatsApp, PDFs, recibos), vira o nome da escola em tempo de execução.
     if (!id.split(String.fromCharCode(92)).join('/').endsWith('/src/shim/marca.ts') && /Rumo ao Esporte/.test(out)) {
       // atributo JSX (alt="...") é consumido sem mudar, para o par de aspas não se desencontrar; o DOM (marca.ts) cuida desses

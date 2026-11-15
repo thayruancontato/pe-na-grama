@@ -410,7 +410,9 @@ async function rotaAdmin(req, env, url, caminho) {
     }
     if (id && acao === 'acesso' && m === 'POST') { // gera (ou refaz) o acesso do administrador da escola; a senha aparece só agora
       const c = await env.DB.prepare('SELECT escola,contato_email,url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
-      const t = new URL(c.url_sistema).host, email = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.contato_email || '') ? c.contato_email.toLowerCase() : 'admin@' + t;
+      // O sistema da escola reconhece como administrador principal o PRIMEIRO admin do tenant: se já existe, refaz a senha dele em vez de criar outro.
+      const t = new URL(c.url_sistema).host, ja = await env.DB.prepare("SELECT email FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1").bind(t).first();
+      const email = ja ? ja.email : /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.contato_email || '') ? c.contato_email.toLowerCase() : 'admin@' + t;
       const senha = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'[b % 54]).join('');
       await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: 'admin' }] });
       await log(env, 'sistema', 'Acesso do administrador gerado para ' + c.escola);

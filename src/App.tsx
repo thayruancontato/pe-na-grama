@@ -22,6 +22,7 @@ import AdminTestes from './pages/AdminTestes';
 import AdminLinks from './pages/AdminLinks';
 import AdminFinanceiro from './pages/AdminFinanceiro';
 import AdminFinanceiroCobrancas from './pages/AdminFinanceiroCobrancas';
+import AdminRelatorioFinanceiro from './pages/AdminRelatorioFinanceiro';
 import AdminPaymentDetails from './pages/AdminPaymentDetails';
 import AdminPaymentProviderSettings from './pages/AdminPaymentProviderSettings';
 import AdminPatrocinadores from './pages/AdminPatrocinadores';
@@ -177,6 +178,7 @@ function App() {
               <Route path="financeiro" element={<AdminFinanceiro />} />
               <Route path="financeiro/gastos" element={<AdminGastos />} />
               <Route path="financeiro/cobrancas" element={<AdminFinanceiroCobrancas />} />
+              <Route path="financeiro/relatorio" element={<AdminRelatorioFinanceiro />} />
               <Route path="financeiro/bancos" element={<AdminPaymentProviderSettings />} />
               <Route path="plans" element={<AdminPlans />} />
               <Route path="plans/auto-allocation" element={<AdminPlanAutoAllocation />} />

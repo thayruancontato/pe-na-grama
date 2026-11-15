@@ -33,6 +33,7 @@ export const ALL_SYSTEM_ROUTES: RouteCategory[] = [
         category: 'Financeiro',
         routes: [
             { path: '/admin/financeiro', label: 'Visão Geral (Financeiro)' },
+            { path: '/admin/financeiro/relatorio', label: 'Relatório financeiro' },
             { path: '/admin/financeiro/gastos', label: 'Gastos' },
             { path: '/admin/financeiro/bancos', label: 'Bancos e APIs de Pagamento' },
             { path: '/admin/financeiro/fatura', label: 'Detalhes da Fatura' },

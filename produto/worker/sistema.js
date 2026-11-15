@@ -332,7 +332,8 @@ async function marcaDaEscola(env, host) {
   const c = await env.DB.prepare('SELECT escola, lead_id FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
   if (!c) return null;
   const l = c.lead_id ? await env.DB.prepare('SELECT logo FROM leads WHERE id=?').bind(c.lead_id).first() : null;
-  return { nome: c.escola, logo: l && l.logo ? l.logo : '' };
+  const a = await env.DB.prepare("SELECT email FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1").bind(host).first();
+  return { nome: c.escola, logo: l && l.logo ? l.logo : '', adminEmail: a ? a.email : '' };
 }
 // Sem logo enviada, um selo com as iniciais da escola (SVG serve em qualquer <img>).
 function selo(nome) {
@@ -343,7 +344,7 @@ function selo(nome) {
 /** Entrega o sistema (SPA) já compilado em /escola/ para o host da escola, com a marca dela. */
 export async function servirSistema(req, env, p, host) {
   const r = await servirSistemaBase(req, env, p, host), h = new Headers(r.headers);
-  if ((h.get('content-type') || '').includes('text/html')) h.set('content-security-policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
+  if ((h.get('content-type') || '').includes('text/html')) h.set('content-security-policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; media-src 'self' https: data:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
   h.set('x-content-type-options', 'nosniff'); h.set('x-frame-options', 'SAMEORIGIN'); h.set('referrer-policy', 'same-origin');
   h.set('strict-transport-security', 'max-age=31536000'); h.set('permissions-policy', 'camera=(self), microphone=(), geolocation=()');
   return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });
@@ -369,7 +370,7 @@ async function servirSistemaBase(req, env, p, host) {
   const m = await marcaDaEscola(env, host);
   if (!m) return r;
   let html = (await r.text()).replace(NOME_ANTIGO, (x) => attr(x === x.toUpperCase() ? m.nome.toUpperCase() : m.nome));
-  html = html.replace('</head>', '<script>window.__MARCA__=' + JSON.stringify({ nome: m.nome }).replace(/</g, '\\u003c') + '</script></head>');
+  html = html.replace('</head>', '<script>window.__MARCA__=' + JSON.stringify({ nome: m.nome, adminEmail: m.adminEmail }).replace(/</g, '\\u003c') + '</script></head>');
   return new Response(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }
 

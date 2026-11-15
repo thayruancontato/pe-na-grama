@@ -57,6 +57,7 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
         icon: DollarSign,
         subItems: [
             { to: '/admin/financeiro', label: 'Geral' },
+            { to: '/admin/financeiro/relatorio', label: 'Relatório' },
             { to: '/admin/financeiro/gastos', label: 'Gastos' },
             { to: '/admin/plans', label: 'Planos' },
             { to: '/admin/financeiro/bancos', label: 'Bancos e APIs' },
