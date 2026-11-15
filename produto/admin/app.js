@@ -305,13 +305,27 @@
         : o.t === 'cor' ? `<div class="ct-colorrow"><input type="color" id="k_${k}" data-k="${k}" value="${E(v)}"><code>${E(v)}</code></div>`
         : o.t === 'sel' ? `<select class="pg-select" id="k_${k}" data-k="${k}">${o.o.map(x => `<option value="${E(x[0])}" ${v === x[0] ? 'selected' : ''}>${E(x[1])}</option>`).join('')}</select>`
         : `<input class="pg-input" id="k_${k}" data-k="${k}" value="${E(v)}" placeholder="${E(o.a || '')}" maxlength="400">`;
-      return rot + ent + (o.t === 'txt' ? '' : aj);
+      return rot + ent + (o.t === 'txt' ? '' : aj || (o.t === 'num' && o.d === 0 ? '<span class="help">0 = sem limite</span>' : ''));
     };
     const opcao = o => `<div class="ct-op" data-k="${E(o.k)}" data-txt="${E((o.r + ' ' + (o.a || '')).toLowerCase())}">${campo(o)}<span class="ct-tags"></span></div>`;
     const CURTO = { 'Módulos do painel da escola': 'Módulos do painel', 'Portais de pais e professores': 'Portais', 'Estado da escola': 'Estado', 'Avisos na tela': 'Avisos', 'Marca e aparência': 'Marca', 'Limites do plano': 'Limites', 'Segurança e senhas': 'Segurança', 'Permissões do administrador da escola': 'Permissões' };
-    const tabs = [...grupos.map((g, i) => ['g' + i, CURTO[g] || g, ctl.catalogo.filter(o => o.g === g).length]), ['usuarios', 'Usuários'], ['dados', 'Dados e registro'], ['ficha', 'Ficha interna'], ['acoes', 'Ações']];
+    const META = {
+      'Módulos do painel da escola': ['pie', 'Desligou, a tela some do menu e o endereço fica bloqueado para todos os administradores da escola.'],
+      'Portais de pais e professores': ['cap', 'Escolha as telas liberadas nos portais do responsável e do professor.'],
+      'Estado da escola': ['alert', 'Suspender, pôr em manutenção, travar gravações ou fechar portas específicas. Vale na hora.'],
+      'Avisos na tela': ['inbox', 'Faixa no topo e recados em telas específicas, com texto e cor definidos por você.'],
+      'Marca e aparência': ['tag', 'Cores, letras, rodapé, botão de WhatsApp e outros detalhes de aparência.'],
+      'Limites do plano': ['chart', 'Máximos de cadastros, usuários, armazenamento e envios. Em todos os limites, 0 significa sem limite.'],
+      'Segurança e senhas': ['check', 'Regras de acesso: tentativas, duração da sessão, tamanho de senha e primeiro acesso.'],
+      'Permissões do administrador da escola': ['settings', 'Tire poderes específicos do administrador da escola. Você continua podendo tudo pela Central.'],
+      usuarios: ['users', 'Crie, bloqueie, troque o papel ou gere nova senha.'], dados: ['file', 'O que há guardado e o registro de ações.'],
+      ficha: ['pencil', 'Anotações só suas. Nada daqui aparece para a escola.'], acoes: ['send', 'Entrar como a escola, mudar o estado e encerrar sessões.']
+    };
+    const tabs = [...grupos.map((g, i) => ['g' + i, CURTO[g] || g, ctl.catalogo.filter(o => o.g === g).length, META[g][0], g]), ['usuarios', 'Usuários', 0, META.usuarios[0], 'usuarios'], ['dados', 'Dados e registro', 0, META.dados[0], 'dados'], ['ficha', 'Ficha interna', 0, META.ficha[0], 'ficha'], ['acoes', 'Ações', 0, META.acoes[0], 'acoes']];
+    const grupoDe = Object.fromEntries(ctl.catalogo.map(o => [o.k, 'g' + grupos.indexOf(o.g)]));
+    const soBool = g => ctl.catalogo.filter(o => o.g === g).every(o => o.t === 'bool');
     let aberta = 'g0';
-    modal('Controle total · ' + c.escola, `<div class="ct-tabs" role="tablist" aria-label="Seções do controle">${tabs.map(([k, r, n]) => `<button role="tab" id="t_${k}" data-aba="${k}" aria-selected="${k === aberta}" aria-controls="corpoAba">${r}${n ? `<small>${n}</small>` : ''}</button>`).join('')}</div><div id="corpoAba" role="tabpanel"></div>`, (el) => {
+    modal('Controle total · ' + c.escola, `<div class="ct-shell"><nav class="ct-rail" role="tablist" aria-label="Seções do controle" aria-orientation="vertical">${tabs.map(([k, r, n, ic], i) => (i === grupos.length ? '<span class="ct-rsep">Gestão</span>' : i === 0 ? '<span class="ct-rsep">Opções</span>' : '') + `<button role="tab" id="t_${k}" data-aba="${k}" aria-selected="${k === aberta}" aria-controls="corpoAba">${I(ic)}<b>${r}</b>${n ? `<small>${n}</small>` : ''}<i class="dot" hidden></i></button>`).join('')}</nav><div class="ct-main"><div id="corpoAba" role="tabpanel"></div></div></div>`, (el) => {
       const corpo = $('#corpoAba', el);
       const marca = () => { // destaca o que mudou e mostra o contador no rodapé
         corpo.querySelectorAll('.ct-op').forEach(d => {
@@ -321,6 +335,8 @@
         });
         corpo.querySelectorAll('.ct-grp').forEach(g => { const n = g.querySelectorAll('.ct-op.mod').length; g.querySelector('.alt').textContent = n ? n + ' não salva(s)' : ''; });
         corpo.querySelectorAll('[data-reset]').forEach(b => b.onclick = () => { const o = ctl.catalogo.find(x => x.k === b.dataset.reset), i = corpo.querySelector('[data-k="' + o.k + '"]'); if (o.t === 'bool') i.checked = !!o.d; else i.value = o.d; i.dispatchEvent(new Event('change')); });
+        tabs.forEach(([k]) => { const d = el.querySelector('[data-aba="' + k + '"] .dot'); if (d) d.hidden = !(k === 'ficha' ? Object.keys(internoMud).length : Object.keys(mudou).some(x => grupoDe[x] === k)); });
+        const st = $('#stat', corpo); if (st) { const os = ctl.catalogo.filter(o => grupoDe[o.k] === aberta); st.textContent = os.every(o => o.t === 'bool') ? os.filter(o => atual(o)).length + ' de ' + os.length + ' ligados' : os.filter(o => difere(o) || o.k in mudou).length + ' personalizada(s)'; }
         const f = $('#fInfo', corpo); if (f) { const n = nMud(); f.textContent = n ? n + ' alteração(ões) ainda não salva(s)' : 'Tudo salvo'; f.classList.toggle('has', !!n); const sv = $('#salva', corpo); if (sv) sv.disabled = !n; const ds = $('#descarta', corpo); if (ds) ds.disabled = !n; }
         corpo.querySelectorAll('.ct-colorrow code').forEach(cd => { const i = cd.parentNode.querySelector('input'); cd.textContent = i.value; });
       };
@@ -343,6 +359,7 @@
       const liga = () => {
         corpo.querySelectorAll('[data-k]').forEach(i => { if (i.dataset.reset !== undefined) return; i.onchange = i.oninput = () => { const o = ctl.catalogo.find(x => x.k === i.dataset.k), val = i.type === 'checkbox' ? i.checked : i.type === 'number' ? Math.max(0, Math.floor(+i.value || 0)) : i.value; if (val === ctl.valores[o.k]) delete mudou[o.k]; else mudou[o.k] = val; marca(); }; });
         corpo.querySelectorAll('[data-i]').forEach(i => i.oninput = () => { if (i.value === (ctl.interno[i.dataset.i] || '')) delete internoMud[i.dataset.i]; else internoMud[i.dataset.i] = i.value; marca(); });
+        corpo.querySelectorAll('[data-bulk]').forEach(bt => bt.onclick = () => { corpo.querySelectorAll('.ct-grp[data-gi="' + aberta + '"] .ct-op input[type=checkbox]').forEach(i => { if (i.checked !== (bt.dataset.bulk === '1')) { i.checked = bt.dataset.bulk === '1'; i.dispatchEvent(new Event('change')); } }); });
         const b = $('#busca', corpo);
         if (b) {
           const filtra = () => { const q = b.value.trim().toLowerCase(), so = $('#soMud', corpo).checked, todos = !!(q || so); let ach = 0; $('#ops', corpo).classList.toggle('solo', !todos);
@@ -373,7 +390,8 @@
         marca();
       };
       function mostra(k) {
-        aberta = k; corpo.innerHTML = abas[k](); corpo.setAttribute('aria-labelledby', 't_' + k);
+        aberta = k; const T = tabs.find(t => t[0] === k), gr = T[4], eG = grupos.includes(gr), bool = eG && soBool(gr);
+        corpo.innerHTML = `<div class="ct-head"><div><h3>${E(eG ? gr : T[1])}</h3><p>${E(META[gr][1])}</p></div>${eG ? `<div class="ct-headr"><span class="ct-stat" id="stat"></span>${bool ? '<button class="pg-btn detail" data-bulk="1">Ligar todos</button><button class="pg-btn detail" data-bulk="0">Desligar todos</button>' : ''}</div>` : ''}</div>` + abas[k](); corpo.setAttribute('aria-labelledby', 't_' + k);
         el.querySelectorAll('[data-aba]').forEach(b => b.setAttribute('aria-selected', b.dataset.aba === k)); liga();
       }
       el.querySelectorAll('[data-aba]').forEach(b => { b.onclick = () => mostra(b.dataset.aba); b.onkeydown = e => { const i = tabs.findIndex(t => t[0] === b.dataset.aba), d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { const n = tabs[(i + d + tabs.length) % tabs.length][0]; mostra(n); el.querySelector('[data-aba="' + n + '"]').focus(); } }; });
