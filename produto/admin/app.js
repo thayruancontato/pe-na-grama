@@ -319,8 +319,9 @@
     const cores = [...grupos.values()].map(g => ({ h: g.h / g.n, s: g.s / g.n, l: g.l / g.n, n: g.n })).map(c => ({ ...c, peso: c.n * (.25 + c.s) * (c.l > .15 && c.l < .85 ? 1 : .4) })).sort((a, b) => b.peso - a.peso);
     if (!cores.length) throw new Error('Não achei cores nessa imagem (talvez seja só branca ou transparente).');
     const vivas = cores.filter(c => c.s > .22), base = vivas.length ? vivas : cores;
-    const p = base[0], sec = base.find(c => dist(c.h, p.h) > 28) || { h: p.h + 200, s: p.s, l: p.l }, dest = base.find(c => dist(c.h, p.h) > 35 && dist(c.h, sec.h) > 35) || { h: p.h + 150, s: .9, l: .5 };
-    const sat = x => Math.max(.45, Math.min(.95, x));
+    const p = base[0], sat = x => Math.max(.45, Math.min(.95, x)), real = base.find(c => dist(c.h, p.h) > 28);
+    // Logo de uma cor só (ex.: vermelho com branco): a secundária e a escura são tons escuros da própria cor; o destaque é dourado (ou azul-marinho se a cor já for amarela).
+    const sec = real || { h: p.h, s: Math.max(.5, p.s), l: .26 }, dest = base.find(c => dist(c.h, p.h) > 35 && dist(c.h, sec.h) > 35) || (dist(p.h, 46) < 32 ? { h: 220, s: .7, l: .5 } : { h: 46, s: .92, l: .5 });
     return { cor_primaria: hex(p.h, sat(p.s), Math.min(.42, Math.max(.28, p.l))), cor_secundaria: hex(sec.h, sat(sec.s), Math.min(.34, Math.max(.2, sec.l))), cor_escura: hex(sec.h, Math.min(.85, sat(sec.s)), .14), cor_destaque: hex(dest.h, sat(dest.s), Math.min(.58, Math.max(.46, dest.l))) };
   }
   const ROT_COR = { cor_primaria: 'Primária', cor_secundaria: 'Secundária', cor_escura: 'Escura', cor_destaque: 'Destaque' };
@@ -417,7 +418,7 @@
             if (!fonte()) { pal.innerHTML = ''; return; }
             try { paleta = await paletaDaLogo(fonte()); } catch (e) { paleta = null; pal.innerHTML = `<p class="help">${E(e.message)}</p>`; return; }
             pal.innerHTML = `<div class="lg-pal">${Object.entries(paleta).map(([k, v]) => `<span class="sw" title="${E(v)}"><i style="background:${E(v)}"></i><em>${ROT_COR[k]}</em></span>`).join('')}<button class="pg-btn detail" id="lgAplica">Aplicar paleta da logo</button></div><p class="help">As cores são sugestões geradas da imagem e entram como alterações não salvas. Ajuste se quiser e clique em Salvar opções.</p>`;
-            $('#lgAplica', lb).onclick = () => { for (const [k, v] of Object.entries(paleta)) { const i = corpo.querySelector('[data-k="' + k + '"]'); if (i) { i.value = v; i.dispatchEvent(new Event('change')); } } toast('Paleta aplicada nos campos de cor. Clique em Salvar opções.'); };
+            $('#lgAplica', lb).onclick = () => { for (const [k, v] of Object.entries(paleta)) { const i = corpo.querySelector('input[data-k="' + k + '"]'); if (i && /^#[0-9a-f]{6}$/i.test(v)) { i.value = v; i.dispatchEvent(new Event('change')); } } toast('Paleta aplicada nos campos de cor. Clique em Salvar opções.'); };
           };
           $('#lgEsc', lb).onclick = () => $('#lgFile', lb).click();
           $('#lgFile', lb).onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { logoPend = await logoDeArquivo(f); await pinta(); } catch (er) { falha(er); } };

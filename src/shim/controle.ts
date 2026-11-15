@@ -28,6 +28,18 @@ function aplicar() {
         trocas.push([new RegExp(`${de}|rgb\\(\\s*${r},\\s*${g},\\s*${b}\\s*\\)`, 'gi'), para]);
         trocas.push([new RegExp(`rgba\\(\\s*${r},\\s*${g},\\s*${b},`, 'gi'), `rgba(${[1, 3, 5].map((i) => parseInt(para.slice(i, i + 2), 16)).join(', ')},`]);
     }
+    // Cinzas-azulados e azuis fixos do sistema (cartões escuros, botões azuis) acompanham a cor escura e a secundária da escola.
+    const escurece = (h: string, f: number) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(h.slice(i, i + 2), 16) * f).toString(16).padStart(2, '0')).join('');
+    const AUX: [string[], string, number][] = [[['#1e293b', '#1f2937', '#111827'], 'cor_escura', 1], [['#0f172a'], 'cor_escura', 0.7], [['#1d4ed8', '#2563eb', '#3b82f6'], 'cor_secundaria', 1]];
+    for (const [lista, k, f] of AUX) {
+        const dest = String(v[k] || '').toLowerCase();
+        if (!/^#[0-9a-f]{6}$/.test(dest) || dest === PADRAO[k]) continue;
+        const para = escurece(dest, f);
+        for (const de of lista) {
+            const [r, g, b] = [1, 3, 5].map((i) => parseInt(de.slice(i, i + 2), 16));
+            trocas.push([new RegExp(`${de}|rgb\\(\\s*${r},\\s*${g},\\s*${b}\\s*\\)`, 'gi'), para]);
+        }
+    }
     if (trocas.length) {
         const pinta = (t: string) => trocas.reduce((s, [re, novo]) => s.replace(re, novo), t);
         const ATTRS = ['style', 'fill', 'stroke', 'stop-color', 'color'];
