@@ -503,9 +503,12 @@ async function rotaAdmin(req, env, url, caminho) {
         return new Response(JSON.stringify({ tenant: t, geradoEm: new Date().toISOString(), docs: (r.results || []).map((x) => ({ col: x.col, id: x.id, data: JSON.parse(x.data) })) }), { headers: { 'content-type': 'application/json; charset=utf-8', 'content-disposition': 'attachment; filename="dados-' + t.split('.')[0] + '.json"' } });
       }
       if (acao === 'entrar' && m === 'POST') {
-        const a = await q("SELECT email,uid FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1", t).first(); if (!a) return erro('A escola ainda não tem administrador. Gere o acesso primeiro.', 409);
-        const tk = await tokenParaDono(env, t, { email: a.email, uid: a.uid, role: 'admin' }, 0.5);
-        await log(env, 'sistema', 'Dono entrou como administrador de ' + c0.escola); return J({ url: c0.url_sistema + '/__entrar#t=' + tk });
+        const alvo = String((await body()).email || '').trim().toLowerCase(); // sem e-mail: entra como o administrador principal
+        const a = alvo ? await q('SELECT email,uid,role FROM sys_users WHERE tenant=? AND email=?', t, alvo).first() : await q("SELECT email,uid,role FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1", t).first();
+        if (!a) return erro(alvo ? 'Usuário não encontrado.' : 'A escola ainda não tem administrador. Gere o acesso primeiro.', alvo ? 404 : 409);
+        const papel = a.role === 'professor' ? 'professor' : a.role === 'user' ? 'user' : 'admin';
+        const tk = await tokenParaDono(env, t, { email: a.email, uid: a.uid, role: papel }, 0.5);
+        await log(env, 'sistema', 'Dono entrou como ' + a.email + ' (' + papel + ') de ' + c0.escola); return J({ url: c0.url_sistema + '/__entrar#t=' + tk + '&r=' + papel });
       }
     }
     if (id && acao === 'limite' && m === 'PUT') { // limite de matrículas do plano (0 = sem limite)
