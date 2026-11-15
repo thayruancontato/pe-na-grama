@@ -56,9 +56,13 @@ function aplicar() {
     // Os verdes "de status" (matiz abaixo de 150, como aprovado/pago) ficam como estão.
     const alvo = (k: string): [number, number] | null => { const x = String(v[k] || '').toLowerCase(); if (!/^#[0-9a-f]{6}$/.test(x) || x === PADRAO[k]) return null; const [r, g, b] = [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)); const [h, s] = hslDe(r, g, b); return [h, s]; };
     const aAzul: [number, number] | null = alvoAzul ? (() => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(alvoAzul.slice(i, i + 2), 16)); const [h, s] = hslDe(r, g, b); return [h, s] as [number, number]; })() : null;
-    const aVerde = alvo('cor_primaria'), aAmbar = alvo('cor_destaque'), temAlvo = Boolean(aAzul || aVerde || aAmbar);
+    const aVerde = alvo('cor_primaria'), aAmbar = alvo('cor_destaque'), temAlvo = true;
+    // Fundos claros rosados/cremes (restos do vermelho antigo da marca) seguem sempre a cor primária da escola, mesmo a padrão.
+    const pri = /^#[0-9a-f]{6}$/i.test(String(v.cor_primaria || '')) ? String(v.cor_primaria) : PADRAO.cor_primaria;
+    const [ph, ps] = hslDe(...([1, 3, 5].map((i) => parseInt(pri.slice(i, i + 2), 16)) as [number, number, number]));
     const desloca = (r: number, g: number, b: number): [number, number, number] | null => {
         const [h, s, l] = hslDe(r, g, b);
+        if (l > 0.9 && l < 0.995 && s >= 0.3 && (h < 22 || h >= 330) && r > g) return rgbDe(ph, Math.min(s, Math.max(0.3, ps)), l);
         if (s < 0.2 || l > 0.995) return null;
         const a = h >= 185 && h <= 260 ? aAzul : h >= 150 && h < 185 ? aVerde : h >= 22 && h <= 52 ? aAmbar : null;
         return a ? rgbDe(a[0], Math.min(s, Math.max(0.25, a[1])), l) : null;
