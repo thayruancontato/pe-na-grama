@@ -40,17 +40,47 @@ function aplicar() {
             trocas.push([new RegExp(`${de}|rgb\\(\\s*${r},\\s*${g},\\s*${b}\\s*\\)`, 'gi'), para]);
         }
     }
-    if (trocas.length) {
-        const pinta = (t: string) => trocas.reduce((s, [re, novo]) => s.replace(re, novo), t);
+    // Qualquer outro azul/ciano do sistema (fundos claros, degradês, selos) vira o tom da paleta da escola: mesma luminosidade, matiz da cor secundária (ou escura).
+    const alvoAzul = [v.cor_secundaria, v.cor_escura].map((x) => String(x || '').toLowerCase()).find((x, i) => /^#[0-9a-f]{6}$/.test(x) && x !== (i ? PADRAO.cor_escura : PADRAO.cor_secundaria));
+    const hslDe = (r: number, g: number, b: number): [number, number, number] => {
+        r /= 255; g /= 255; b /= 255;
+        const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let h = 0, s = 0;
+        if (mx !== mn) { const d = mx - mn; s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
+        return [h, s, l];
+    };
+    const rgbDe = (h: number, s: number, l: number): [number, number, number] => {
+        const a = s * Math.min(l, 1 - l), f = (n: number) => { const k = (n + h / 30) % 12; return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
+        return [f(0), f(8), f(4)];
+    };
+    // Alvos por família: azuis -> secundária/escura; verdes-água (esmeralda, calendários, selos) -> primária; âmbar/laranja -> destaque.
+    // Os verdes "de status" (matiz abaixo de 150, como aprovado/pago) ficam como estão.
+    const alvo = (k: string): [number, number] | null => { const x = String(v[k] || '').toLowerCase(); if (!/^#[0-9a-f]{6}$/.test(x) || x === PADRAO[k]) return null; const [r, g, b] = [1, 3, 5].map((i) => parseInt(x.slice(i, i + 2), 16)); const [h, s] = hslDe(r, g, b); return [h, s]; };
+    const aAzul: [number, number] | null = alvoAzul ? (() => { const [r, g, b] = [1, 3, 5].map((i) => parseInt(alvoAzul.slice(i, i + 2), 16)); const [h, s] = hslDe(r, g, b); return [h, s] as [number, number]; })() : null;
+    const aVerde = alvo('cor_primaria'), aAmbar = alvo('cor_destaque'), temAlvo = Boolean(aAzul || aVerde || aAmbar);
+    const desloca = (r: number, g: number, b: number): [number, number, number] | null => {
+        const [h, s, l] = hslDe(r, g, b);
+        if (s < 0.2 || l > 0.995) return null;
+        const a = h >= 185 && h <= 260 ? aAzul : h >= 150 && h < 185 ? aVerde : h >= 22 && h <= 52 ? aAmbar : null;
+        return a ? rgbDe(a[0], Math.min(s, Math.max(0.25, a[1])), l) : null;
+    };
+    const COR_RE = /#[0-9a-f]{6}(?![0-9a-z_-])|rgba?\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*(?:,\s*[\d.]+\s*)?\)/gi;
+    const deslocaTexto = (t: string) => t.replace(COR_RE, (m) => {
+        if (m[0] === '#') { const n = desloca(parseInt(m.slice(1, 3), 16), parseInt(m.slice(3, 5), 16), parseInt(m.slice(5, 7), 16)); return n ? '#' + n.map((x) => x.toString(16).padStart(2, '0')).join('') : m; }
+        const p = m.match(/[\d.]+/g) as string[]; const n = desloca(+p[0], +p[1], +p[2]);
+        return n ? (p.length > 3 ? `rgba(${n.join(', ')}, ${p[3]})` : `rgb(${n.join(', ')})`) : m;
+    });
+    if (trocas.length || temAlvo) {
+        const pinta = (t: string) => { const x = trocas.reduce((s, [re, novo]) => s.replace(re, novo), t); return temAlvo ? deslocaTexto(x) : x; };
         const ATTRS = ['style', 'fill', 'stroke', 'stop-color', 'color'];
         const visita = (n: Node) => {
             if (n.nodeType !== 1) return;
             const el = n as Element;
+            if (el.tagName === 'STYLE') { const t = el.textContent || '', y = pinta(t); if (y !== t) el.textContent = y; } // páginas com <style> próprio (ex.: tela inicial)
             for (const a of ATTRS) { const x = el.getAttribute(a); if (x) { const y = pinta(x); if (y !== x) el.setAttribute(a, y); } }
             el.childNodes.forEach(visita);
         };
         const obs = new MutationObserver((ms) => { for (const m of ms) { if (m.type === 'attributes') visita(m.target); else m.addedNodes.forEach(visita); } });
-        const iniciar = () => { visita(document.body); obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ATTRS }); };
+        const iniciar = () => { visita(document.head); visita(document.body); obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ATTRS }); };
         document.body ? iniciar() : document.addEventListener('DOMContentLoaded', iniciar);
         // folhas de estilo do sistema: baixa o texto, troca as cores e usa a cópia
         document.querySelectorAll('link[rel="stylesheet"]').forEach((l) => {
