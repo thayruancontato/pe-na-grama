@@ -8,6 +8,9 @@ import ContractEditor from '../components/contracts/ContractEditor';
 import SignatureCanvas from '../components/SignatureCanvas';
 import { signOut } from 'firebase/auth';
 
+// Versão sem Firebase (várias escolas): não há estatuto da escola anexado, então o estatuto não é exigido para assinar o contrato.
+const EXIGE_ESTATUTO = import.meta.env.MODE !== 'sem-firebase';
+
 export default function MandatoryContractPage() {
     const navigate = useNavigate();
     const { registrationId: targetRegistrationId, studentIndex: targetStudentIndexParam } = useParams();
@@ -112,7 +115,7 @@ export default function MandatoryContractPage() {
 
     const handleSaveSignature = async (signatureDataUrl: string) => {
         if (!registrationId || !studentData) return;
-        if (!estatutoLido) {
+        if (EXIGE_ESTATUTO && !estatutoLido) {
             alert("Antes de assinar, é necessário confirmar que leu e concorda com o Estatuto Social da Associação.");
             return;
         }
@@ -228,7 +231,7 @@ export default function MandatoryContractPage() {
                             </div>
 
                             {/* Estatuto Social Box */}
-                            <div style={{
+                            {EXIGE_ESTATUTO && <div style={{
                                 background: '#f8f9fa', padding: '12px', borderRadius: '10px',
                                 border: '1px solid #edf2f7', marginBottom: '15px', textAlign: 'left'
                             }}>
@@ -271,7 +274,7 @@ export default function MandatoryContractPage() {
                                     />
                                     Li e concordo com o Estatuto Social da Associação Rumo ao Esporte e ao Lazer - REAL.
                                 </label>
-                            </div>
+                            </div>}
 
                             {/* Signature Section */}
                             <div style={{ marginTop: '15px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
@@ -286,18 +289,18 @@ export default function MandatoryContractPage() {
                                         <div style={{ marginBottom: '10px', fontSize: '0.8rem', color: '#2e7d32', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                                             <CheckCircle size={14} /> Assinatura capturada!
                                         </div>
-                                        {!estatutoLido && (
+                                        {EXIGE_ESTATUTO && !estatutoLido && (
                                             <div style={{ marginBottom: '10px', fontSize: '0.8rem', color: '#e65100', textAlign: 'center' }}>
                                                 Marque a opção "Li e concordo com o Estatuto Social" para finalizar.
                                             </div>
                                         )}
                                         <button
                                             onClick={() => handleSaveSignature(capturedSignature)}
-                                            disabled={saving || !estatutoLido}
+                                            disabled={saving || (EXIGE_ESTATUTO && !estatutoLido)}
                                             style={{
-                                                background: (saving || !estatutoLido) ? '#a5c9a8' : '#2e7d32', color: '#fff', border: 'none',
+                                                background: (saving || (EXIGE_ESTATUTO && !estatutoLido)) ? '#a5c9a8' : '#2e7d32', color: '#fff', border: 'none',
                                                 padding: '12px 25px', borderRadius: '50px', fontSize: '1rem',
-                                                fontWeight: 'bold', cursor: (saving || !estatutoLido) ? 'not-allowed' : 'pointer', width: '100%',
+                                                fontWeight: 'bold', cursor: (saving || (EXIGE_ESTATUTO && !estatutoLido)) ? 'not-allowed' : 'pointer', width: '100%',
                                                 boxShadow: '0 4px 10px rgba(46, 125, 50, 0.2)'
                                             }}
                                         >
