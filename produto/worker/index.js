@@ -49,15 +49,29 @@ async function novoSubdominio(env, escola) {
   return 'https://escola-' + Date.now().toString(36) + '.' + DOMINIO;
 }
 const escHtml = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SITUACAO = { implantando: ['Implantando', 'Estamos preparando o sistema da sua escola. Este endereço já é o definitivo e o painel será liberado aqui assim que a implantação terminar.'], ativo: ['Ativo', 'O sistema da escola está ativo neste endereço.'], pausado: ['Pausado', 'O sistema desta escola está temporariamente pausado.'], cancelado: ['Encerrado', 'O contrato desta escola foi encerrado.'] };
+const SITUACAO = { implantando: ['Estamos preparando tudo', 'O sistema da sua escola está sendo montado com carinho. Em breve este endereço abre o seu painel, é só voltar daqui a pouco.'], ativo: ['Sistema ativo', 'O sistema da escola está ativo neste endereço.'], pausado: ['Temporariamente pausado', 'O sistema desta escola está pausado por enquanto. Fale com a escola para saber mais.'], cancelado: ['Contrato encerrado', 'O contrato desta escola foi encerrado.'] };
+const ETAPAS_IMPL = 7; // quantidade de passos do roteiro de implantação (a página só mostra a porcentagem)
 async function paginaEscola(req, env, host, p) {
   if (p.startsWith('/ds/') || p.startsWith('/assets/')) return env.ASSETS.fetch(req);
-  const c = await env.DB.prepare('SELECT escola,status,plano_nome FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
-  const [tag, texto] = c ? (SITUACAO[c.status] || SITUACAO.implantando) : ['', ''];
+  const c = await env.DB.prepare('SELECT c.escola,c.status,c.checklist,l.logo FROM clientes c LEFT JOIN leads l ON l.id=c.lead_id WHERE c.url_sistema=?').bind('https://' + host).first();
+  if (p === '/__logo') { // logo da escola, só para esta página
+    const mm = c && /^data:(image\/(?:png|jpeg|webp));base64,(.+)$/.exec(c.logo || ''); if (!mm) return new Response('', { status: 404 });
+    return new Response(Uint8Array.from(atob(mm[2]), (ch) => ch.charCodeAt(0)), { headers: { 'content-type': mm[1], 'cache-control': 'public, max-age=300' } });
+  }
+  const [titulo, texto] = c ? (SITUACAO[c.status] || SITUACAO.implantando) : ['', ''];
+  let pct = 0; try { pct = Math.min(100, Math.round(Object.values(JSON.parse(c ? c.checklist || '{}' : '{}')).filter(Boolean).length / ETAPAS_IMPL * 100)); } catch { /* checklist inválida: 0% */ }
+  const temLogo = c && /^data:image\//.test(c.logo || '');
   const corpo = c
-    ? '<span class="pg-badge ok">' + escHtml(tag) + '</span><h1>' + escHtml(c.escola) + '</h1><p>' + escHtml(texto) + '</p><small>Sistema Pé na Grama · ' + escHtml(host) + '</small>'
+    ? '<div class="marca">' + (temLogo ? '<img class="esc" src="/__logo" alt="Logo de ' + escHtml(c.escola) + '">' : '<div class="ini">' + escHtml((c.escola.match(/[A-Za-zÀ-ú0-9]+/g) || ['?']).slice(0, 2).map((w) => w[0]).join('').toUpperCase()) + '</div>') + '</div><h2>' + escHtml(c.escola) + '</h2><h1>' + escHtml(titulo) + '</h1><p>' + escHtml(texto) + '</p>'
+      + (c.status === 'implantando' ? '<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" aria-label="Andamento da implantação"><i style="width:' + Math.max(pct, 4) + '%"></i></div><b class="pct">' + pct + '%</b>' : '')
+      + '<footer><span>Feito com</span><img src="/assets/logo-600.png" alt="Pé na Grama"></footer>'
     : '<h1>Endereço não encontrado</h1><p>Nenhuma escola usa este endereço.</p>';
-  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>' + escHtml(c ? c.escola : 'Pé na Grama') + '</title><link rel="stylesheet" href="/ds/tokens.css"><link rel="stylesheet" href="/ds/components.css"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg,#f4f7fc);font-family:Lato,system-ui,sans-serif;color:#1c2b4a}main{max-width:520px;margin:24px;padding:36px 28px;background:#fff;border:1px solid #e3e8f2;border-radius:16px;text-align:center}h1{margin:14px 0 8px;font-size:1.6rem;color:#17428f}p{margin:0 0 18px;line-height:1.55;color:#4a5875}small{color:#7a859c}</style></head><body><main>' + corpo + '</main></body></html>';
+  const css = 'body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f7fc;font-family:Lato,system-ui,sans-serif;color:#1c2b4a}main{width:min(480px,calc(100vw - 32px));margin:24px 0;padding:40px 32px 28px;background:#fff;border:1px solid #e3e8f2;border-radius:20px;text-align:center;box-shadow:0 8px 30px rgba(16,33,63,.07)}'
+    + '.marca{display:grid;place-items:center;margin-bottom:14px}.esc{max-width:220px;max-height:120px;object-fit:contain}.ini{width:88px;height:88px;border-radius:22px;background:#eef3fb;color:#17428f;display:grid;place-items:center;font-size:1.8rem;font-weight:800}'
+    + 'h2{margin:0;font-size:.95rem;font-weight:700;color:#6b7893;letter-spacing:.02em}h1{margin:18px 0 8px;font-size:1.55rem;line-height:1.25;color:#17428f}p{margin:0 auto 22px;max-width:380px;line-height:1.55;color:#4a5875}'
+    + '.prog{height:10px;border-radius:99px;background:#e6edf7;overflow:hidden}.prog i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#00a63a,#4cc96f);transition:width .6s}.pct{display:block;margin-top:10px;font-size:1.1rem;color:#00803a;font-variant-numeric:tabular-nums}'
+    + 'footer{margin-top:28px;padding-top:18px;border-top:1px solid #eef1f7;display:flex;align-items:center;justify-content:center;gap:10px;color:#8a95ab;font-size:.8rem}footer img{height:34px}';
+  const html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>' + escHtml(c ? c.escola : 'Pé na Grama') + '</title><style>' + css + '</style></head><body><main>' + corpo + '</main></body></html>';
   return new Response(html, { status: c ? 200 : 404, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }
 
