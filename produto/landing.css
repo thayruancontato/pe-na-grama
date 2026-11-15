@@ -205,6 +205,6 @@
 .lp-plano b{font-weight:900;color:var(--navy);font-size:1.15rem}.lp-plano .v{font-weight:900;font-size:2.2rem;color:var(--navy);font-variant-numeric:tabular-nums}.lp-plano .v small{font-size:1rem;font-weight:700;color:var(--ink2)}
 .lp-plano p{color:var(--ink2);font-size:.98rem;margin:0}.lp-plano span{color:var(--ink2);font-size:.9rem}.lp-plano .btn{margin-top:10px;text-align:center}
 .lp-incl{list-style:none;padding:0;margin:36px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:12px 40px;max-width:820px}
-.lp-incl li{position:relative;padding-left:30px;color:var(--ink)}.lp-incl li::before{content:"";position:absolute;left:0;top:.35em;width:18px;height:10px;border-left:3px solid var(--grass);border-bottom:3px solid var(--grass);transform:rotate(-45deg) scale(.8)}
+.lp-incl li{position:relative;padding-left:30px;color:var(--ink)}.lp-incl li::before{content:"✓";position:absolute;left:2px;top:0;color:var(--grass);font-weight:900}
 @media(max-width:700px){.lp-incl{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.lp-plano{transition:none}.lp-plano:hover{transform:none}}
