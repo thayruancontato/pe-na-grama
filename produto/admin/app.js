@@ -228,7 +228,7 @@
   let buscaCli = '', stCli = '';
   async function clientes(pg) {
     const lista = await api('clientes');
-    const linha = c => { const feitos = CHECK.filter(k => c.checklist[k]).length; return `<tr class="ad-click" data-id="${c.id}" tabindex="0"><td><b>${E(c.escola)}</b><small>${E(c.contato_nome)} · ${E(c.contato_tel)}</small></td><td>${E(c.plano_nome)}</td><td class="num">${brl(c.mensal)}</td>
+    const linha = c => { const feitos = CHECK.filter(k => c.checklist[k]).length; return `<tr class="lin-click" data-id="${c.id}" tabindex="0"><td><b>${E(c.escola)}</b><small>${E(c.contato_nome)} · ${E(c.contato_tel)}</small></td><td>${E(c.plano_nome)}</td><td class="num">${brl(c.mensal)}</td>
         <td>${badge(ST_CLI, c.status)}${c.atrasadas ? ` <span class="pg-badge bad">Em atraso · ${brl(c.valor_atrasado)}</span>` : ''}</td><td>${c.proximo ? dt(c.proximo) : '—'}</td>
         <td><div class="pg-track" style="width:110px"><i style="width:${Math.round(feitos / CHECK.length * 100)}%"></i></div><small>${feitos} de ${CHECK.length}</small></td><td class="ac">${btnPainel(c.url_sistema, true).replace('Abrir painel da escola', 'Abrir painel')} ${c.url_sistema ? `<button class="pg-btn detail" data-ctl="${c.id}">${I('settings')} Controle</button>` : ''} <button class="pg-btn detail" data-det="${c.id}">Detalhes</button></td></tr>`; };
     pg.innerHTML = cabeca('Clientes', 'Escolas que assinaram o contrato e o andamento de cada uma.') +
@@ -242,7 +242,7 @@
       $('#cv', pg).innerHTML = lista.length && !v.length ? vazio('Nenhuma escola encontrada', 'Mude a busca ou o filtro de situação.') : '';
       pg.querySelectorAll('[data-det]').forEach(b => b.onclick = e => { e.stopPropagation(); detalheCliente(+b.dataset.det); });
       pg.querySelectorAll('[data-ctl]').forEach(b => b.onclick = async e => { e.stopPropagation(); const c = lista.find(x => x.id === +b.dataset.ctl); b.disabled = true; try { await controleEscola(c); } finally { b.disabled = false; } });
-      pg.querySelectorAll('tr.ad-click').forEach(tr => { const abre = e => { if (e.target.closest('a,button')) return; detalheCliente(+tr.dataset.id); }; tr.onclick = abre; tr.onkeydown = e => { if (e.key === 'Enter' && e.target === tr) detalheCliente(+tr.dataset.id); }; });
+      pg.querySelectorAll('tr.lin-click').forEach(tr => { const abre = e => { if (e.target.closest('a,button')) return; detalheCliente(+tr.dataset.id); }; tr.onclick = abre; tr.onkeydown = e => { if (e.key === 'Enter' && e.target === tr) detalheCliente(+tr.dataset.id); }; });
     };
     const cb = $('#cb', pg); if (cb) { cb.oninput = () => { buscaCli = cb.value; desenha(); }; $('#cs', pg).onchange = e => { stCli = e.target.value; desenha(); }; }
     desenha();
@@ -308,8 +308,9 @@
       return rot + ent + (o.t === 'txt' ? '' : aj);
     };
     const opcao = o => `<div class="ad-op" data-k="${E(o.k)}" data-txt="${E((o.r + ' ' + (o.a || '')).toLowerCase())}">${campo(o)}<span class="ad-tags"></span></div>`;
-    const tabs = [['opcoes', 'Opções', ctl.catalogo.length], ['usuarios', 'Usuários'], ['dados', 'Dados e registro'], ['ficha', 'Ficha interna'], ['acoes', 'Ações']];
-    let aberta = 'opcoes';
+    const CURTO = { 'Módulos do painel da escola': 'Módulos do painel', 'Portais de pais e professores': 'Portais', 'Estado da escola': 'Estado', 'Avisos na tela': 'Avisos', 'Marca e aparência': 'Marca', 'Limites do plano': 'Limites', 'Segurança e senhas': 'Segurança', 'Permissões do administrador da escola': 'Permissões' };
+    const tabs = [...grupos.map((g, i) => ['g' + i, CURTO[g] || g, ctl.catalogo.filter(o => o.g === g).length]), ['usuarios', 'Usuários'], ['dados', 'Dados e registro'], ['ficha', 'Ficha interna'], ['acoes', 'Ações']];
+    let aberta = 'g0';
     modal('Controle total · ' + c.escola, `<div class="ad-tabs" role="tablist" aria-label="Seções do controle">${tabs.map(([k, r, n]) => `<button role="tab" id="t_${k}" data-aba="${k}" aria-selected="${k === aberta}" aria-controls="corpoAba">${r}${n ? `<small>${n}</small>` : ''}</button>`).join('')}</div><div id="corpoAba" role="tabpanel"></div>`, (el) => {
       const corpo = $('#corpoAba', el);
       const marca = () => { // destaca o que mudou e mostra o contador no rodapé
@@ -325,7 +326,7 @@
       };
       const rodape = txt => `<div class="ad-foot"><span class="ad-foot-info" id="fInfo" aria-live="polite"></span><button class="pg-btn" id="descarta">Descartar</button><button class="pg-btn green" id="salva">${txt}</button></div>`;
       const abas = {
-        opcoes: () => `<div class="ad-find" style="margin-bottom:12px"><input class="pg-input" id="busca" type="search" placeholder="Buscar entre ${ctl.catalogo.length} opções (ex.: senha, WhatsApp, turmas)…" aria-label="Buscar opção"><label class="ad-sw" style="font-weight:600;font-size:14px"><input type="checkbox" id="soMud"><span>Só personalizadas</span></label><span class="n"><button class="pg-btn detail" id="abreTudo">Abrir tudo</button> <button class="pg-btn detail" id="fechaTudo">Fechar tudo</button></span></div><div id="ops">${grupos.map(g => `<details class="ad-grp" open><summary>${E(g)} <span class="c">${ctl.catalogo.filter(o => o.g === g).length} opções</span> <span class="c alt" style="color:#92400e"></span></summary><div class="gb">${ctl.catalogo.filter(o => o.g === g).map(opcao).join('')}</div></details>`).join('')}</div><div class="ad-none" id="nenhuma" hidden>Nenhuma opção encontrada. Tente outra palavra.</div>${rodape('Salvar opções')}`,
+        opcoes: () => `<div class="ad-find" style="margin-bottom:12px"><input class="pg-input" id="busca" type="search" placeholder="Buscar em todas as ${ctl.catalogo.length} opções (ex.: senha, WhatsApp, turmas)…" aria-label="Buscar opção"><label class="ad-sw" style="font-weight:600;font-size:14px"><input type="checkbox" id="soMud"><span>Só personalizadas</span></label></div><div id="ops" class="solo">${grupos.map((g, gi) => `<details class="ad-grp" data-gi="g${gi}" open><summary>${E(g)} <span class="c">${ctl.catalogo.filter(o => o.g === g).length} opções</span> <span class="c alt" style="color:#92400e"></span></summary><div class="gb">${ctl.catalogo.filter(o => o.g === g).map(opcao).join('')}</div></details>`).join('')}</div><div class="ad-none" id="nenhuma" hidden>Nenhuma opção encontrada. Tente outra palavra.</div>${rodape('Salvar opções')}`,
         usuarios: () => '<div id="usu"><div class="pg-empty">Carregando…</div></div>',
         dados: () => '<div id="dad"><div class="pg-empty">Carregando…</div></div>',
         ficha: () => `<p class="pg-sub" style="margin:0 0 14px">Anotações só suas. Nada daqui aparece para a escola.</p><div class="ad-two">${ctl.interno_campos.map(([k, r]) => `<div class="pg-field"><label class="pg-label" for="i_${E(k)}">${E(r)}</label><input class="pg-input" id="i_${E(k)}" data-i="${E(k)}" value="${E(internoMud[k] != null ? internoMud[k] : (ctl.interno[k] || ''))}" maxlength="300"></div>`).join('')}</div>${rodape('Salvar ficha')}`,
@@ -338,17 +339,18 @@
           <div><div class="ad-sec" style="margin-top:0">Segurança e dados</div><div class="ad-quick"><button class="pg-btn" id="sessTodas">Encerrar todas as sessões</button><a class="pg-btn" href="/api/admin/${base}exportar" download>Baixar todos os dados (JSON)</a></div></div></div>`;
         },
       };
+      grupos.forEach((g, i) => { abas['g' + i] = abas.opcoes; });
       const liga = () => {
         corpo.querySelectorAll('[data-k]').forEach(i => { if (i.dataset.reset !== undefined) return; i.onchange = i.oninput = () => { const o = ctl.catalogo.find(x => x.k === i.dataset.k), val = i.type === 'checkbox' ? i.checked : i.type === 'number' ? Math.max(0, Math.floor(+i.value || 0)) : i.value; if (val === ctl.valores[o.k]) delete mudou[o.k]; else mudou[o.k] = val; marca(); }; });
         corpo.querySelectorAll('[data-i]').forEach(i => i.oninput = () => { if (i.value === (ctl.interno[i.dataset.i] || '')) delete internoMud[i.dataset.i]; else internoMud[i.dataset.i] = i.value; marca(); });
         const b = $('#busca', corpo);
         if (b) {
-          const filtra = () => { const q = b.value.trim().toLowerCase(), so = $('#soMud', corpo).checked; let ach = 0;
+          const filtra = () => { const q = b.value.trim().toLowerCase(), so = $('#soMud', corpo).checked, todos = !!(q || so); let ach = 0; $('#ops', corpo).classList.toggle('solo', !todos);
             corpo.querySelectorAll('.ad-op').forEach(d => { const o = ctl.catalogo.find(x => x.k === d.dataset.k), ok = (!q || d.dataset.txt.includes(q)) && (!so || difere(o) || o.k in mudou); d.style.display = ok ? '' : 'none'; if (ok) ach++; });
-            corpo.querySelectorAll('.ad-grp').forEach(g => { const ve = [...g.querySelectorAll('.ad-op')].some(d => d.style.display !== 'none'); g.style.display = ve ? '' : 'none'; if (q && ve) g.open = true; });
+            corpo.querySelectorAll('.ad-grp').forEach(g => { const ve = [...g.querySelectorAll('.ad-op')].some(d => d.style.display !== 'none'); g.style.display = ve && (todos || g.dataset.gi === aberta) ? '' : 'none'; if (ve) g.open = true; });
             $('#nenhuma', corpo).hidden = ach > 0; };
           b.oninput = filtra; $('#soMud', corpo).onchange = filtra;
-          $('#abreTudo', corpo).onclick = () => corpo.querySelectorAll('.ad-grp').forEach(g => g.open = true); $('#fechaTudo', corpo).onclick = () => corpo.querySelectorAll('.ad-grp').forEach(g => g.open = false);
+          filtra();
         }
         const sv = $('#salva', corpo), ds = $('#descarta', corpo);
         if (sv) sv.onclick = async () => {
@@ -375,7 +377,7 @@
         el.querySelectorAll('[data-aba]').forEach(b => b.setAttribute('aria-selected', b.dataset.aba === k)); liga();
       }
       el.querySelectorAll('[data-aba]').forEach(b => { b.onclick = () => mostra(b.dataset.aba); b.onkeydown = e => { const i = tabs.findIndex(t => t[0] === b.dataset.aba), d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { const n = tabs[(i + d + tabs.length) % tabs.length][0]; mostra(n); el.querySelector('[data-aba="' + n + '"]').focus(); } }; });
-      mostra('opcoes');
+      mostra('g0');
     }, { wide: true, guarda: () => nMud() > 0 });
 
     async function listaUsuarios(box) {

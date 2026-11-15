@@ -105,7 +105,7 @@
 }
 
 /* tabelas viram cartões no celular (cada célula leva o nome da coluna) */
-@media(max-width:760px){
+@media(max-width:1180px){
   .pg-table-wrap{background:transparent;border:0;overflow:visible}
   .pg-table,.pg-table tbody,.pg-table tr,.pg-table td{display:block;width:100%}
   .pg-table thead{position:absolute;left:-9999px}
@@ -126,7 +126,7 @@
 .ad-find .pg-input{flex:1 1 240px;max-width:420px}
 .ad-find .pg-select{flex:0 0 auto;width:auto;min-width:170px}
 .ad-find .n{margin-left:auto;align-self:center;font-weight:700;color:var(--medium-gray);font-size:14px}
-tr.ad-click{cursor:pointer}
+tr.lin-click{cursor:pointer}
 
 /* Controle total */
 .ad-tabs{position:sticky;top:0;z-index:2;display:flex;gap:6px;overflow-x:auto;padding:4px;margin:-4px -4px 14px;background:#fff;border-bottom:1px solid var(--line-soft);scrollbar-width:none}
@@ -138,6 +138,9 @@ tr.ad-click{cursor:pointer}
 .ad-grp{border:1px solid var(--line-soft);border-radius:var(--radius-md);margin-bottom:12px;background:#fff;overflow:hidden}
 .ad-grp>summary{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;list-style:none;font:900 14px/1.2 var(--font-primary);text-transform:uppercase;color:var(--slate-900);background:#fafbfc;user-select:none}
 .ad-grp>summary::-webkit-details-marker{display:none}
+.solo .ad-grp>summary{display:none}
+.solo .ad-grp{border:0;background:transparent;margin-bottom:0}
+.solo .ad-grp .gb{padding:0}
 .ad-grp>summary::after{content:"";margin-left:auto;width:8px;height:8px;border:solid var(--medium-gray);border-width:0 2px 2px 0;transform:rotate(45deg);transition:transform .2s}
 .ad-grp[open]>summary::after{transform:rotate(-135deg)}
 .ad-grp>summary .c{font-weight:700;color:var(--medium-gray);text-transform:none;font-size:13px}
@@ -177,6 +180,6 @@ tr.ad-click{cursor:pointer}
 <body class="pg">
 <div id="app"></div>
 <script src="../ds/icons.js"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>

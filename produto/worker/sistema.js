@@ -330,6 +330,7 @@ export async function rotaSistema(req, env, tenant, p) {
         const td = t && JSON.parse(t.data), bruta = String(corpo.password || ''), pw = bruta.trim(), cpfT = String(td && td.cpf || '').replace(/\D/g, ''), senhaT = String(td && td.senha || '').trim();
         if (td && cfg.primeiro_acesso_prof !== false && (!u || u.role !== 'admin')) {
           if (td.active === false) u = null;
+          else if (!u && cfg.lim_usuarios && (await env.DB.prepare('SELECT COUNT(*) n FROM sys_users WHERE tenant=?').bind(tenant).first()).n >= cfg.lim_usuarios) u = null;
           else if (((senhaT && senhaT === pw) || (cfg.cpf_senha !== false && cpfT.length === 11 && cpfT === pw.replace(/\D/g, ''))) && (!u || u.role !== 'professor' || (await pbkdf2(bruta, u.salt)) !== u.hash)) {
             const { salt, hash } = await hashSenha(bruta), uid = u ? u.uid : idNovo();
             await env.DB.prepare('INSERT INTO sys_users(tenant,email,salt,hash,uid,role) VALUES(?,?,?,?,?,?) ON CONFLICT(tenant,email) DO UPDATE SET salt=excluded.salt,hash=excluded.hash,role=excluded.role').bind(tenant, email, salt, hash, uid, 'professor').run();
@@ -340,7 +341,7 @@ export async function rotaSistema(req, env, tenant, p) {
       if (!u && email && cfg.primeiro_acesso_pais !== false && cfg.cpf_senha !== false) { // primeiro acesso do responsável: e-mail do cadastro + CPF como senha (o mesmo padrão do sistema original)
         const cpf = String(corpo.password || '').replace(/\D/g, '');
         const reg = cpf.length === 11 && await env.DB.prepare("SELECT 1 x FROM sys_docs WHERE tenant=? AND col='rumo_ao_esporte_2026_registrations' AND lower(trim(json_extract(data,'$.responsavel.email')))=? AND replace(replace(replace(json_extract(data,'$.responsavel.cpf'),'.',''),'-',''),' ','')=? LIMIT 1").bind(tenant, email, cpf).first();
-        if (reg) {
+        if (reg && !(cfg.lim_usuarios && (await env.DB.prepare('SELECT COUNT(*) n FROM sys_users WHERE tenant=?').bind(tenant).first()).n >= cfg.lim_usuarios)) {
           const { salt, hash } = await hashSenha(cpf), uid = idNovo();
           await env.DB.prepare('INSERT INTO sys_users(tenant,email,salt,hash,uid,role) VALUES(?,?,?,?,?,?)').bind(tenant, email, salt, hash, uid, 'user').run();
           u = { tenant, email, salt, hash, uid, role: 'user' };

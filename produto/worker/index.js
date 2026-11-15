@@ -451,13 +451,16 @@ async function rotaAdmin(req, env, url, caminho) {
         const bloqueio = async (v) => q('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data', t, 'sys_flags', email, JSON.stringify({ ...(JSON.parse(((await q("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_flags' AND id=?", t, email).first()) || { data: '{}' }).data)), bloqueado: v })).run();
         if (b.acao === 'criar') {
           if (u) return erro('E-mail já cadastrado.', 409);
+          const lim = await controleDe(env, t);
+          if (lim.lim_usuarios && (await q('SELECT COUNT(*) n FROM sys_users WHERE tenant=?', t).first()).n >= lim.lim_usuarios) return erro('Limite de usuários desta escola atingido (' + lim.lim_usuarios + '). Aumente em Limites do plano.', 403);
+          if (papel === 'admin' && lim.lim_admins && (await q("SELECT COUNT(*) n FROM sys_users WHERE tenant=? AND role='admin'", t).first()).n >= lim.lim_admins) return erro('Limite de administradores atingido (' + lim.lim_admins + ').', 403);
           const senha = String(b.senha || '') || senhaNova(); await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: papel === 'admin' ? 'admin' : papel === 'professor' ? 'professor' : 'user' }] });
           await q("UPDATE sys_users SET role=? WHERE tenant=? AND email=?", papel, t, email).run();
           await log(env, 'sistema', 'Usuário ' + email + ' (' + papel + ') criado em ' + c0.escola); return J({ ok: true, email, senha });
         }
         if (!u) return erro('Usuário não encontrado.', 404);
         if (b.acao === 'senha') { const senha = String(b.senha || '') || senhaNova(); await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: u.role === 'admin' ? 'admin' : u.role }] }); await q('UPDATE sys_users SET role=? WHERE tenant=? AND email=?', u.role, t, email).run(); await revogar(env, t, email); await log(env, 'sistema', 'Senha de ' + email + ' redefinida em ' + c0.escola); return J({ ok: true, senha }); }
-        if (b.acao === 'papel') { if (ehPrincipal) return erro('O administrador principal não pode mudar de papel.'); await q('UPDATE sys_users SET role=? WHERE tenant=? AND email=?', papel, t, email).run(); await revogar(env, t, email); return J({ ok: true }); }
+        if (b.acao === 'papel') { if (ehPrincipal) return erro('O administrador principal não pode mudar de papel.'); const lim = await controleDe(env, t); if (papel === 'admin' && u.role !== 'admin' && lim.lim_admins && (await q("SELECT COUNT(*) n FROM sys_users WHERE tenant=? AND role='admin'", t).first()).n >= lim.lim_admins) return erro('Limite de administradores atingido (' + lim.lim_admins + ').', 403); await q('UPDATE sys_users SET role=? WHERE tenant=? AND email=?', papel, t, email).run(); await revogar(env, t, email); return J({ ok: true }); }
         if (b.acao === 'bloquear') { if (ehPrincipal) return erro('O administrador principal não pode ser bloqueado.'); await bloqueio(true); await revogar(env, t, email); return J({ ok: true }); }
         if (b.acao === 'desbloquear') { await bloqueio(false); return J({ ok: true }); }
         if (b.acao === 'sessoes') { await revogar(env, t, email); return J({ ok: true }); }
