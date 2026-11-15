@@ -4,7 +4,11 @@ import { db } from '../firebase';
 import PageContainer from '../components/PageContainer';
 import PageTitle from '../components/PageTitle';
 import { Download, ArrowRight, ArrowLeft, Share2, RefreshCw, CheckCircle, Settings, ClipboardCheck } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import Arte from '../components/Arte';
+import SeletorModelo from '../components/SeletorModelo';
+import { A as ANIV_A, L as ANIV_L, MODELOS_ANIVERSARIO, desenharAniversario } from '../artes/aniversario';
+import { paraBlob } from '../artes/base';
+import { salvarArte, useArtes } from '../artes/config';
 import { loadWhatsAppConfig, saveWhatsAppConfig, WORKER_URL, TEST_PHONE } from './AdminMensagens/whatsappUtils';
 import type { WhatsAppFullConfig } from './AdminMensagens/whatsappUtils';
 
@@ -43,7 +47,7 @@ export default function AdminBirthdays() {
     const [isTriggering, setIsTriggering] = useState(false);
 
     // Store refs to the DOM elements we want to capture
-    const cardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+    const modelo = useArtes().aniversario;
 
     // Infinite Scroll State
     const [visibleCount, setVisibleCount] = useState(10);
@@ -187,40 +191,14 @@ export default function AdminBirthdays() {
 
         const timer = setTimeout(syncUpcomingCards, 3000); // Inicia após 3s do carregamento
         return () => clearTimeout(timer);
-    }, [loading, students, whatsappConfig?.birthdayAutomationEnabled]);
+    }, [loading, students, whatsappConfig?.birthdayAutomationEnabled, modelo]);
 
+    const fotoDe = (s: { id: string; fotoUrl?: string }) => customPhotos[s.id] || s.fotoUrl || null;
     const generateCardImage = async (studentId: string): Promise<Blob | null> => {
-        const element = cardRefs.current[studentId];
-        if (!element) return null;
-
-        // Garantir que todas as imagens internas foram carregadas antes da captura
-        const imgs = Array.from(element.querySelectorAll('img'));
-        await Promise.all(imgs.map(img => {
-            if (img.complete) return Promise.resolve();
-            return new Promise(resolve => {
-                img.onload = resolve;
-                img.onerror = resolve;
-            });
-        }));
-
-        // Pequeno delay adicional para fontes e renderização estável
-        await new Promise(r => setTimeout(r, 300));
-
-        try {
-            const canvas = await html2canvas(element, {
-            useCORS: true,
-            scale: 2,
-            backgroundColor: '#ffffff',
-            logging: false,
-            allowTaint: true
-        });
-            return new Promise((resolve) => {
-                canvas.toBlob((blob) => resolve(blob), 'image/png', 0.8); // 0.8 quality for faster blob creation
-            });
-        } catch (err) {
-            console.error("Image generation failed", err);
-            return null;
-        }
+        const s = students.find((x) => x.id === studentId);
+        if (!s) return null;
+        try { return await paraBlob(await desenharAniversario(modelo, { nome: s.nome, fotoUrl: fotoDe(s) })); }
+        catch (err) { console.error('Image generation failed', err); return null; }
     };
 
     const handleDownload = async (studentId: string, studentName: string) => {
@@ -423,6 +401,9 @@ export default function AdminBirthdays() {
                 </div>
             </PageTitle>
 
+            <SeletorModelo titulo="Modelo da arte" ajuda="Vale para as artes baixadas e para as enviadas por WhatsApp." modelos={MODELOS_ANIVERSARIO} atual={modelo}
+                proporcao={ANIV_A / ANIV_L} desenhar={(id) => desenharAniversario(id, { nome: 'Pedro' })} onEscolher={(id) => salvarArte('aniversario', id).catch(() => alert('Não consegui salvar o modelo.'))} />
+
             {loading ? <div style={{ padding: '40px', textAlign: 'center' }}>Carregando...</div> : (
                 <div style={{
                     display: 'grid',
@@ -464,77 +445,9 @@ export default function AdminBirthdays() {
                                 {student.isToday && <span>· Hoje!</span>}
                             </div>
 
-                            {/*
-                                The Card Container
-                                1. We display this responsively to the user.
-                                2. html2canvas captures this exact element.
-                            */}
-                            <div
-                                className="force-radius-card"
-                                style={{
-                                    position: 'relative',
-                                    width: '100%',
-                                    boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
-                                    background: '#fff',
-                                    containerType: 'inline-size' // Define container for cqw scaling
-                                }}
-                            >
-                                <div
-                                    ref={el => {
-                                        if (el) cardRefs.current[student.id] = el;
-                                    }}
-                                    style={{
-                                        position: 'relative',
-                                        width: '100%',
-                                    }}
-                                >
-                                    {/* Background Image - Relative Position to define height */}
-                                    <img
-                                        src="/aniversario.png"
-                                        alt="Background"
-                                        style={{
-                                            width: '100%',
-                                            display: 'block',
-                                            height: 'auto'
-                                        }}
-                                    />
-
-                                    {/* Name (top, below PARABÉNS) */}
-                                    <div className="birthday-name-top" aria-hidden="true">
-                                        <span className="birthday-name-text">
-                                            {student.nome.split(' ')[0].charAt(0).toUpperCase() + student.nome.split(' ')[0].slice(1).toLowerCase()}
-                                        </span>
-                                    </div>
-
-                                    {/* Photo Container - sits under the white frame so no background shows through */}
-                                    <div
-                                        className="force-radius-photo"
-                                        style={{
-                                            position: 'absolute',
-                                            top: 'calc(29.75% - 0.3cqw)',
-                                            left: 'calc(23.05% - 0.3cqw)',
-                                            width: 'calc(53.71% + 0.6cqw)',
-                                            height: 'calc(44.34% + 0.6cqw)',
-                                            overflow: 'hidden',
-                                            backgroundImage: `url(${customPhotos[student.id] || student.fotoUrl || '/placeholder.png'})`,
-                                            backgroundSize: 'cover',
-                                            backgroundPosition: 'center',
-                                            backgroundRepeat: 'no-repeat',
-                                            cursor: 'pointer',
-                                            zIndex: 2
-                                        }}
-                                        onClick={() => document.getElementById(`file-${student.id}`)?.click()}
-                                    >
-                                    </div>
-                                    <div className="birthday-photo-frame" aria-hidden="true"></div>
-                                    <input
-                                        type="file"
-                                        id={`file-${student.id}`}
-                                        style={{ display: 'none' }}
-                                        accept="image/*"
-                                        onChange={(e) => handlePhotoChange(e, student.id)}
-                                    />
-                                </div>
+                            <div style={{ position: 'relative', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', borderRadius: 14 }} title="Clique para trocar a foto" onClick={() => document.getElementById(`file-${student.id}`)?.click()}>
+                                <Arte desenhar={() => desenharAniversario(modelo, { nome: student.nome, fotoUrl: fotoDe(student) })} chave={[modelo, student.nome, fotoDe(student)].join('|')} proporcao={ANIV_A / ANIV_L} alt={`Arte de aniversário de ${student.nome}`} raio={14} />
+                                <input type="file" id={`file-${student.id}`} style={{ display: 'none' }} accept="image/*" onClick={(e) => e.stopPropagation()} onChange={(e) => handlePhotoChange(e, student.id)} />
                             </div>
 
                             {/* Actions */}
@@ -807,65 +720,6 @@ export default function AdminBirthdays() {
                     </form>
                 </div>
             )}
-
-            {/* Hidden Sync Container for Automation (html2canvas needs elements in DOM) */}
-            <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '400px' }}>
-                {students.filter(s => {
-                    const today = new Date();
-                    const bday = new Date(today.getFullYear(), s.month - 1, s.day);
-                    const next7Days = new Date();
-                    next7Days.setDate(today.getDate() + 7);
-                    return bday >= today && bday <= next7Days;
-                }).map(student => (
-                    <div
-                        key={`sync-${student.id}`}
-                        ref={el => { if (el) cardRefs.current[student.id] = el; }}
-                        style={{ width: '400px', marginBottom: '50px' }}
-                    >
-                        {/* Duplicate of the card structure or use a shared component if possible */}
-                        {/* Here we just render the minimal structure needed for the sync capture */}
-                        <div style={{ position: 'relative', width: '100%', background: '#fff', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', containerType: 'inline-size' }}>
-                             {/* Background */}
-                             <img src="/aniversario.png" style={{ width: '100%', display: 'block', height: 'auto' }} />
-                             
-                             {/* Name (top, below PARABÉNS) */}
-                             <div style={{
-                                position: 'absolute',
-                                top: '20.5%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                width: '90%',
-                                textAlign: 'center',
-                                zIndex: 5
-                             }}>
-                                <span style={{
-                                    color: '#fff',
-                                    fontFamily: "'DucksFiesta', sans-serif",
-                                    fontSize: '40px',
-                                    textTransform: 'capitalize',
-                                    textShadow: '2.4px 2.4px 0 rgba(0,15,60,0.55)'
-                                }}>
-                                    {student.nome.split(' ')[0].charAt(0).toUpperCase() + student.nome.split(' ')[0].slice(1).toLowerCase()}
-                                </span>
-                             </div>
-
-                             {/* Photo - fills the frame opening drawn into the art, square corners under the white frame */}
-                             <div style={{
-                                position: 'absolute',
-                                top: 'calc(29.75% - 0.3cqw)',
-                                left: 'calc(23.05% - 0.3cqw)',
-                                width: 'calc(53.71% + 0.6cqw)',
-                                height: 'calc(44.34% + 0.6cqw)',
-                                backgroundImage: `url(${customPhotos[student.id] || student.fotoUrl || '/placeholder.png'})`,
-                                backgroundSize: 'cover',
-                                backgroundPosition: 'center',
-                                zIndex: 2
-                             }}></div>
-                             <div className="birthday-photo-frame" aria-hidden="true"></div>
-                        </div>
-                    </div>
-                ))}
-            </div>
 
             <style>{`
                 @font-face {
