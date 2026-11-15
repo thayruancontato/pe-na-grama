@@ -179,6 +179,17 @@ async function portalPais(env, tenant, s, m, partes, corpo) {
       const r = await env.DB.prepare('SELECT id,data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, col).all();
       return J({ docs: (r.results || []).map((x) => ({ id: x.id, data: JSON.parse(x.data) })).filter((x) => meus.has(x.data.studentId)) });
     }
+    if (col === CHAMADAS) { // frequência: só as chamadas das turmas dos alunos deste responsável, e só a situação deles (sem os outros nomes)
+      if (id) return J({ existe: false });
+      const rs = await env.DB.prepare('SELECT data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, REG).all();
+      const meus = (rs.results || []).map((x) => JSON.parse(x.data)).filter(meu).flatMap((d) => (d.alunos || []).map((a) => ({ nome: a.nome, turmaId: a.turmaId })));
+      const r = await env.DB.prepare('SELECT id,data FROM sys_docs WHERE tenant=? AND col=?').bind(tenant, CHAMADAS).all();
+      const docs = (r.results || []).map((x) => ({ id: x.id, c: JSON.parse(x.data) })).map(({ id: i, c }) => {
+        const alunos = meus.filter((a) => a.turmaId === c.turmaId).map((a) => ({ nome: a.nome, presente: (c.presentStudents || []).some((p) => p.nome === a.nome) }));
+        return alunos.length ? { id: i, data: { data: c.data, turmaId: c.turmaId, turmaNome: c.turmaNome, alunos } } : null;
+      }).filter(Boolean);
+      return J({ docs });
+    }
     if (LEITURA_PAIS.has(col) || (col === 'system_settings' && id !== 'whatsapp_evolution')) return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
     return J(id ? { existe: false } : { docs: [] });
   }

@@ -18,7 +18,7 @@
 - **Importar alunos**: em **Inscrições e backup**, envie um CSV com as colunas `responsavel_nome, responsavel_email, responsavel_cpf, responsavel_telefone, aluno_nome, aluno_nascimento, aluno_cpf`.
 - **Cobranças e mensagens**: usam o WhatsApp da própria escola. Em envio em lote, deixe a aba aberta até terminar.
 - **Professores**: cadastre em *Professores* (e-mail e senha, ou o CPF como senha). Eles entram em **Acesso do aluno / responsável**, veem as turmas e marcam a chamada pelo celular; os registros aparecem em *Turmas > Chamadas*. O professor não vê CPF nem dados financeiros.
-- **Responsáveis**: entram com o e-mail e a senha criados no cadastro; veem só os dados do próprio aluno.
+- **Responsáveis**: entram com o e-mail e a senha criados no cadastro; veem só os dados do próprio aluno, inclusive a **Frequência** (presença e faltas registradas pelo professor).
 
 ## Segurança
 - **Esqueceu a senha de alguém**: **Inscrições e backup > Redefinir senha de um usuário**.

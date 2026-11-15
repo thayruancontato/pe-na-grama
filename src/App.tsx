@@ -58,6 +58,7 @@ import StudentEstatuto from './pages/StudentEstatuto';
 import StudentRegimento from './pages/StudentRegimento';
 import StudentRadio from './pages/StudentRadio';
 import StudentHorarios from './pages/StudentHorarios';
+import StudentFrequencia from './pages/StudentFrequencia';
 import StudentStore from './pages/StudentStore';
 import StudentAutorizacoes from './pages/StudentAutorizacoes';
 import MandatoryContractPage from './pages/MandatoryContractPage';
@@ -150,6 +151,7 @@ function App() {
               <Route path="regimento" element={<StudentRegimento />} />
               <Route path="radio" element={<StudentRadio />} />
               <Route path="horarios" element={<StudentHorarios />} />
+              <Route path="frequencia" element={<StudentFrequencia />} />
               <Route path="loja" element={<StudentStore />} />
               <Route path="autorizacoes" element={<StudentAutorizacoes />} />
               <Route index element={<Navigate to="dashboard" replace />} />

@@ -31,7 +31,8 @@ import {
     Store,
     Download,
     FileSignature,
-    CreditCard
+    CreditCard,
+    CalendarCheck
 } from 'lucide-react';
 
 const MAIN_ADMIN_EMAIL = ((import.meta.env.VITE_MAIN_ADMIN_EMAIL as string) || 'rumoaoesporte@admin.com').trim().toLowerCase();
@@ -581,6 +582,7 @@ export default function StudentLayout() {
                             <NavItem to="/aluno/financeiro" label="Pagamentos" icon={<DollarSign size={20} />} />
                             <NavItem to="/aluno/autorizacoes" label="Autorizações" icon={<FileSignature size={20} />} />
                             {storeEnabled && <NavItem to="/aluno/loja" label="Loja do Clube" icon={<Store size={20} />} />}
+                            <NavItem to="/aluno/frequencia" label="Frequência" icon={<CalendarCheck size={20} />} />
                             <NavItem to="/aluno/horarios" label="Horários" icon={<Clock size={20} />} />
                             <NavItem to="/aluno/configuracoes" label="Configurações" icon={<Settings size={20} />} />
                             <NavItem to="/aluno/whatsapp" label="Fale Conosco" icon={<MessageCircle size={20} />} />
@@ -752,6 +754,7 @@ export default function StudentLayout() {
                             <MenuGridItem icon={FileSignature} label="Autorizações" link="/aluno/autorizacoes" />
                             {storeEnabled && <MenuGridItem icon={Store} label="Loja" link="/aluno/loja" />}
                             <MenuGridItem icon={Lock} label="Trocar Senha" link="/aluno/configuracoes" />
+                            <MenuGridItem icon={CalendarCheck} label="Frequência" link="/aluno/frequencia" />
                             <MenuGridItem icon={Clock} label="Horários" link="/aluno/horarios" />
                             {!isInstalledApp && (
                                 <MenuGridItem
