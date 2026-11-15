@@ -357,6 +357,30 @@ async function rotaAdmin(req, env, url, caminho) {
         (SELECT MIN(vencimento) FROM faturas f WHERE f.cliente_id=c.id AND f.status IN ('aberta','informada')) proximo FROM clientes c ORDER BY c.id DESC`).bind(hoje, hoje).all();
       return J(results.map(r => ({ ...r, checklist: JSON.parse(r.checklist || '{}') })));
     }
+    if (id && acao === 'saude' && m === 'GET') { // situação do sistema da escola: dados, usuários, última ação, limite
+      const c = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
+      const t = new URL(c.url_sistema).host, n = async (sql, ...a) => (await env.DB.prepare(sql).bind(...a).first()) || {};
+      const [reg, usu, doc, ult, lim] = await Promise.all([
+        n("SELECT COUNT(*) n FROM sys_docs WHERE tenant=? AND col='rumo_ao_esporte_2026_registrations'", t), n('SELECT COUNT(*) n FROM sys_users WHERE tenant=?', t),
+        n('SELECT COUNT(*) n, COALESCE(SUM(LENGTH(data)),0) bytes FROM sys_docs WHERE tenant=?', t),
+        n("SELECT data FROM sys_docs WHERE tenant=? AND col='auditoria' ORDER BY json_extract(data,'$.quando') DESC LIMIT 1", t),
+        n("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_owner' AND id='limites'", t)]);
+      return J({ matriculas: reg.n || 0, usuarios: usu.n || 0, documentos: doc.n || 0, kb: Math.round((doc.bytes || 0) / 1024), ultima_acao: ult.data ? JSON.parse(ult.data) : null, limite: lim.data ? JSON.parse(lim.data).maxMatriculas || 0 : 0 });
+    }
+    if (id && acao === 'acesso' && m === 'POST') { // gera (ou refaz) o acesso do administrador da escola; a senha aparece só agora
+      const c = await env.DB.prepare('SELECT escola,contato_email,url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
+      const t = new URL(c.url_sistema).host, email = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.contato_email || '') ? c.contato_email.toLowerCase() : 'admin@' + t;
+      const senha = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789'[b % 54]).join('');
+      await importarSistema(env, { tenant: t, users: [{ email, password: senha, role: 'admin' }] });
+      await log(env, 'sistema', 'Acesso do administrador gerado para ' + c.escola);
+      return J({ email, senha, url: c.url_sistema + '/admin/login' });
+    }
+    if (id && acao === 'limite' && m === 'PUT') { // limite de matrículas do plano (0 = sem limite)
+      const c = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
+      const max = Math.max(0, Math.min(100000, Math.floor(Number((await body()).max) || 0)));
+      await env.DB.prepare('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data').bind(new URL(c.url_sistema).host, 'sys_owner', 'limites', JSON.stringify({ maxMatriculas: max })).run();
+      return J({ ok: true, limite: max });
+    }
     if (id && m === 'GET') {
       const c = await env.DB.prepare('SELECT * FROM clientes WHERE id=?').bind(id).first(); if (!c) return erro('Cliente não encontrado.', 404);
       const f = await env.DB.prepare('SELECT id,token,descricao,competencia,valor,vencimento,status,pago_em,informado_em FROM faturas WHERE cliente_id=? ORDER BY id DESC').bind(id).all();

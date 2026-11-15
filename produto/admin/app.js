@@ -219,6 +219,9 @@
         <div class="pg-field"><label class="pg-label" for="ur">Endereço do sistema dela</label><input class="pg-input" id="ur" value="${E(c.url_sistema)}" placeholder="https://escola.penagrama.com.br"><div style="margin-top:8px">${btnPainel(c.url_sistema)}</div></div>
         <div class="pg-field"><label class="pg-label" for="mn">Mensalidade (R$)</label><input class="pg-input" id="mn" inputmode="decimal" value="${fmtIn(c.mensal)}"></div>
         <div class="pg-field"><label class="pg-label" for="dv">Dia do vencimento</label><input class="pg-input" id="dv" type="number" min="1" max="28" value="${c.dia_venc}"></div></div>
+      ${c.url_sistema ? `<div><div class="ad-sec" style="margin-top:0">Sistema da escola</div><div id="saude" class="pg-alert" style="margin-bottom:10px">Carregando situação…</div>
+        <div class="ad-two"><div class="pg-field"><label class="pg-label" for="lm">Limite de matrículas (0 = sem limite)</label><div class="ad-copy"><input class="pg-input" id="lm" type="number" min="0" value="0"><button class="pg-btn" id="lmb">Salvar limite</button></div></div>
+        <div class="pg-field"><label class="pg-label">Acesso do administrador</label><button class="pg-btn" id="acesso">Gerar acesso do administrador</button></div></div><div id="acessoRes"></div></div>` : ''}
       <div><div class="ad-sec" style="margin-top:0">Implantação</div>${CHECK.map(k => `<label class="pg-check ${c.checklist[k] ? 'done' : ''}"><input type="checkbox" data-ck="${E(k)}" ${c.checklist[k] ? 'checked' : ''}><span>${E(k)}</span></label>`).join('')}</div>
       <div class="pg-field"><label class="pg-label" for="nt">Anotações</label><textarea class="pg-textarea" id="nt" style="min-height:80px">${E(c.notas)}</textarea></div>
       <div><div class="ad-sec" style="margin-top:0;display:flex;justify-content:space-between;align-items:center"><span>Faturas</span><button class="pg-btn sm" id="nova">${I('plus')} Cobrança avulsa</button></div>
@@ -227,6 +230,11 @@
       el.querySelectorAll('[data-copia]').forEach(b => b.onclick = () => copiar(b.dataset.copia));
       el.querySelectorAll('[data-paga]').forEach(b => b.onclick = async () => { try { await api('faturas/' + b.dataset.paga, { m: 'PATCH', b: { status: 'paga' } }); toast('Fatura marcada como paga'); fechar(); rota(); } catch (e) { falha(e); } });
       $('#nova', el).onclick = () => cobrancaAvulsa(c, fechar);
+      if (c.url_sistema) {
+        api('clientes/' + id + '/saude').then(s => { $('#saude', el).innerHTML = `<b>${s.matriculas}</b> matrícula(s)${s.limite ? ` de ${s.limite}` : ''} · <b>${s.usuarios}</b> usuário(s) · ${s.kb} KB de dados · última ação: ${s.ultima_acao ? E(s.ultima_acao.quando.slice(0, 16).replace('T', ' ')) + ' (' + E(s.ultima_acao.quem) + ')' : 'nenhuma ainda'}`; $('#lm', el).value = s.limite; }).catch(() => { $('#saude', el).textContent = 'Sem dados ainda (sistema sem uso ou fora do ar).'; });
+        $('#lmb', el).onclick = async () => { try { await api('clientes/' + id + '/limite', { m: 'PUT', b: { max: +$('#lm', el).value || 0 } }); toast('Limite salvo'); } catch (e) { falha(e); } };
+        $('#acesso', el).onclick = async () => { if (!confirm('Gerar um novo acesso? A senha anterior do administrador deixa de valer.')) return; try { const r = await api('clientes/' + id + '/acesso', { m: 'POST', b: {} }); $('#acessoRes', el).innerHTML = `<div class="pg-alert ok" style="margin-top:10px">Anote agora, a senha não aparece de novo.<br>Endereço: <b>${E(r.url)}</b><br>E-mail: <b>${E(r.email)}</b><br>Senha: <b>${E(r.senha)}</b></div>`; } catch (e) { falha(e); } };
+      }
       $('#salvar', el).onclick = async () => {
         const checklist = {}; el.querySelectorAll('[data-ck]').forEach(i => checklist[i.dataset.ck] = i.checked);
         try { await api('clientes/' + id, { m: 'PATCH', b: { status: $('#st', el).value, url_sistema: $('#ur', el).value, mensal: money($('#mn', el).value), dia_venc: +$('#dv', el).value, notas: $('#nt', el).value, checklist } }); toast('Cliente salvo'); fechar(); rota(); } catch (e) { falha(e); } };

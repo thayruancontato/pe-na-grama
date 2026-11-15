@@ -87,6 +87,7 @@ async function novaInscricao(req, env, tenant, corpo) {
   const cfgI = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='system_settings' AND id='inscricoes'").bind(tenant).first();
   const ci = cfgI ? JSON.parse(cfgI.data) : {};
   if (ci.abertas === false) return erro(String(ci.mensagem || 'As inscrições estão fechadas no momento.').slice(0, 300), 403);
+  if (!(await dentroDoLimite(env, tenant, 1))) return erro('Esta escola atingiu o limite de matrículas do plano.', 403);
   const ipc = req.headers.get('cf-connecting-ip') || 'x', chave = 'insc:' + tenant + ':' + ipc, desde = Date.now() - 3600e3;
   const f = await env.DB.prepare('SELECT COUNT(*) n FROM tentativas WHERE chave=? AND quando>?').bind(chave, desde).first();
   if (f.n >= 6) return erro('Muitas inscrições deste endereço. Tente de novo em uma hora.', 429);
@@ -143,6 +144,14 @@ async function rotaWa(req, env, tenant, partes, corpo) {
   return erro('Não encontrado.', 404);
 }
 
+/** Limite de matrículas do plano (definido pelo dono na Central; 0 ou ausente = sem limite). */
+async function dentroDoLimite(env, tenant, adicionar) {
+  const l = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_owner' AND id='limites'").bind(tenant).first();
+  const max = l ? JSON.parse(l.data).maxMatriculas || 0 : 0;
+  if (!max) return true;
+  const n = await env.DB.prepare("SELECT COUNT(*) n FROM sys_docs WHERE tenant=? AND col='rumo_ao_esporte_2026_registrations'").bind(tenant).first();
+  return n.n + adicionar <= max;
+}
 async function revogar(env, tenant, email) {
   await env.DB.prepare('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data').bind(tenant, 'sys_flags', email, JSON.stringify({ revogado: Date.now() })).run();
 }
@@ -243,7 +252,7 @@ export async function rotaSistema(req, env, tenant, p) {
     const s = await lerToken(req, env, tenant);
     if (!s) return erro('Faça login.', 401);
     if (s.role !== 'admin') return erro('Sem permissão.', 403);
-    const r = await env.DB.prepare("SELECT col,id,data FROM sys_docs WHERE tenant=? AND NOT (col='system_settings' AND id='whatsapp_evolution')").bind(tenant).all();
+    const r = await env.DB.prepare("SELECT col,id,data FROM sys_docs WHERE tenant=? AND NOT (col='system_settings' AND id='whatsapp_evolution') AND substr(col,1,4)<>'sys_'").bind(tenant).all();
     await auditar(env, tenant, s, 'exportou os dados da escola');
     return new Response(JSON.stringify({ tenant, geradoEm: new Date().toISOString(), docs: (r.results || []).map((x) => ({ col: x.col, id: x.id, data: JSON.parse(x.data) })) }), { headers: { 'content-type': 'application/json; charset=utf-8', 'content-disposition': 'attachment; filename="backup-' + tenant.split('.')[0] + '.json"', 'cache-control': 'no-store' } });
   }
@@ -262,6 +271,7 @@ export async function rotaSistema(req, env, tenant, p) {
       if (cpf && cpf.length !== 11) { falhas.push({ linha: i + 2, motivo: 'CPF do responsável deve ter 11 dígitos.' }); continue; }
       ok.push({ responsavel: { nome, email, cpf, telefonePrincipal: dig(l.responsavel_telefone).slice(0, 13) }, alunos: [{ nome: aluno, dataNascimento: txt(l.aluno_nascimento, 10), cpf: dig(l.aluno_cpf).slice(0, 11) }], status: 'pendente', contractStatus: 'pendente', origem: 'importacao' });
     }
+    if (!(await dentroDoLimite(env, tenant, ok.length))) return erro('A importação passaria do limite de matrículas do plano.', 403);
     for (const d of ok) await gravar(env, tenant, { op: 'set', col: 'rumo_ao_esporte_2026_registrations', id: idNovo(), data: d });
     await auditar(env, tenant, s, `importou ${ok.length} aluno(s) por planilha (${falhas.length} recusados)`);
     return J({ importados: ok.length, falhas });
@@ -289,12 +299,13 @@ export async function rotaSistema(req, env, tenant, p) {
     if (s.role !== 'admin') return portalPais(env, tenant, s, m, partes, corpo);
     try {
       if (partes[0] === 'batch' && m === 'POST') {
-        for (const op of corpo.ops || []) await gravar(env, tenant, op);
+        for (const op of corpo.ops || []) { if (String(op.col).startsWith('sys_')) return erro('Coleção reservada.', 403); await gravar(env, tenant, op); }
         await auditar(env, tenant, s, 'lote: ' + (corpo.ops || []).slice(0, 5).map((o) => `${o.op} ${o.col}/${o.id}`).join('; '));
         return J({ ok: true });
       }
       const [, col, id] = partes;
       if (!colOk(col || '')) return erro('Coleção inválida.');
+      if (col.startsWith('sys_')) return erro('Coleção reservada.', 403); // flags de sessão e limites do plano (só o dono mexe)
       if (col === 'system_settings' && id === 'whatsapp_evolution') return erro('Use as rotas de WhatsApp.', 403);
       if (m !== 'GET' && col !== 'auditoria') await auditar(env, tenant, s, `${m} ${col}/${id || '(novo)'}`);
       if (col === 'auditoria' && m !== 'GET') return erro('O registro de ações não pode ser alterado.', 403);
