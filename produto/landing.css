@@ -1,7 +1,7 @@
 /* Página de vendas do Pé na Grama. Arquivo completo (não depende de style.css).
    Mundo visual: gramado e giz. Verde de campo, branco de giz, amarelo de apito; títulos em letra de camisa (Barlow Condensed itálica). */
 :root{
-  --campo:#0b6b2e; --campo-2:#0a6129; --campo-e:#06421c; --giz:#f6f4ec; --papel:#fffdf7; --tinta:#12241a; --tinta-2:#47584d; --linha:#dcd8c8;
+  --campo:#0b6b2e; --campo-2:#0a6129; --campo-e:#06421c; --giz:#eaf1ea; --papel:#f7faf7; --tinta:#12241a; --tinta-2:#47584d; --linha:#cfdbd1;
   --apito:#ffc61a; --apito-e:#e0a800; --zap:#d9fdd3; --zap-fundo:#efe7dd;
   --titulo:'Barlow Condensed','Arial Narrow',sans-serif; --texto:'Barlow','Segoe UI',system-ui,sans-serif;
   --saida:cubic-bezier(.16,1,.3,1);
@@ -66,10 +66,10 @@ p{margin:0}
 .cel .cab b{display:block;font-size:.98rem;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:210px}
 .cel .cab span{font-size:.75rem;opacity:.8}
 .chat{flex:1;padding:14px 12px;display:flex;flex-direction:column;gap:8px;justify-content:flex-end;font-size:.86rem;line-height:1.4;color:#111b21}
-.msg{max-width:86%;padding:8px 10px 6px;border-radius:10px;background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.12);animation:msg .5s var(--saida) both}
+.msg{max-width:86%;padding:10px 12px 8px;border-radius:10px;background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.12);animation:msg .5s var(--saida) both}
 .msg.eu{align-self:flex-end;background:var(--zap)}
 .msg time{display:block;text-align:right;font-size:.66rem;color:#667781;margin-top:2px}
-.msg .pix{margin-top:7px;padding:8px 9px;border-radius:8px;background:#f0f6f2;border:1px dashed #9fc5ad;font-size:.76rem;color:#234}
+.msg .pix{margin-top:8px;padding:10px 12px;border-radius:8px;background:#f0f6f2;border:1px dashed #9fc5ad;font-size:.76rem;color:#234}
 .msg .pix b{display:block;font-size:.8rem}
 .msg .pix code{font:500 .7rem ui-monospace,Consolas,monospace;color:#567;word-break:break-all}
 @keyframes msg{from{opacity:0;translate:0 14px;filter:blur(4px)}}
@@ -96,7 +96,7 @@ p{margin:0}
 .tour-aba[aria-selected=true] span{color:rgba(255,255,255,.86)}
 .tour-aba:focus-visible{outline:3px solid var(--apito);outline-offset:2px}
 .janela{border-radius:16px;overflow:hidden;background:#fff;border:1px solid var(--linha);box-shadow:0 30px 70px rgba(18,36,26,.18)}
-.janela .barra{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#ece9dd;font:500 .8rem ui-monospace,Consolas,monospace;color:var(--tinta-2)}
+.janela .barra{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#dfe8e0;font:500 .8rem ui-monospace,Consolas,monospace;color:var(--tinta-2)}
 .janela .barra i{width:10px;height:10px;border-radius:50%;background:#c9c4b0}
 .janela .barra span{margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .janela img{width:100%;height:auto;transition:opacity .25s,filter .25s}
@@ -113,7 +113,7 @@ p{margin:0}
 .cara .sub{color:rgba(255,255,255,.8)}
 .cores{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px;align-items:center}
 .cores span{font-weight:700;font-size:.95rem;margin-right:6px}
-.cor{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border-radius:999px;border:2px solid rgba(255,255,255,.25);font-weight:600;font-size:.92rem;transition:border-color .2s,background-color .2s}
+.cor{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 18px 8px 8px;border-radius:999px;border:2px solid rgba(255,255,255,.25);font-weight:600;font-size:.92rem;transition:border-color .2s,background-color .2s}
 .cor i{width:26px;height:26px;border-radius:50%;border:2px solid rgba(255,255,255,.7)}
 .cor:hover{border-color:rgba(255,255,255,.6)}
 .cor[aria-pressed=true]{border-color:var(--apito);background:rgba(255,198,26,.14)}
