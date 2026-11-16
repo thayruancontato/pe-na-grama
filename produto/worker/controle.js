@@ -9,6 +9,9 @@ const N = (g, k, r, d, a) => ({ k, g, r, t: 'num', d, a });
 const T = (g, k, r, d, a, pub) => ({ k, g, r, t: 'txt', d, a, pub });
 const C = (g, k, r, d, a) => ({ k, g, r, t: 'cor', d, a, pub: true });
 
+// Fontes do Google Fonts liberadas para a assinatura de cada escola (o sistema carrega só a escolhida).
+export const FONTES_ASSINATURA = ['Poppins', 'Montserrat', 'Nunito', 'Nunito Sans', 'Fredoka', 'Baloo 2', 'Rubik', 'Barlow', 'Barlow Condensed', 'Oswald', 'Kanit', 'Lexend', 'Quicksand', 'Manrope', 'Sora', 'Outfit', 'Exo 2', 'Archivo', 'Archivo Black', 'Playfair Display', 'DM Serif Display', 'Fraunces', 'Lora', 'Bree Serif', 'Varela Round', 'Lato', 'Inter', 'DM Sans', 'Work Sans', 'Source Sans 3', 'Open Sans', 'Montserrat Alternates'];
+
 export const CATALOGO = [
   // ---- Módulos do painel (desligado = some do menu e a página é bloqueada) ----
   M('m_estatisticas', 'Estatísticas, relatórios e simulador', ['/admin/stats', '/admin/relatorios', '/admin/simulador']),
@@ -92,6 +95,8 @@ export const CATALOGO = [
   C('Marca e aparência', 'cor_escura', 'Cor escura (azul-marinho)', '#09245c'),
   C('Marca e aparência', 'cor_destaque', 'Cor de destaque (dourado)', '#f4c20d'),
   T('Marca e aparência', 'titulo_aba', 'Título da aba do navegador', '', 'Vazio = nome da escola', true),
+  { k: 'fonte_titulo', g: 'Marca e aparência', r: 'Letra dos títulos (assinatura da escola)', t: 'sel', d: 'padrao', o: [['padrao', 'Padrão do sistema'], ...FONTES_ASSINATURA.map((f) => [f, f])], pub: true },
+  { k: 'fonte_texto', g: 'Marca e aparência', r: 'Letra dos textos (assinatura da escola)', t: 'sel', d: 'padrao', o: [['padrao', 'Padrão do sistema'], ...FONTES_ASSINATURA.map((f) => [f, f])], pub: true },
   { k: 'fonte', g: 'Marca e aparência', r: 'Tipo de letra', t: 'sel', d: 'padrao', o: [['padrao', 'Padrão'], ['sans', 'Sem serifa (Arial)'], ['serif', 'Com serifa (Georgia)'], ['mono', 'Máquina de escrever']], pub: true },
   T('Marca e aparência', 'rodape_texto', 'Texto de rodapé em todas as telas', '', '', true),
   T('Marca e aparência', 'rodape_link', 'Link do rodapé (opcional)', '', 'https://...', true),

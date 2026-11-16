@@ -12,6 +12,17 @@ function aplicar() {
     const css: string[] = [];
     const fontes: Record<string, string> = { sans: 'Arial, Helvetica, sans-serif', serif: 'Georgia, "Times New Roman", serif', mono: '"Courier New", monospace' };
     if (fontes[v.fonte]) css.push(`body, button, input, select, textarea { font-family: ${fontes[v.fonte]} !important; }`);
+    // Assinatura tipográfica da escola: títulos e textos com a fonte escolhida (carregada do Google Fonts, só as escolhidas).
+    const fam = (x: unknown) => (typeof x === 'string' && /^[A-Za-z0-9 ]{2,40}$/.test(x) && x !== 'padrao' ? x : '');
+    const ft = fam(v.fonte_titulo), fx = fam(v.fonte_texto);
+    const nomes = [...new Set([ft, fx].filter(Boolean))];
+    if (nomes.length) {
+        const l = document.createElement('link'); l.rel = 'stylesheet';
+        l.href = 'https://fonts.googleapis.com/css2?' + nomes.map((n) => 'family=' + n.replace(/ /g, '+') + ':wght@400;600;700;800').join('&') + '&display=swap';
+        document.head.appendChild(l);
+        if (fx) css.push(`body, button, input, select, textarea { font-family: "${fx}", sans-serif !important; }`);
+        if (ft) css.push(`h1, h2, h3, h4, h5, h6, [class*="title"], [class*="titulo"] { font-family: "${ft}", sans-serif !important; letter-spacing: -0.01em; }`);
+    }
     if (v.cantos_retos) css.push('*, *::before, *::after { border-radius: 0 !important; }');
     if (v.sem_animacoes) css.push('*, *::before, *::after { animation: none !important; transition: none !important; }');
     if (v.letra_grande) css.push('body { zoom: 1.12; }');
