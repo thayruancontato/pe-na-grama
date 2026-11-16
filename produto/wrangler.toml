@@ -17,7 +17,7 @@ run_worker_first = true
 CF_ACCOUNT_ID = "0971703730b0e95fa6dee6211f497131"
 CF_WORKER_NAME = "esporte-thayruan"
 # Domínio das escolas novas. Troque para "penagrama.com.br" quando a zona estiver ativa no Cloudflare e esporte.penagrama.com.br estiver no ar.
-DOMINIO_PADRAO = "thayruan.com.br"
+DOMINIO_PADRAO = "penagrama.com.br"
 
 # Banco de vendas (SQLite dentro do Worker; não usa os bancos D1 da conta)
 [[durable_objects.bindings]]
