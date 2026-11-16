@@ -201,3 +201,17 @@ aside > div:last-child button:hover { background: #ffffff26 !important; color: #
 aside > div:last-child button svg { width: 16px; height: 16px; }
 aside > div:last-child button div div { background: #ffffffb3 !important; }
 aside > div:first-child { padding: 12px !important; }
+
+/* ---------- barras de rolagem personalizadas (flat, finas, com a cor da escola ao passar o mouse) ---------- */
+* { scrollbar-width: thin; scrollbar-color: #9aa5b5 #eceff3; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-track { background: #eceff3; }
+*::-webkit-scrollbar-thumb { background: #9aa5b5; border: 2px solid #eceff3; border-radius: 6px; }
+*::-webkit-scrollbar-thumb:hover { background: #17428f; }
+*::-webkit-scrollbar-thumb:active { background: #09245c; }
+*::-webkit-scrollbar-corner { background: #eceff3; }
+aside, aside * { scrollbar-color: #ffffff4d transparent; }
+aside *::-webkit-scrollbar { width: 8px; }
+aside *::-webkit-scrollbar-track { background: transparent; }
+aside *::-webkit-scrollbar-thumb { background: #ffffff40; border: 2px solid transparent; background-clip: padding-box; }
+aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip: padding-box; }

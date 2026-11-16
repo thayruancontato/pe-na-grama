@@ -11,16 +11,12 @@ const feito = new WeakMap<HTMLElement, string>();
 function reduz(el: HTMLElement) {
     const atual = el.getAttribute('style');
     if (!atual || feito.get(el) === atual) return;
-    for (const p of PROPS) {
-        // propriedade escrita pelo React (padding, paddingTop...) vira CSS no style; lê e reescreve só as de espaçamento
-        for (let i = el.style.length - 1; i >= 0; i--) {
-            const nome = el.style.item(i);
-            if (!PROPS.some((b) => nome === b || nome.startsWith(b + '-'))) continue;
-            const v = el.style.getPropertyValue(nome);
-            const n = v.replace(UNIDADE, (_m, num, un) => (+num === 0 ? '0' : (+num * FATOR).toFixed(2).replace(/\.?0+$/, '') + un));
-            if (n !== v) el.style.setProperty(nome, n, el.style.getPropertyPriority(nome));
-        }
-        break; // as propriedades já foram varridas de uma vez
+    for (let i = el.style.length - 1; i >= 0; i--) {
+        const nome = el.style.item(i);
+        if (!PROPS.some((b) => nome === b || nome.startsWith(b + '-'))) continue;
+        const v = el.style.getPropertyValue(nome);
+        const n = v.replace(UNIDADE, (_m, num, un) => (+num === 0 ? '0' : (+num * FATOR).toFixed(2).replace(/\.?0+$/, '') + un));
+        if (n !== v) el.style.setProperty(nome, n, el.style.getPropertyPriority(nome));
     }
     feito.set(el, el.getAttribute('style') || '');
 }
