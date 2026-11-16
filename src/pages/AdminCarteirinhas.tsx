@@ -9,8 +9,9 @@ import PageContainer from '../components/PageContainer';
 
 import Tabs from '../components/Tabs';
 import SeletorModelo from '../components/SeletorModelo';
-import { A_DUPLA as CART_A, L as CART_L, MODELOS_CARTEIRINHA, desenharCarteirinhaDupla, pdfCarteirinhas, type DadosCarteirinha } from '../artes/carteirinha';
+import { A_DUPLA as CART_A, L as CART_L, desenharCarteirinhaDupla, pdfCarteirinhas, type DadosCarteirinha } from '../artes/carteirinha';
 import { salvarArte, useArtes } from '../artes/config';
+import { useModelos } from '../artes/catalogo';
 
 // Aluno de exemplo para a galeria de modelos.
 const EXEMPLO: DadosCarteirinha = { nome: 'Pedro Henrique Souza', cpf: '123.456.789-00', dataNascimento: '12/05/2014', numeroCota: '0042', modalidade: 'Futebol' };
@@ -114,6 +115,7 @@ export default function AdminCarteirinhas() {
     };
 
     const modelo = useArtes().carteirinha;
+    const modelos = useModelos('carteirinha');
     const dadosDe = (item: any): DadosCarteirinha => ({ ...item.aluno, responsavel: item.responsavel, numeroCota: item.numeroCota, modalidade: item.modalidade });
 
     const generateSinglePDF = async (item: any) => {
@@ -184,7 +186,7 @@ export default function AdminCarteirinhas() {
                     </div>
                 </PageTitle>
 
-                <SeletorModelo titulo="Modelo da carteirinha" ajuda="Vale para todas as carteirinhas, no painel, no portal do aluno e no PDF." modelos={MODELOS_CARTEIRINHA} atual={modelo}
+                <SeletorModelo titulo="Modelo da carteirinha" ajuda="Vale para todas as carteirinhas, no painel, no portal do aluno e no PDF." modelos={modelos} atual={modelo}
 
                     proporcao={CART_A / CART_L} largura={210} desenhar={(id) => desenharCarteirinhaDupla(id, EXEMPLO)} onEscolher={(id) => salvarArte('carteirinha', id).catch(() => alert('Não consegui salvar o modelo.'))} />
 

@@ -55,6 +55,25 @@ async function guardaSenha(env, tenant, email, senha) {
   if (senha == null) delete v[email]; else v[email] = senha;
   await env.DB.prepare('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data').bind(tenant, 'sys_owner', 'senhas', JSON.stringify(v)).run();
 }
+// Catálogo de artes (aba Criativos da Central): confere a forma e limita o tamanho; o desenho em si é interpretado no navegador (motor.js).
+const TIPOS_CAMADA = new Set(['ret', 'elipse', 'poli', 'linha', 'texto', 'foto', 'logo', 'qr', 'grao', 'meiotom', 'guilloche', 'listras', 'confete', 'arcos', 'campo', 'foil', 'balao']);
+function limpaCatalogo(c) {
+  if (!c || typeof c !== 'object') return null;
+  const id = (x) => typeof x === 'string' && /^[a-z0-9]{1,24}$/.test(x), nome = (x) => txt(x, 40) || 'Sem nome';
+  const camadas = (l) => (Array.isArray(l) ? l : []).slice(0, 400).filter((x) => x && typeof x === 'object' && TIPOS_CAMADA.has(x.t));
+  const temas = {};
+  for (const tipo of ['carteirinha', 'aniversario']) {
+    const lista = ((c.temas || {})[tipo] || []).slice(0, 24).filter((t) => t && id(t.id) && t.tokens && typeof t.tokens === 'object');
+    if (!lista.length) return null;
+    temas[tipo] = lista.map((t) => ({ id: t.id, nome: nome(t.nome), tokens: Object.fromEntries(Object.entries(t.tokens).slice(0, 30).filter(([k, v]) => /^[a-zA-Z0-9]{1,20}$/.test(k) && typeof v === 'string').map(([k, v]) => [k, v.slice(0, 300)])) }));
+  }
+  const modelo = (tipo) => (Array.isArray(c[tipo]) ? c[tipo] : []).slice(0, 60).filter((m) => m && id(m.id)).map((m) => {
+    const base = { id: m.id, nome: nome(m.nome), tipo, w: Math.min(4000, Math.max(200, Math.round(Number(m.w) || (tipo === 'carteirinha' ? 1012 : 1080)))), h: Math.min(4000, Math.max(200, Math.round(Number(m.h) || (tipo === 'carteirinha' ? 638 : 1350)))), ativo: m.ativo !== false, temas: (Array.isArray(m.temas) ? m.temas : []).filter((x) => temas[tipo].some((t) => t.id === x)) };
+    return tipo === 'carteirinha' ? { ...base, lados: { frente: camadas((m.lados || {}).frente), verso: camadas((m.lados || {}).verso) } } : { ...base, camadas: camadas(m.camadas) };
+  });
+  const saida = { versao: 1, temas, carteirinha: modelo('carteirinha'), aniversario: modelo('aniversario') };
+  return JSON.stringify(saida).length > 2_000_000 ? null : saida;
+}
 const escHtml = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SITUACAO = { implantando: ['Estamos preparando tudo', 'O sistema da sua escola está sendo montado com carinho. Em breve este endereço abre o seu painel, é só voltar daqui a pouco.'], ativo: ['Sistema ativo', 'O sistema da escola está ativo neste endereço.'], pausado: ['Temporariamente pausado', 'O sistema desta escola está pausado por enquanto. Fale com a escola para saber mais.'], cancelado: ['Contrato encerrado', 'O contrato desta escola foi encerrado.'] };
 const ETAPAS_IMPL = 7; // quantidade de passos do roteiro de implantação (a página só mostra a porcentagem)
@@ -606,6 +625,16 @@ async function rotaAdmin(req, env, url, caminho) {
     }
   }
 
+  if (rec === 'criativos') { // modelos de carteirinha e de aniversário que as escolas podem escolher
+    if (m === 'GET') { const r = await env.DB.prepare("SELECT v FROM settings WHERE k='criativos'").first(); return J({ catalogo: r ? JSON.parse(r.v) : null }); }
+    if (m === 'PUT') {
+      const c = limpaCatalogo((await body()).catalogo); if (!c) return erro('Catálogo inválido ou grande demais.');
+      await env.DB.prepare("INSERT INTO settings(k,v) VALUES('criativos',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify(c)).run();
+      await log(env, 'sistema', 'Modelos de carteirinha e de aniversário atualizados na Central');
+      return J({ ok: true });
+    }
+    if (m === 'DELETE') { await env.DB.prepare("DELETE FROM settings WHERE k='criativos'").run(); await log(env, 'sistema', 'Modelos de arte voltaram ao padrão'); return J({ ok: true }); }
+  }
   if (rec === 'config') {
     if (m === 'GET') return J(await config(env));
     if (m === 'PUT') {

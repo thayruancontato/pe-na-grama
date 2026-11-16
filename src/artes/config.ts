@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { MODELO_CARTEIRINHA_PADRAO, modeloCarteirinhaValido } from './carteirinha';
-import { MODELO_ANIVERSARIO_PADRAO, modeloAniversarioValido } from './aniversario';
+import { PADRAO_ID, idValido } from './catalogo';
 
 // Modelo de arte escolhido pela escola. Fica em system_settings/artes (o portal do aluno também lê).
 export interface Artes { carteirinha: string; aniversario: string }
-const PADRAO: Artes = { carteirinha: MODELO_CARTEIRINHA_PADRAO, aniversario: MODELO_ANIVERSARIO_PADRAO };
+const PADRAO: Artes = { carteirinha: PADRAO_ID.carteirinha, aniversario: PADRAO_ID.aniversario };
 const REF = ['system_settings', 'artes'] as const;
 
 let pedido: Promise<Artes> | null = null;
@@ -16,7 +15,7 @@ const ouvintes = new Set<(a: Artes) => void>();
 export function lerArtes(): Promise<Artes> {
     if (!pedido) {
         pedido = getDoc(doc(db, ...REF))
-            .then((s) => { const d = (s.exists() ? s.data() : {}) as Partial<Artes>; return { carteirinha: modeloCarteirinhaValido(d.carteirinha), aniversario: modeloAniversarioValido(d.aniversario) }; })
+            .then(async (s) => { const d = (s.exists() ? s.data() : {}) as Partial<Artes>; return { carteirinha: await idValido('carteirinha', d.carteirinha), aniversario: await idValido('aniversario', d.aniversario) }; })
             .catch(() => PADRAO);
     }
     return pedido;

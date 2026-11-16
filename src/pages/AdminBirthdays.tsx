@@ -6,8 +6,8 @@ import PageTitle from '../components/PageTitle';
 import { Download, ArrowRight, ArrowLeft, Share2, RefreshCw, CheckCircle, Settings, ClipboardCheck } from 'lucide-react';
 import Arte from '../components/Arte';
 import SeletorModelo from '../components/SeletorModelo';
-import { A as ANIV_A, L as ANIV_L, MODELOS_ANIVERSARIO, desenharAniversario } from '../artes/aniversario';
-import { paraBlob } from '../artes/base';
+import { A as ANIV_A, L as ANIV_L, desenharAniversario } from '../artes/aniversario';
+import { paraBlob, useModelos } from '../artes/catalogo';
 import { salvarArte, useArtes } from '../artes/config';
 import { loadWhatsAppConfig, saveWhatsAppConfig, WORKER_URL, TEST_PHONE } from './AdminMensagens/whatsappUtils';
 import type { WhatsAppFullConfig } from './AdminMensagens/whatsappUtils';
@@ -48,6 +48,8 @@ export default function AdminBirthdays() {
 
     // Store refs to the DOM elements we want to capture
     const modelo = useArtes().aniversario;
+    const modelos = useModelos('aniversario');
+    const idadeDe = (s: { dataNascimento: string; nextBirthday: Date }) => { const a = parseInt(String(s.dataNascimento || '').slice(-4), 10); return a ? s.nextBirthday.getFullYear() - a : undefined; };
 
     // Infinite Scroll State
     const [visibleCount, setVisibleCount] = useState(10);
@@ -197,7 +199,7 @@ export default function AdminBirthdays() {
     const generateCardImage = async (studentId: string): Promise<Blob | null> => {
         const s = students.find((x) => x.id === studentId);
         if (!s) return null;
-        try { return await paraBlob(await desenharAniversario(modelo, { nome: s.nome, fotoUrl: fotoDe(s) })); }
+        try { return await paraBlob(await desenharAniversario(modelo, { nome: s.nome, fotoUrl: fotoDe(s), idade: idadeDe(s) })); }
         catch (err) { console.error('Image generation failed', err); return null; }
     };
 
@@ -401,8 +403,8 @@ export default function AdminBirthdays() {
                 </div>
             </PageTitle>
 
-            <SeletorModelo titulo="Modelo da arte" ajuda="Vale para as artes baixadas e para as enviadas por WhatsApp." modelos={MODELOS_ANIVERSARIO} atual={modelo}
-                proporcao={ANIV_A / ANIV_L} desenhar={(id) => desenharAniversario(id, { nome: 'Pedro' })} onEscolher={(id) => salvarArte('aniversario', id).catch(() => alert('Não consegui salvar o modelo.'))} />
+            <SeletorModelo titulo="Modelo da arte" ajuda="Vale para as artes baixadas e para as enviadas por WhatsApp." modelos={modelos} atual={modelo}
+                proporcao={ANIV_A / ANIV_L} desenhar={(id) => desenharAniversario(id, { nome: 'Pedro', idade: 10 })} onEscolher={(id) => salvarArte('aniversario', id).catch(() => alert('Não consegui salvar o modelo.'))} />
 
             {loading ? <div style={{ padding: '40px', textAlign: 'center' }}>Carregando...</div> : (
                 <div style={{
@@ -446,7 +448,7 @@ export default function AdminBirthdays() {
                             </div>
 
                             <div style={{ position: 'relative', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.15)', borderRadius: 14 }} title="Clique para trocar a foto" onClick={() => document.getElementById(`file-${student.id}`)?.click()}>
-                                <Arte desenhar={() => desenharAniversario(modelo, { nome: student.nome, fotoUrl: fotoDe(student) })} chave={[modelo, student.nome, fotoDe(student)].join('|')} proporcao={ANIV_A / ANIV_L} alt={`Arte de aniversário de ${student.nome}`} raio={14} />
+                                <Arte desenhar={() => desenharAniversario(modelo, { nome: student.nome, fotoUrl: fotoDe(student), idade: idadeDe(student) })} chave={[modelo, student.nome, fotoDe(student)].join('|')} proporcao={ANIV_A / ANIV_L} alt={`Arte de aniversário de ${student.nome}`} raio={14} />
                                 <input type="file" id={`file-${student.id}`} style={{ display: 'none' }} accept="image/*" onClick={(e) => e.stopPropagation()} onChange={(e) => handlePhotoChange(e, student.id)} />
                             </div>
 

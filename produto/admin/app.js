@@ -4,7 +4,7 @@
   const $ = (s, r = document) => r.querySelector(s);
   const app = $('#app');
   // [rota, rótulo, ícone, grupo do menu]
-  const NAV = [['painel', 'Painel', 'chart', ''], ['pedidos', 'Pedidos', 'inbox', 'Vendas'], ['contratos', 'Contratos', 'file', 'Vendas'], ['clientes', 'Clientes', 'cap', 'Escolas'], ['faturas', 'Faturas', 'receipt', 'Escolas'], ['planos', 'Planos', 'tag', 'Ajustes'], ['config', 'Configurações', 'settings', 'Ajustes']];
+  const NAV = [['painel', 'Painel', 'chart', ''], ['pedidos', 'Pedidos', 'inbox', 'Vendas'], ['contratos', 'Contratos', 'file', 'Vendas'], ['clientes', 'Clientes', 'cap', 'Escolas'], ['faturas', 'Faturas', 'receipt', 'Escolas'], ['criativos', 'Criativos', 'pencil', 'Ajustes'], ['planos', 'Planos', 'tag', 'Ajustes'], ['config', 'Configurações', 'settings', 'Ajustes']];
   const ST_LEAD = { novo: ['Novo', 'info'], proposta: ['Proposta enviada', 'warn'], contratado: ['Contratado', 'ok'], perdido: ['Perdido', ''] };
   const ST_CLI = { implantando: ['Implantando', 'warn'], ativo: ['Ativo', 'ok'], cancelado: ['Cancelado', ''] };
   const ST_FAT = { aberta: ['Em aberto', 'warn'], informada: ['Pagamento informado', 'info'], paga: ['Paga', 'ok'], cancelada: ['Cancelada', ''] };
@@ -81,7 +81,9 @@
   const vazio = (t, d) => `<div class="pg-empty"><b>${t}</b><br>${d || ''}</div>`;
 
   // ---------- rotas ----------
-  const ROTAS = { painel, pedidos, clientes, faturas, contratos, planos, config };
+  // Aba Criativos: o editor é um módulo à parte (criativos.js), carregado só quando a aba é aberta.
+  const criativos = async (pg) => (await import('./criativos.js?v=2')).pagina(pg, { api, toast, confirma, falha, cabeca, E, I });
+  const ROTAS = { painel, pedidos, clientes, faturas, contratos, planos, criativos, config };
   async function rota() {
     const [r, qs] = (location.hash.replace(/^#\//, '') || 'painel').split('?'), q = new URLSearchParams(qs || '');
     if (r === 'faturas' && q.has('f')) filtroFat = q.get('f');

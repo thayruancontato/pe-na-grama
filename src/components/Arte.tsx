@@ -15,13 +15,14 @@ interface ArteProps {
 // Mostra uma arte desenhada em canvas como imagem. Só desenha quando chega perto da tela (listas longas ficam leves).
 export default function Arte({ desenhar, chave, proporcao, alt, raio = 12, style }: ArteProps) {
     const [src, setSrc] = useState('');
+    const [razao, setRazao] = useState(proporcao);
     const caixa = useRef<HTMLDivElement>(null);
     const fn = useRef(desenhar);
     useEffect(() => { fn.current = desenhar; });
 
     useEffect(() => {
         let vivo = true, url = '';
-        const faz = () => fn.current().then((c) => c.toBlob((b) => { if (!b || !vivo) return; url = URL.createObjectURL(b); setSrc(url); }, 'image/jpeg', 0.9)).catch(() => {});
+        const faz = () => fn.current().then((c) => c.toBlob((b) => { if (!b || !vivo) return; url = URL.createObjectURL(b); setRazao(c.height / c.width); setSrc(url); }, 'image/jpeg', 0.9)).catch(() => {});
         const el = caixa.current;
         let obs: IntersectionObserver | null = null;
         if (!el || !('IntersectionObserver' in window)) faz();
@@ -30,7 +31,7 @@ export default function Arte({ desenhar, chave, proporcao, alt, raio = 12, style
     }, [chave]);
 
     return (
-        <div ref={caixa} style={{ position: 'relative', width: '100%', paddingBottom: `${proporcao * 100}%`, borderRadius: raio, overflow: 'hidden', background: '#eef2f7', ...style }}>
+        <div ref={caixa} style={{ position: 'relative', width: '100%', paddingBottom: `${razao * 100}%`, borderRadius: raio, overflow: 'hidden', background: '#eef2f7', ...style }}>
             {src && <img src={src} alt={alt} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />}
         </div>
     );

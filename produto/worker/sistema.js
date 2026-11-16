@@ -312,6 +312,10 @@ export async function rotaSistema(req, env, tenant, p) {
   if (cfg.suspensa) return erro(cfg.suspensa_msg || 'Sistema indisponível.', 423);
   if (cfg.somente_leitura && m !== 'GET' && !ehLogin && !(partes[0] === 'auth' && ['logout-all', 'password'].includes(partes[1]))) return erro('A escola está em modo somente leitura. Nada pode ser gravado agora.', 423);
 
+  if (partes[0] === 'public' && partes[1] === 'criativos' && m === 'GET') { // modelos de carteirinha e de aniversário definidos na Central (null = usar os padrões do sistema)
+    const r = await env.DB.prepare("SELECT v FROM settings WHERE k='criativos'").first();
+    return new Response(JSON.stringify({ catalogo: r ? JSON.parse(r.v) : null }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' } });
+  }
   if (partes[0] === 'public' && partes[1] === 'patrocinadores' && m === 'GET') {
     const r = await env.DB.prepare("SELECT id,data FROM sys_docs WHERE tenant=? AND col='patrocinadores'").bind(tenant).all();
     const cfg = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='system_settings' AND id='patrocinadores'").bind(tenant).first();
