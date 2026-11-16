@@ -26,7 +26,7 @@ export default function Sidebar({
     const logo = useLogoEscola();
     return (
         <aside style={{
-            width: collapsed ? '52px' : '228px',
+            width: collapsed ? '56px' : '240px',
             background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)',
             borderRight: '1px solid #dce7f3',
             display: 'flex',
