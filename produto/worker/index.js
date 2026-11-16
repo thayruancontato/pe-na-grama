@@ -147,7 +147,7 @@ const log = (env, tipo, texto) => env.DB.prepare('INSERT INTO atividade(quando,t
 async function config(env) {
   const { results } = await env.DB.prepare('SELECT k,v FROM settings').all();
   const c = Object.fromEntries(results.map(r => [r.k, r.v]));
-  return { empresa_nome: 'Pé na Grama', empresa_doc: '', empresa_email: '', empresa_whats: '', pix_chave: '', pix_nome: '', pix_cidade: '', dia_venc_padrao: '10', contrato_texto: DEFAULT_CONTRATO, ...c };
+  return { empresa_nome: 'Pé na Grama', empresa_doc: '', empresa_email: '', empresa_whats: '', pix_chave: '', pix_nome: '', pix_cidade: '', dia_venc_padrao: '10', contrato_texto: DEFAULT_CONTRATO, ...Object.fromEntries(CONFIG_CHAVES.filter((k) => k in c).map((k) => [k, c[k]])) };
 }
 const CONFIG_CHAVES = ['empresa_nome', 'empresa_doc', 'empresa_email', 'empresa_whats', 'pix_chave', 'pix_nome', 'pix_cidade', 'dia_venc_padrao', 'contrato_texto'];
 
@@ -172,11 +172,84 @@ function docValido(d) {
 }
 const preencher = (t, v) => t.replace(/\{\{(\w+)\}\}/g, (m, k) => (k in v ? v[k] : m));
 
+// ---------- Asaas: cobrança das mensalidades das escolas para o dono do sistema ----------
+// A chave fica em settings (asaas_chave) e nunca volta para a tela; só os 4 últimos caracteres.
+const ASAAS_URL = { sandbox: 'https://api-sandbox.asaas.com/v3', producao: 'https://api.asaas.com/v3' };
+async function asaasCfg(env) {
+  const { results } = await env.DB.prepare("SELECT k,v FROM settings WHERE k LIKE 'asaas\\_%' ESCAPE '\\'").all(), c = Object.fromEntries(results.map((r) => [r.k, r.v]));
+  return { chave: c.asaas_chave || '', amb: c.asaas_amb === 'producao' ? 'producao' : 'sandbox', tipo: ['UNDEFINED', 'PIX', 'BOLETO', 'CREDIT_CARD'].includes(c.asaas_tipo) ? c.asaas_tipo : 'UNDEFINED', ativo: c.asaas_ativo === '1', token: c.asaas_token || '' };
+}
+const setSet = (env, k, v) => env.DB.prepare('INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').bind(k, String(v)).run();
+async function asaas(cfg, metodo, caminho, corpo) {
+  const r = await fetch(ASAAS_URL[cfg.amb] + caminho, { method: metodo, headers: { access_token: cfg.chave, 'content-type': 'application/json', 'user-agent': 'PeNaGrama' }, body: corpo ? JSON.stringify(corpo) : undefined, signal: AbortSignal.timeout(9000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.errors && j.errors.map((e) => e.description).join(' ')) || 'Asaas respondeu ' + r.status + '.');
+  return j;
+}
+/** Cria (ou reaproveita) o cliente e a cobrança da fatura no Asaas e guarda o link de pagamento. Devolve { ok, url } ou { ok:false, motivo }. */
+async function cobrarNoAsaas(env, faturaId) {
+  const cfg = await asaasCfg(env);
+  if (!cfg.chave || !cfg.ativo) return { ok: false, motivo: 'Asaas não está ativo.' };
+  try {
+    const f = await env.DB.prepare('SELECT f.*, c.escola, c.contato_nome, c.contato_tel, c.contato_email, c.contrato_id FROM faturas f JOIN clientes c ON c.id=f.cliente_id WHERE f.id=?').bind(faturaId).first();
+    if (!f) return { ok: false, motivo: 'Fatura não encontrada.' };
+    if (f.status === 'paga' || f.status === 'cancelada') return { ok: false, motivo: 'Esta fatura já está ' + f.status + '.' };
+    const ja = await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('asaas:f:' + f.id).first(), antigo = ja ? JSON.parse(ja.v) : null;
+    if (antigo && antigo.url) return { ok: true, url: antigo.url };
+    let cid = (await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('asaas:c:' + f.cliente_id).first() || {}).v;
+    if (!cid) {
+      const ref = 'cliente:' + f.cliente_id, achado = await asaas(cfg, 'GET', '/customers?externalReference=' + encodeURIComponent(ref));
+      if (achado.data && achado.data.length) cid = achado.data[0].id;
+      else {
+        const ct = f.contrato_id ? await env.DB.prepare('SELECT ass_doc FROM contratos WHERE id=?').bind(f.contrato_id).first() : null, doc = String((ct && ct.ass_doc) || '').replace(/\D/g, '');
+        const novo = await asaas(cfg, 'POST', '/customers', { name: f.escola, cpfCnpj: doc || undefined, email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.contato_email || '') ? f.contato_email : undefined, mobilePhone: String(f.contato_tel || '').replace(/\D/g, '').slice(-11) || undefined, externalReference: ref });
+        cid = novo.id;
+      }
+      await setSet(env, 'asaas:c:' + f.cliente_id, cid);
+    }
+    const pg = await asaas(cfg, 'POST', '/payments', { customer: cid, billingType: cfg.tipo, value: f.valor / 100, dueDate: f.vencimento, description: f.descricao + ' · ' + f.escola, externalReference: 'fatura:' + f.id });
+    const url = pg.invoiceUrl || pg.bankSlipUrl || '';
+    await setSet(env, 'asaas:f:' + f.id, JSON.stringify({ pid: pg.id, url }));
+    await log(env, 'fatura', 'Cobrança do Asaas criada para ' + f.escola + ': ' + brl(f.valor));
+    return { ok: true, url };
+  } catch (e) {
+    await setSet(env, 'asaas:f:' + faturaId, JSON.stringify({ erro: String(e.message).slice(0, 300) }));
+    return { ok: false, motivo: e.message };
+  }
+}
+/** Apaga a cobrança do Asaas (fatura paga por fora ou cancelada), para o cliente não pagar duas vezes. */
+async function descartaAsaas(env, faturaId) {
+  try {
+    const x = await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('asaas:f:' + faturaId).first(), m = x ? JSON.parse(x.v) : null, cfg = await asaasCfg(env);
+    if (m && m.pid && cfg.chave) { await asaas(cfg, 'DELETE', '/payments/' + m.pid).catch(() => {}); await env.DB.prepare('DELETE FROM settings WHERE k=?').bind('asaas:f:' + faturaId).run(); }
+  } catch { /* o Asaas pode estar fora do ar: a fatura local segue valendo */ }
+}
+/** Webhook do Asaas: pagamento confirmado ou recebido baixa a fatura sozinho. Sempre responde 200 (o Asaas pausa o envio se vier erro). */
+async function webhookAsaas(req, env) {
+  const cfg = await asaasCfg(env), enviado = req.headers.get('asaas-access-token') || '';
+  const igual = cfg.token && enviado.length === cfg.token.length && [...enviado].reduce((a, ch, i) => a | (ch.charCodeAt(0) ^ cfg.token.charCodeAt(i)), 0) === 0;
+  if (!igual) return erro('Não autorizado.', 401);
+  let b = {}; try { b = await req.json(); } catch { return J({ ok: true }); }
+  const ev = String(b.event || ''), pg = b.payment || {};
+  if (['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'].includes(ev)) {
+    const ref = /^fatura:(\d+)$/.exec(String(pg.externalReference || '')), id = ref ? +ref[1] : 0;
+    const f = id ? await env.DB.prepare('SELECT f.*, c.escola FROM faturas f JOIN clientes c ON c.id=f.cliente_id WHERE f.id=?').bind(id).first() : null;
+    if (f && f.status !== 'paga' && f.status !== 'cancelada') {
+      const dia = /^\d{4}-\d{2}-\d{2}$/.test(pg.paymentDate || pg.confirmedDate || '') ? (pg.paymentDate || pg.confirmedDate) : tz();
+      await env.DB.prepare("UPDATE faturas SET status='paga',pago_em=? WHERE id=?").bind(dia, f.id).run();
+      await log(env, 'fatura', f.escola + ': ' + brl(f.valor) + ' recebido pelo Asaas');
+    }
+  }
+  return J({ ok: true });
+}
+
 // ---------- clientes e faturas ----------
 async function criarFatura(env, { cliente_id, descricao, competencia = null, valor, vencimento }) {
   const t = token(16);
   const r = await env.DB.prepare('INSERT INTO faturas(token,cliente_id,descricao,competencia,valor,vencimento,status,criado) VALUES(?,?,?,?,?,?,?,?)').bind(t, cliente_id, descricao, competencia, valor, vencimento, 'aberta', agora()).run();
-  return { id: r.meta.last_row_id, token: t };
+  const id = r.meta.last_row_id;
+  try { if ((await asaasCfg(env)).ativo) await cobrarNoAsaas(env, id); } catch { /* a fatura existe de qualquer jeito */ }
+  return { id, token: t };
 }
 function vencimentoDe(ym, dia) { return ym + '-' + String(Math.min(Math.max(dia, 1), 28)).padStart(2, '0'); }
 
@@ -285,7 +358,8 @@ async function getFatura(env, t) {
   if (!f) return erro('Fatura não encontrada.', 404);
   const cfg = await config(env), hoje = tz();
   const aberta = f.status === 'aberta' || f.status === 'informada';
-  return J({ escola: f.escola, descricao: f.descricao, valor: f.valor, vencimento: f.vencimento, status: f.status, atrasada: aberta && f.vencimento < hoje, pago_em: f.pago_em,
+  const am = aberta ? await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('asaas:f:' + f.id).first() : null, asaasUrl = am ? JSON.parse(am.v).url || null : null;
+  return J({ asaas: asaasUrl, escola: f.escola, descricao: f.descricao, valor: f.valor, vencimento: f.vencimento, status: f.status, atrasada: aberta && f.vencimento < hoje, pago_em: f.pago_em,
     pix: aberta ? { payload: pixPayload(cfg, f.valor, 'PG' + f.id), chave: cfg.pix_chave || '', nome: cfg.pix_nome || cfg.empresa_nome } : null,
     empresa: cfg.empresa_nome, whats: cfg.empresa_whats });
 }
@@ -594,7 +668,8 @@ async function rotaAdmin(req, env, url, caminho) {
       if (st === 'atrasada') { sql += " WHERE f.status IN ('aberta','informada') AND f.vencimento<?"; args = [hoje]; }
       else if (st) { sql += ' WHERE f.status=?'; args = [st]; }
       const { results } = await env.DB.prepare(sql + ' ORDER BY f.vencimento DESC, f.id DESC LIMIT 400').bind(...args).all();
-      return J(results.map(r => ({ ...r, atrasada: (r.status === 'aberta' || r.status === 'informada') && r.vencimento < hoje, link: new URL('/fatura?t=' + r.token, url).href })));
+      const am = new Map(((await env.DB.prepare("SELECT k,v FROM settings WHERE k LIKE 'asaas:f:%'").all()).results || []).map((x) => [+x.k.slice(8), JSON.parse(x.v)])), ligado = (await asaasCfg(env)).ativo;
+      return J(results.map(r => ({ ...r, asaas_on: ligado, asaas_url: (am.get(r.id) || {}).url || '', asaas_erro: (am.get(r.id) || {}).erro || '', atrasada: (r.status === 'aberta' || r.status === 'informada') && r.vencimento < hoje, link: new URL('/fatura?t=' + r.token, url).href })));
     }
     if (!id && m === 'POST') {
       const b = await body(), cid = int(b.cliente_id), valor = int(b.valor), venc = txt(b.vencimento, 10);
@@ -602,8 +677,10 @@ async function rotaAdmin(req, env, url, caminho) {
       const f = await criarFatura(env, { cliente_id: cid, descricao: txt(b.descricao, 120) || 'Cobrança avulsa', valor, vencimento: venc });
       return J({ ok: true, ...f, link: new URL('/fatura?t=' + f.token, url).href });
     }
+    if (id && acao === 'asaas' && m === 'POST') { await env.DB.prepare('DELETE FROM settings WHERE k=?').bind('asaas:f:' + id).run(); const r = await cobrarNoAsaas(env, id); return r.ok ? J({ ok: true, url: r.url }) : erro(r.motivo || 'Não consegui criar a cobrança no Asaas.', 502); }
     if (id && m === 'PATCH') {
       const b = await body(), f = await env.DB.prepare('SELECT f.*, c.escola FROM faturas f JOIN clientes c ON c.id=f.cliente_id WHERE f.id=?').bind(id).first(); if (!f) return erro('Fatura não encontrada.', 404);
+      if (b.status === 'paga' || b.status === 'cancelada') await descartaAsaas(env, id);
       if (b.status === 'paga') {
         const dia = /^\d{4}-\d{2}-\d{2}$/.test(b.pago_em || '') ? b.pago_em : hoje;
         await env.DB.prepare("UPDATE faturas SET status='paga',pago_em=? WHERE id=?").bind(dia, id).run();
@@ -638,6 +715,25 @@ async function rotaAdmin(req, env, url, caminho) {
       return J({ ok: true });
     }
     if (m === 'DELETE') { await env.DB.prepare("DELETE FROM settings WHERE k='criativos'").run(); await log(env, 'sistema', 'Modelos de arte voltaram ao padrão'); return J({ ok: true }); }
+  }
+  if (rec === 'asaas') { // recebimento do dono do sistema (mensalidades das escolas)
+    const estado = async () => { const c = await asaasCfg(env); return { configurada: Boolean(c.chave), final: c.chave ? c.chave.slice(-4) : '', amb: c.amb, tipo: c.tipo, ativo: c.ativo, webhook_url: url.origin + '/api/asaas/webhook', webhook_token: c.token }; };
+    if (m === 'GET' && !P[2]) return J(await estado());
+    if (m === 'PUT' && !P[2]) {
+      const b = await body(), chave = typeof b.chave === 'string' ? b.chave.trim() : '';
+      if (chave) { if (!/^\$aact_[A-Za-z0-9_.=\-]{20,400}$/.test(chave)) return erro('Essa chave não parece a do Asaas (ela começa com $aact_).'); await setSet(env, 'asaas_chave', chave); }
+      if (['sandbox', 'producao'].includes(b.amb)) await setSet(env, 'asaas_amb', b.amb);
+      if (['UNDEFINED', 'PIX', 'BOLETO', 'CREDIT_CARD'].includes(b.tipo)) await setSet(env, 'asaas_tipo', b.tipo);
+      const c = await asaasCfg(env);
+      if (b.regenerarToken || !c.token) await setSet(env, 'asaas_token', token(24));
+      if (typeof b.ativo === 'boolean') { if (b.ativo && !c.chave && !chave) return erro('Informe a chave do Asaas antes de ligar.'); await setSet(env, 'asaas_ativo', b.ativo ? '1' : '0'); }
+      await log(env, 'sistema', 'Configuração de recebimento pelo Asaas alterada');
+      return J({ ok: true, ...(await estado()) });
+    }
+    if (m === 'POST' && P[2] === 'testar') {
+      const c = await asaasCfg(env); if (!c.chave) return erro('Salve a chave do Asaas primeiro.');
+      try { const r = await asaas(c, 'GET', '/finance/balance'); return J({ ok: true, saldo: r.balance, ambiente: c.amb }); } catch (e) { return erro('O Asaas recusou: ' + e.message, 502); }
+    }
   }
   if (rec === 'config') {
     if (m === 'GET') return J(await config(env));
@@ -722,6 +818,7 @@ export default {
       if (p === '/api/leads' && m === 'POST') r = await postLead(req, env);
       // Planos ativos, para a página de vendas mostrar o preço (desative um plano na Central e ele some do site).
       else if (p === '/api/planos' && m === 'GET') r = J((await env.DB.prepare('SELECT nome,mensal,implantacao,descricao FROM planos WHERE ativo=1 ORDER BY mensal').all()).results, 200, { 'cache-control': 'public, max-age=300' });
+      else if (p === '/api/asaas/webhook' && m === 'POST') r = await webhookAsaas(req, env);
       else if (/^\/api\/contrato\/[0-9a-f]{48}$/.test(p) && m === 'GET') r = await getContrato(env, p.split('/')[3]);
       else if (/^\/api\/contrato\/[0-9a-f]{48}\/assinar$/.test(p) && m === 'POST') r = await assinar(req, env, p.split('/')[3]);
       else if (/^\/api\/fatura\/[0-9a-f]{32}$/.test(p) && m === 'GET') r = await getFatura(env, p.split('/')[3]);
