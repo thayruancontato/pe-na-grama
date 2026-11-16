@@ -801,6 +801,7 @@ export default {
     const env = comBanco(env0);
     const url = new URL(req.url), p = url.pathname.replace(/\/+$/, '');
     const host = url.hostname.toLowerCase();
+    if (host === 'www.penagrama.com.br') return Response.redirect('https://penagrama.com.br' + url.pathname + url.search, 301); // o site é penagrama.com.br, sem www
     if (dominioDe(host) && host !== 'esporte.' + dominioDe(host)) {
       if (p.startsWith('/api/')) return erro('Não encontrado.', 404);
       if (p.startsWith('/ds/')) return env.ASSETS.fetch(req);
