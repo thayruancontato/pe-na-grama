@@ -6,7 +6,7 @@
   // [rota, rótulo, ícone, grupo do menu]
   const NAV = [['painel', 'Painel', 'chart', ''], ['pedidos', 'Pedidos', 'inbox', 'Vendas'], ['contratos', 'Contratos', 'file', 'Vendas'], ['clientes', 'Clientes', 'cap', 'Escolas'], ['faturas', 'Faturas', 'receipt', 'Escolas'], ['criativos', 'Criativos', 'pencil', 'Ajustes'], ['planos', 'Planos', 'tag', 'Ajustes'], ['config', 'Configurações', 'settings', 'Ajustes']];
   const ST_LEAD = { novo: ['Novo', 'info'], proposta: ['Proposta enviada', 'warn'], contratado: ['Contratado', 'ok'], perdido: ['Perdido', ''] };
-  const ST_CLI = { implantando: ['Implantando', 'warn'], ativo: ['Ativo', 'ok'], cancelado: ['Cancelado', ''] };
+  const ST_CLI = { implantando: ['Implantando', 'warn'], ativo: ['Ativo', 'ok'], teste: ['Em teste', 'warn'], teste_fim: ['Teste encerrado', ''], cancelado: ['Cancelado', ''] };
   const ST_FAT = { aberta: ['Em aberto', 'warn'], informada: ['Pagamento informado', 'info'], paga: ['Paga', 'ok'], cancelada: ['Cancelada', ''] };
   const CHECK = ['Conta do sistema criada', 'Nome, logo e cores aplicados', 'Endereço do sistema definido', 'WhatsApp da escola conectado', 'Pix da escola configurado', 'Alunos importados', 'Treinamento feito'];
 

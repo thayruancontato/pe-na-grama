@@ -78,7 +78,7 @@ function limpaCatalogo(c) {
   return JSON.stringify(saida).length > 2_000_000 ? null : saida;
 }
 const escHtml = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const SITUACAO = { implantando: ['Estamos preparando tudo', 'O sistema da sua escola está sendo montado com carinho. Em breve este endereço abre o seu painel, é só voltar daqui a pouco.'], ativo: ['Sistema ativo', 'O sistema da escola está ativo neste endereço.'], pausado: ['Temporariamente pausado', 'O sistema desta escola está pausado por enquanto. Fale com a escola para saber mais.'], cancelado: ['Contrato encerrado', 'O contrato desta escola foi encerrado.'] };
+const SITUACAO = { implantando: ['Estamos preparando tudo', 'O sistema da sua escola está sendo montado com carinho. Em breve este endereço abre o seu painel, é só voltar daqui a pouco.'], ativo: ['Sistema ativo', 'O sistema da escola está ativo neste endereço.'], pausado: ['Temporariamente pausado', 'O sistema desta escola está pausado por enquanto. Fale com a escola para saber mais.'], teste: ['Teste grátis', 'O teste desta escola está em andamento.'], teste_fim: ['Teste encerrado', 'O período de teste grátis desta escola terminou. Fale com a escola para continuar.'], cancelado: ['Contrato encerrado', 'O contrato desta escola foi encerrado.'] };
 const ETAPAS_IMPL = 7; // quantidade de passos do roteiro de implantação (a página só mostra a porcentagem)
 async function paginaEscola(req, env, host, p) {
   if (p.startsWith('/ds/') || p.startsWith('/assets/')) return env.ASSETS.fetch(req);
@@ -273,6 +273,7 @@ async function geracaoDiaria(env) {
   if (r && r.v === hoje) return;
   await env.DB.prepare("INSERT INTO settings(k,v) VALUES('ultima_geracao',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(hoje).run();
   await gerarMensais(env);
+  await expirarTestes(env);
 }
 
 // ---------- rotas públicas ----------
@@ -291,6 +292,43 @@ async function postLead(req, env) {
     .bind(agora(), escola, txt(b.cidade, 80), txt(b.uf, 2), nome, tel, txt(b.contato_email, 120), cfg, logo, ip(req)).run();
   await log(env, 'lead', 'Novo pedido de teste: ' + escola);
   return J({ ok: true, id: r.meta.last_row_id });
+}
+
+
+// Teste grátis: a pessoa cria a própria escola na hora (sem cartão, sem esperar proposta). O pedido entra em Pedidos e o cliente em Clientes, como "Em teste".
+const DIAS_TESTE = 14;
+async function postTeste(req, env) {
+  let b; try { b = await req.json(); } catch { return erro('Corpo inválido.'); }
+  if (b.site) return J({ ok: true });                                   // campo-isca: robô
+  const escola = txt(b.escola, 120), nome = txt(b.nome, 120), tel = txt(b.whatsapp, 30).replace(/[^\d()+\- ]/g, ''), email = txt(b.email, 120).toLowerCase(), senha = String(b.senha || '');
+  if (escola.length < 3) return erro('Informe o nome da escola.');
+  if (nome.length < 2) return erro('Informe seu nome.');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return erro('Informe um e-mail válido.');
+  if (tel.replace(/\D/g, '').length < 10) return erro('Informe um WhatsApp com DDD.');
+  if (senha.length < 6 || senha.length > 80) return erro('A senha precisa ter de 6 a 80 caracteres.');
+  if (!(await limite(env, 'teste:' + ip(req), 3, 3600))) return erro('Muitas tentativas. Tente de novo mais tarde.', 429);
+  const ja = await env.DB.prepare("SELECT 1 x FROM clientes WHERE lower(contato_email)=? AND status IN ('teste','teste_fim')").bind(email).first();
+  if (ja) return erro('Este e-mail já tem um teste. Entre com a senha que você criou ou fale com a gente no WhatsApp.', 409);
+  const quando = agora(), hoje = tz(), fim = somaDias(hoje, DIAS_TESTE);
+  const l = await env.DB.prepare('INSERT INTO leads(criado,escola,cidade,uf,contato_nome,contato_tel,contato_email,config,logo,ip) VALUES(?,?,?,?,?,?,?,?,?,?)')
+    .bind(quando, escola, '', '', nome, tel, email, '{}', '', ip(req)).run();
+  const url = await novoSubdominio(env, escola), host = new URL(url).host;
+  const cli = await env.DB.prepare('INSERT INTO clientes(lead_id,contrato_id,escola,contato_nome,contato_tel,contato_email,plano_nome,mensal,dia_venc,status,url_sistema,criado) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
+    .bind(l.meta.last_row_id, null, escola, nome, tel, email, 'Teste grátis', 0, 10, 'teste', url, quando).run();
+  const cid = cli.meta.last_row_id;
+  await importarSistema(env, { tenant: host, users: [{ email, password: senha, role: 'admin' }] });
+  await guardaSenha(env, host, email, senha);
+  await env.DB.prepare("INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data")
+    .bind(host, 'sys_owner', 'controle', JSON.stringify({ valores: { banner_ativo: true, banner_texto: 'Teste grátis até ' + dataBr(fim) + '. Para continuar depois, fale com a gente no WhatsApp.', banner_cor: '#0f7a3a' }, interno: {} })).run();
+  await setSet(env, 'teste:' + cid, fim);
+  const pub = await publicarDominio(env, url);
+  await log(env, 'lead', 'Teste grátis criado: ' + escola + ' (' + host + ')');
+  return J({ ok: true, url: url + '/admin/login', host, ate: fim, publicado: pub.ok });
+}
+// Encerra os testes vencidos: o endereço passa a mostrar "teste encerrado" e a escola vira "Teste encerrado" na Central.
+async function expirarTestes(env) {
+  const hoje = tz(), { results } = await env.DB.prepare("SELECT c.id FROM clientes c JOIN settings s ON s.k='teste:'||c.id WHERE c.status='teste' AND s.v<?").bind(hoje).all();
+  for (const c of results) await env.DB.prepare("UPDATE clientes SET status='teste_fim' WHERE id=?").bind(c.id).run();
 }
 
 async function getContrato(env, t) {
@@ -639,7 +677,7 @@ async function rotaAdmin(req, env, url, caminho) {
     }
     if (id && m === 'PATCH') {
       const b = await body(), campos = [], vals = [];
-      if (['implantando', 'ativo', 'cancelado'].includes(b.status)) { campos.push('status=?'); vals.push(b.status); }
+      if (['implantando', 'ativo', 'cancelado', 'teste', 'teste_fim'].includes(b.status)) { campos.push('status=?'); vals.push(b.status); }
       if (typeof b.url_sistema === 'string') { campos.push('url_sistema=?'); vals.push(txt(b.url_sistema, 200)); }
       if (typeof b.contato_email === 'string' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(b.contato_email)) { campos.push('contato_email=?'); vals.push(txt(b.contato_email, 120).toLowerCase()); }
       if (typeof b.notas === 'string') { campos.push('notas=?'); vals.push(txt(b.notas, 4000)); }
@@ -654,6 +692,11 @@ async function rotaAdmin(req, env, url, caminho) {
       }
       if (!campos.length && !logoTrocada) return erro('Nada para alterar.');
       if (campos.length) await env.DB.prepare('UPDATE clientes SET ' + campos.join(',') + ' WHERE id=?').bind(...vals, id).run();
+      if (b.status === 'ativo') { // saiu do teste: tira a faixa "Teste grátis" e o prazo
+        const u = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first();
+        if (u && u.url_sistema) { const t = new URL(u.url_sistema).host; await env.DB.prepare("UPDATE sys_docs SET data=json_set(data,'$.valores.banner_ativo',json('false')) WHERE tenant=? AND col='sys_owner' AND id='controle' AND json_extract(data,'$.valores.banner_texto') LIKE 'Teste grátis%'").bind(t).run(); esquecerControle(t); }
+        await env.DB.prepare('DELETE FROM settings WHERE k=?').bind('teste:' + id).run();
+      }
       if (b.status) { const c = await env.DB.prepare('SELECT escola FROM clientes WHERE id=?').bind(id).first(); await log(env, 'cliente', (c ? c.escola : 'Cliente') + ' agora está: ' + b.status); }
       return J({ ok: true });
     }
@@ -806,8 +849,8 @@ export default {
       if (p.startsWith('/api/')) return erro('Não encontrado.', 404);
       if (p.startsWith('/ds/')) return env.ASSETS.fetch(req);
       const esc = await env.DB.prepare('SELECT status FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
-      if (esc && p.startsWith('/sys/')) return rotaSistema(req, env, host, p);
-      if (esc && esc.status === 'ativo') return servirSistema(req, env, p, host); // escola ativa: o sistema de verdade
+      if (esc && p.startsWith('/sys/') && esc.status !== 'teste_fim') return rotaSistema(req, env, host, p);
+      if (esc && (esc.status === 'ativo' || esc.status === 'teste')) return servirSistema(req, env, p, host); // escola ativa: o sistema de verdade
       return paginaEscola(req, env, host, p);
     }
     if (!p.startsWith('/api/')) return env.ASSETS.fetch(req);
@@ -817,6 +860,7 @@ export default {
       let r;
       // públicas
       if (p === '/api/leads' && m === 'POST') r = await postLead(req, env);
+      else if (p === '/api/teste' && m === 'POST') r = await postTeste(req, env);
       // Planos ativos, para a página de vendas mostrar o preço (desative um plano na Central e ele some do site).
       else if (p === '/api/planos' && m === 'GET') r = J((await env.DB.prepare('SELECT nome,mensal,implantacao,descricao FROM planos WHERE ativo=1 ORDER BY mensal').all()).results, 200, { 'cache-control': 'public, max-age=300' });
       else if (p === '/api/asaas/webhook' && m === 'POST') r = await webhookAsaas(req, env);
