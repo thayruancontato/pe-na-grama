@@ -28,3 +28,4 @@ header{position:sticky;top:0;z-index:30;box-shadow:0 4px 25px #001c191a}html{scr
 .screen-bottom{display:none}
 @media(max-width:700px){.tabs{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;margin-inline:-16px;padding:0 16px 6px;scrollbar-width:none}.tabs::-webkit-scrollbar{display:none}.tour-context p{font-size:16px}}
 .sys-card{border-radius:22px;overflow:hidden;background:#f7f8f1;box-shadow:0 30px 70px #02140e80;border:1px solid #ffffff22}.sys-card img{display:block;width:100%;height:auto}
+.sys-card{border-radius:0;overflow:visible;background:none;box-shadow:none;border:0}.sys-card img{filter:drop-shadow(0 28px 36px #02140e99)}.more-card img{background:none;border-radius:0}
