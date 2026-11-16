@@ -34,8 +34,11 @@ Ao assinar eletronicamente, a CONTRATANTE declara que leu e concorda com estes t
 Local e data: {{data}}.`;
 
 const J = (d, status = 200, h = {}) => new Response(JSON.stringify(d), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...h } });
-// ---------- subdomínio de cada escola (<nome>.thayruan.com.br) ----------
-const DOMINIO = 'thayruan.com.br';
+// ---------- subdomínio de cada escola (<nome>.<domínio>) ----------
+// O sistema atende os dois domínios. Escolas novas nascem no DOMINIO_PADRAO (variável do wrangler.toml); as antigas continuam onde estão.
+const DOMINIOS = ['penagrama.com.br', 'thayruan.com.br'];
+const dominioPadrao = (env) => (DOMINIOS.includes(env.DOMINIO_PADRAO) ? env.DOMINIO_PADRAO : 'thayruan.com.br');
+const dominioDe = (host) => DOMINIOS.find((d) => host.endsWith('.' + d)) || '';
 const RESERVADOS = new Set(['esporte', 'www', 'admin', 'api', 'mail', 'ftp', 'app', 'painel', 'webmail']);
 const slugify = (x) => String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
 async function novoSubdominio(env, escola) {
@@ -43,10 +46,10 @@ async function novoSubdominio(env, escola) {
   for (let i = 1; i < 50; i++) {
     const sl = i === 1 ? base : base + '-' + i;
     if (RESERVADOS.has(sl)) continue;
-    const u = 'https://' + sl + '.' + DOMINIO;
+    const u = 'https://' + sl + '.' + dominioPadrao(env);
     if (!(await env.DB.prepare('SELECT 1 x FROM clientes WHERE url_sistema=?').bind(u).first())) return u;
   }
-  return 'https://escola-' + Date.now().toString(36) + '.' + DOMINIO;
+  return 'https://escola-' + Date.now().toString(36) + '.' + dominioPadrao(env);
 }
 // Senhas definidas pela Central (criar usuário, nova senha, acesso do administrador): ficam guardadas para o dono ver no painel.
 // Se o usuário trocar a própria senha depois, a guardada deixa de conferir com a atual e some da tela.
@@ -231,7 +234,8 @@ async function getContrato(env, t) {
 async function publicarDominio(env, urlSistema) {
   if (!env.CF_API_TOKEN) return { ok: false, motivo: 'Chave de API do Cloudflare ainda não configurada (segredo CF_API_TOKEN).' };
   let host; try { host = new URL(urlSistema).host; } catch { return { ok: false, motivo: 'Endereço inválido.' }; }
-  if (!host.endsWith('.' + DOMINIO)) return { ok: false, motivo: 'Só subdomínios de ' + DOMINIO + ' são publicados automaticamente.' };
+  const DOMINIO = dominioDe(host);
+  if (!DOMINIO) return { ok: false, motivo: 'Só subdomínios de ' + DOMINIOS.join(' ou ') + ' são publicados automaticamente.' };
   const cf = async (m, p, b) => { const r = await fetch('https://api.cloudflare.com/client/v4' + p, { method: m, headers: { authorization: 'Bearer ' + env.CF_API_TOKEN, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined, signal: AbortSignal.timeout(15000) }); const j = await r.json().catch(() => ({})); if (!r.ok || j.success === false) throw new Error((j.errors && j.errors[0] && j.errors[0].message) || 'Cloudflare respondeu ' + r.status); return j.result; };
   try {
     const z = await cf('GET', '/zones?name=' + DOMINIO + '&account.id=' + env.CF_ACCOUNT_ID);
@@ -701,7 +705,7 @@ export default {
     const env = comBanco(env0);
     const url = new URL(req.url), p = url.pathname.replace(/\/+$/, '');
     const host = url.hostname.toLowerCase();
-    if (host.endsWith('.' + DOMINIO) && host !== 'esporte.' + DOMINIO) {
+    if (dominioDe(host) && host !== 'esporte.' + dominioDe(host)) {
       if (p.startsWith('/api/')) return erro('Não encontrado.', 404);
       if (p.startsWith('/ds/')) return env.ASSETS.fetch(req);
       const esc = await env.DB.prepare('SELECT status FROM clientes WHERE url_sistema=?').bind('https://' + host).first();

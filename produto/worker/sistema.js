@@ -567,7 +567,7 @@ async function servirSistemaBase(req, env, p, host) {
 /** Importação em massa (só dono): usuários e documentos de um tenant. */
 export async function importarSistema(env, b) {
   const tenant = String(b.tenant || '').toLowerCase();
-  if (!/^[a-z0-9-]+\.thayruan\.com\.br$/.test(tenant)) throw new Error('Tenant inválido.');
+  if (!/^[a-z0-9-]+\.(thayruan|penagrama)\.com\.br$/.test(tenant)) throw new Error('Tenant inválido.');
   let u = 0, d = 0;
   for (const x of b.users || []) {
     const { salt, hash } = await hashSenha(String(x.password));
