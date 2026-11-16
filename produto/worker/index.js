@@ -297,30 +297,31 @@ async function postLead(req, env) {
 
 // Teste grátis: a pessoa cria a própria escola na hora (sem cartão, sem esperar proposta). O pedido entra em Pedidos e o cliente em Clientes, como "Em teste".
 const DIAS_TESTE = 14;
-async function postTeste(req, env) {
+async function postTeste(req, env, dono = false) { // dono: criado pela Central (sem limite, sem prazo de teste, já ativo, aceita logo)
   let b; try { b = await req.json(); } catch { return erro('Corpo inválido.'); }
-  if (b.site) return J({ ok: true });                                   // campo-isca: robô
+  if (b.site && !dono) return J({ ok: true });                          // campo-isca: robô
   const escola = txt(b.escola, 120), nome = txt(b.nome, 120), tel = txt(b.whatsapp, 30).replace(/[^\d()+\- ]/g, ''), email = txt(b.email, 120).toLowerCase(), senha = String(b.senha || '');
   if (escola.length < 3) return erro('Informe o nome da escola.');
   if (nome.length < 2) return erro('Informe seu nome.');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return erro('Informe um e-mail válido.');
   if (tel.replace(/\D/g, '').length < 10) return erro('Informe um WhatsApp com DDD.');
   if (senha.length < 6 || senha.length > 80) return erro('A senha precisa ter de 6 a 80 caracteres.');
-  if (!(await limite(env, 'teste:' + ip(req), 3, 3600))) return erro('Muitas tentativas. Tente de novo mais tarde.', 429);
+  if (!dono && !(await limite(env, 'teste:' + ip(req), 3, 3600))) return erro('Muitas tentativas. Tente de novo mais tarde.', 429);
   const ja = await env.DB.prepare("SELECT 1 x FROM clientes WHERE lower(contato_email)=? AND status IN ('teste','teste_fim')").bind(email).first();
   if (ja) return erro('Este e-mail já tem um teste. Entre com a senha que você criou ou fale com a gente no WhatsApp.', 409);
   const quando = agora(), hoje = tz(), fim = somaDias(hoje, DIAS_TESTE);
-  const l = await env.DB.prepare('INSERT INTO leads(criado,escola,cidade,uf,contato_nome,contato_tel,contato_email,config,logo,ip) VALUES(?,?,?,?,?,?,?,?,?,?)')
-    .bind(quando, escola, '', '', nome, tel, email, '{}', '', ip(req)).run();
+  const logo = dono && typeof b.logo === 'string' && /^data:image\/(png|jpeg|webp);base64,/.test(b.logo) && b.logo.length < 700000 ? b.logo : '';
+  const l = await env.DB.prepare('INSERT INTO leads(criado,escola,cidade,uf,contato_nome,contato_tel,contato_email,config,logo,ip,status) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
+    .bind(quando, escola, txt(b.cidade, 80), txt(b.uf, 2), nome, tel, email, '{}', logo, ip(req), dono ? 'contratado' : 'novo').run();
   const url = await novoSubdominio(env, escola), host = new URL(url).host;
   const cli = await env.DB.prepare('INSERT INTO clientes(lead_id,contrato_id,escola,contato_nome,contato_tel,contato_email,plano_nome,mensal,dia_venc,status,url_sistema,criado) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(l.meta.last_row_id, null, escola, nome, tel, email, 'Teste grátis', 0, 10, 'teste', url, quando).run();
+    .bind(l.meta.last_row_id, null, escola, nome, tel, email, dono ? txt(b.plano, 40) || 'Plano Profissional' : 'Teste grátis', dono ? Math.max(0, int(b.mensal)) : 0, 10, dono ? 'ativo' : 'teste', url, quando).run();
   const cid = cli.meta.last_row_id;
   await importarSistema(env, { tenant: host, users: [{ email, password: senha, role: 'admin' }] });
   await guardaSenha(env, host, email, senha);
-  await env.DB.prepare("INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data")
+  if (!dono) await env.DB.prepare("INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data")
     .bind(host, 'sys_owner', 'controle', JSON.stringify({ valores: { banner_ativo: true, banner_texto: 'Teste grátis até ' + dataBr(fim) + '. Para continuar depois, fale com a gente no WhatsApp.', banner_cor: '#0f7a3a' }, interno: {} })).run();
-  await setSet(env, 'teste:' + cid, fim);
+  if (!dono) await setSet(env, 'teste:' + cid, fim);
   const pub = await publicarDominio(env, url);
   await log(env, 'lead', 'Teste grátis criado: ' + escola + ' (' + host + ')');
   return J({ ok: true, url: url + '/admin/login', host, ate: fim, publicado: pub.ok });
@@ -538,6 +539,7 @@ async function rotaAdmin(req, env, url, caminho) {
   }
 
   if (rec === 'clientes') {
+    if (m === 'POST' && !id) return postTeste(req, env, true);
     const hoje = tz();
     if (!id && m === 'GET') {
       const { results } = await env.DB.prepare(`SELECT c.*, (SELECT COUNT(*) FROM faturas f WHERE f.cliente_id=c.id AND f.status IN ('aberta','informada') AND f.vencimento<?) atrasadas,
