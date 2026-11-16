@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { fundoParaLogo, useLogoEscola } from '../lib/logoEscola';
 import QRCode from 'qrcode';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
@@ -39,6 +40,7 @@ import {
 const MAIN_ADMIN_EMAIL = ((import.meta.env.VITE_MAIN_ADMIN_EMAIL as string) || 'rumoaoesporte@admin.com').trim().toLowerCase();
 
 export default function StudentLayout() {
+    const logo = useLogoEscola();
     const navigate = useNavigate();
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -538,7 +540,7 @@ export default function StudentLayout() {
                     zIndex: 90
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <img src="/rumo-ao-esporte-logo.png" alt="Rumo ao Esporte" style={{ height: '34px', borderRadius: '6px' }} />
+                        <span style={{ background: logo.clara ? 'transparent' : '#fff', borderRadius: '8px', padding: logo.clara ? 0 : '3px 8px', display: 'inline-flex' }}><img src={logo.src} alt="Logo da escola" data-logo-ok="1" style={{ height: '34px', maxWidth: '150px', objectFit: 'contain' }} /></span>
                         <span style={{ fontWeight: 'bold', color: '#fff' }}>ÁREA DO ALUNO</span>
                     </div>
                     {/* User Avatar Placeholder */}
@@ -572,8 +574,8 @@ export default function StudentLayout() {
                         transition: 'all 0.3s ease'
                     }}>
                         {/* Sidebar Header */}
-                        <div style={{ width: '100%', borderBottom: '1px solid #dce7f3', overflow: 'hidden', padding: collapsed ? '8px' : '14px', background: 'radial-gradient(circle at 22% 8%, rgba(244, 194, 13, 0.24), transparent 34%), linear-gradient(135deg, #17428f 0%, #09245c 100%)' }}>
-                            <img src="/rumo-ao-esporte-logo.png" alt="Rumo ao Esporte" style={{ width: '100%', display: 'block', objectFit: 'contain', height: collapsed ? '56px' : 'auto', borderRadius: '8px', boxShadow: collapsed ? 'none' : '0 14px 28px rgba(6, 26, 64, 0.28)' }} />
+                        <div style={{ width: '100%', borderBottom: '1px solid #dce7f3', overflow: 'hidden', padding: collapsed ? '8px' : '14px', background: fundoParaLogo(logo.clara) }}>
+                            <img src={logo.src} alt="Logo da escola" data-logo-ok="1" style={{ width: '100%', display: 'block', objectFit: 'contain', height: collapsed ? '48px' : '96px' }} />
                         </div>
 
                         {/* Nav */}

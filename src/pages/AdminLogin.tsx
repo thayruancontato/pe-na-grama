@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLogoEscola } from '../lib/logoEscola';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import {
@@ -22,6 +23,7 @@ const MAIN_ADMIN_EMAIL = ((import.meta.env.VITE_MAIN_ADMIN_EMAIL as string) || '
 
 
 export default function AdminLogin() {
+    const logo = useLogoEscola();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -223,10 +225,11 @@ export default function AdminLogin() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        borderRadius: '8px',
-                        boxShadow: '0 22px 48px rgba(6, 26, 64, 0.28)'
+                        borderRadius: '12px',
+                        padding: '12px 16px',
+                        background: logo.clara ? 'transparent' : '#fff'
                     }}>
-                        <img src="/rumo-ao-esporte-logo.png" alt="Rumo ao Esporte" style={{ width: '100%', height: 'auto', objectFit: 'contain', borderRadius: '8px', display: 'block' }} />
+                        <img src={logo.src} alt="Logo da escola" data-logo-ok="1" style={{ width: '100%', maxHeight: '140px', objectFit: 'contain', display: 'block' }} />
                     </div>
                     <h1 style={{ fontSize: '2rem', fontWeight: '900', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Painel Rumo ao Esporte</h1>
                     <p style={{ opacity: 0.92, maxWidth: '320px', lineHeight: 1.5 }}>Gestão organizada para matrículas, turmas, financeiro e comunicação.</p>

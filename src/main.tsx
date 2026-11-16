@@ -2,6 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import './shim/consistencia'
+import { instalarLogoGlobal } from './lib/logoEscola'
+instalarLogoGlobal()
 if (import.meta.env.MODE === 'sem-firebase') import('./shim/marca')
 import App from './App.tsx'
 

@@ -1,4 +1,5 @@
 import { ChevronRight, LogOut, Menu, X } from 'lucide-react';
+import { fundoParaLogo, useLogoEscola } from '../lib/logoEscola';
 import React from 'react';
 
 interface SidebarProps {
@@ -22,6 +23,7 @@ export default function Sidebar({
     logoutLabel = "Sair do Sistema",
     headerContent
 }: SidebarProps) {
+    const logo = useLogoEscola();
     return (
         <aside style={{
             width: collapsed ? '80px' : '260px',
@@ -44,10 +46,10 @@ export default function Sidebar({
                 borderBottom: '1px solid #dce7f3',
                 overflow: 'hidden',
                 padding: collapsed ? '8px' : '14px',
-                background: 'radial-gradient(circle at 22% 8%, rgba(244, 194, 13, 0.24), transparent 34%), linear-gradient(135deg, #17428f 0%, #09245c 100%)'
+                background: fundoParaLogo(logo.clara)
             }}>
                 {headerContent || (
-                    <img src="/rumo-ao-esporte-logo.png" alt="Rumo ao Esporte" style={{ width: '100%', display: 'block', objectFit: 'contain', height: collapsed ? '56px' : 'auto', borderRadius: '8px', boxShadow: collapsed ? 'none' : '0 14px 28px rgba(6, 26, 64, 0.28)' }} />
+                    <img src={logo.src} alt="Logo da escola" data-logo-ok="1" style={{ width: '100%', display: 'block', objectFit: 'contain', height: collapsed ? '48px' : '96px' }} />
                 )}
             </div>
 
@@ -136,6 +138,7 @@ export function SidebarOverlay({ isOpen, onClose }: { isOpen: boolean, onClose: 
 
 // Helper for Mobile Header
 export function MobileHeader({ title, toggleSidebar, isOpen }: { title: string, toggleSidebar: () => void, isOpen: boolean }) {
+    const logo = useLogoEscola();
     return (
         <div style={{
             padding: '15px 20px',
@@ -149,7 +152,7 @@ export function MobileHeader({ title, toggleSidebar, isOpen }: { title: string, 
             zIndex: 90
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <img src="/rumo-ao-esporte-logo.png" alt="Rumo ao Esporte" style={{ height: '34px', borderRadius: '6px' }} />
+                <span style={{ background: logo.clara ? 'transparent' : '#fff', borderRadius: '8px', padding: logo.clara ? 0 : '3px 8px', display: 'inline-flex' }}><img src={logo.src} alt="Logo da escola" data-logo-ok="1" style={{ height: '34px', maxWidth: '150px', objectFit: 'contain' }} /></span>
                 <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.9rem' }}>{title}</span>
             </div>
             <button
