@@ -310,21 +310,28 @@ async function postTeste(req, env, dono = false) { // dono: criado pela Central 
   const ja = await env.DB.prepare("SELECT 1 x FROM clientes WHERE lower(contato_email)=? AND status IN ('teste','teste_fim')").bind(email).first();
   if (ja) return erro('Este e-mail já tem um teste. Entre com a senha que você criou ou fale com a gente no WhatsApp.', 409);
   const quando = agora(), hoje = tz(), fim = somaDias(hoje, DIAS_TESTE);
-  const logo = dono && typeof b.logo === 'string' && /^data:image\/(png|jpeg|webp);base64,/.test(b.logo) && b.logo.length < 700000 ? b.logo : '';
+  const logo = typeof b.logo === 'string' && /^data:image\/(png|jpeg|webp);base64,/.test(b.logo) && b.logo.length < 700000 ? b.logo : '';
   const l = await env.DB.prepare('INSERT INTO leads(criado,escola,cidade,uf,contato_nome,contato_tel,contato_email,config,logo,ip,status) VALUES(?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(quando, escola, txt(b.cidade, 80), txt(b.uf, 2), nome, tel, email, '{}', logo, ip(req), dono ? 'contratado' : 'novo').run();
+    .bind(quando, escola, txt(b.cidade, 80), txt(b.uf, 2), nome, tel, email, '{}', logo, ip(req), dono ? 'contratado' : 'auto').run(); // 'auto': não aparece em Pedidos (nada vai para a Central)
   const url = await novoSubdominio(env, escola), host = new URL(url).host;
   const cli = await env.DB.prepare('INSERT INTO clientes(lead_id,contrato_id,escola,contato_nome,contato_tel,contato_email,plano_nome,mensal,dia_venc,status,url_sistema,criado) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
     .bind(l.meta.last_row_id, null, escola, nome, tel, email, dono ? txt(b.plano, 40) || 'Plano Profissional' : 'Teste grátis', dono ? Math.max(0, int(b.mensal)) : 0, 10, dono ? 'ativo' : 'teste', url, quando).run();
   const cid = cli.meta.last_row_id;
   await importarSistema(env, { tenant: host, users: [{ email, password: senha, role: 'admin' }] });
   await guardaSenha(env, host, email, senha);
-  if (!dono) await env.DB.prepare("INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data")
-    .bind(host, 'sys_owner', 'controle', JSON.stringify({ valores: { banner_ativo: true, banner_texto: 'Teste grátis até ' + dataBr(fim) + '. Para continuar depois, fale com a gente no WhatsApp.', banner_cor: '#0f7a3a' }, interno: {} })).run();
+  // cores escolhidas sozinhas a partir da logo (o navegador mede a logo e manda; aqui só confere que são cores)
+  const cor = (x) => (/^#[0-9a-f]{6}$/i.test(String(x || '')) ? String(x).toLowerCase() : null), cs = b.cores && typeof b.cores === 'object' ? b.cores : {};
+  const valores = { fonte_titulo: 'Segoe UI', fonte_texto: 'Segoe UI', fonte_tabelas: 'Tahoma' };
+  for (const k of ['cor_primaria', 'cor_secundaria', 'cor_escura', 'cor_destaque']) if (cor(cs[k])) valores[k] = cor(cs[k]);
+  if (!dono) Object.assign(valores, { banner_ativo: true, banner_texto: 'Teste grátis até ' + dataBr(fim) + '. Para continuar depois, fale com a gente no WhatsApp.', banner_cor: cor(cs.cor_primaria) || '#0f7a3a' });
+  await env.DB.prepare("INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data")
+    .bind(host, 'sys_owner', 'controle', JSON.stringify({ valores: limparControle(valores), interno: {} })).run();
   if (!dono) await setSet(env, 'teste:' + cid, fim);
   const pub = await publicarDominio(env, url);
-  await log(env, 'lead', 'Teste grátis criado: ' + escola + ' (' + host + ')');
-  return J({ ok: true, url: url + '/admin/login', host, ate: fim, publicado: pub.ok });
+  // entra direto no painel: token de sessão do administrador recém-criado (vai no fragmento da URL, que não fica em registros)
+  const adm = await env.DB.prepare("SELECT email,uid FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1").bind(host).first();
+  const tk = await tokenParaDono(env, host, { email: adm.email, uid: adm.uid, role: 'admin' }, 12);
+  return J({ ok: true, url: url + '/__entrar#t=' + tk + '&r=admin', host, ate: fim, publicado: pub.ok });
 }
 // Encerra os testes vencidos: o endereço passa a mostrar "teste encerrado" e a escola vira "Teste encerrado" na Central.
 async function expirarTestes(env) {
@@ -419,7 +426,7 @@ async function resumo(env, mesPedido) {
   const ini = mes + '-01', fim = somaMes(mes, 1) + '-01', agoraMs = Date.now(), iso = ms => new Date(ms).toISOString();
   const Q = (sql, ...b) => env.DB.prepare(sql).bind(...b);
   const [leads, clientes, aReceber, recMes, atras, serie, ativ, prevMes, leadsMes, propMes, assMes, cliMes, mrrAnt, porPlano, funilProp, funilAss, tempo, novos, paradas, informadas, atrasadas, vencendo, impl, ultimos] = await Promise.all([
-    Q('SELECT status, COUNT(*) n FROM leads GROUP BY status').all(),
+    Q("SELECT status, COUNT(*) n FROM leads WHERE status<>'auto' GROUP BY status").all(),
     Q('SELECT status, COUNT(*) n, COALESCE(SUM(mensal),0) mrr FROM clientes GROUP BY status').all(),
     Q("SELECT COALESCE(SUM(valor),0) v, COUNT(*) n FROM faturas WHERE status IN ('aberta','informada') AND vencimento>=?").bind(hoje).first(),
     Q("SELECT COALESCE(SUM(valor),0) v, COUNT(*) n FROM faturas WHERE status='paga' AND substr(pago_em,1,7)=?").bind(mes).first(),
@@ -427,7 +434,7 @@ async function resumo(env, mesPedido) {
     Q("SELECT substr(pago_em,1,7) m, SUM(valor) v, COUNT(*) n FROM faturas WHERE status='paga' AND pago_em>=? GROUP BY m ORDER BY m").bind(somaMes(mes, -11) + '-01').all(),
     Q('SELECT quando,tipo,texto FROM atividade ORDER BY id DESC LIMIT 14').all(),
     Q("SELECT COALESCE(SUM(valor),0) v, COUNT(*) n FROM faturas WHERE status<>'cancelada' AND substr(vencimento,1,7)=?").bind(mes).first(),
-    Q('SELECT COUNT(*) n FROM leads WHERE substr(criado,1,7)=?').bind(mes).first(),
+    Q("SELECT COUNT(*) n FROM leads WHERE status<>'auto' AND substr(criado,1,7)=?").bind(mes).first(),
     Q('SELECT COUNT(*) n FROM contratos WHERE substr(criado,1,7)=?').bind(mes).first(),
     Q("SELECT COUNT(*) n FROM contratos WHERE status='assinado' AND substr(assinado_em,1,7)=?").bind(mes).first(),
     Q('SELECT COUNT(*) n, COALESCE(SUM(mensal),0) mrr FROM clientes WHERE substr(criado,1,7)=?').bind(mes).first(),
@@ -442,7 +449,7 @@ async function resumo(env, mesPedido) {
     Q("SELECT f.id,f.descricao,f.valor,f.vencimento,c.escola FROM faturas f JOIN clientes c ON c.id=f.cliente_id WHERE f.status IN ('aberta','informada') AND f.vencimento<? ORDER BY f.vencimento LIMIT 6").bind(hoje).all(),
     Q("SELECT f.id,f.descricao,f.valor,f.vencimento,c.escola FROM faturas f JOIN clientes c ON c.id=f.cliente_id WHERE f.status='aberta' AND f.vencimento>=? AND f.vencimento<=? ORDER BY f.vencimento LIMIT 8").bind(hoje, somaDias(hoje, 7)).all(),
     Q("SELECT id,escola,criado FROM clientes WHERE status='implantando' AND criado<? ORDER BY id LIMIT 6").bind(iso(agoraMs - 7 * 864e5)).all(),
-    Q('SELECT id,escola,contato_nome,criado,status FROM leads ORDER BY id DESC LIMIT 6').all(),
+    Q("SELECT id,escola,contato_nome,criado,status FROM leads WHERE status<>'auto' ORDER BY id DESC LIMIT 6").all(),
   ]);
   const L = Object.fromEntries(leads.results.map(r => [r.status, r.n])), C = Object.fromEntries(clientes.results.map(r => [r.status, r]));
   const totalLeads = Object.values(L).reduce((x, y) => x + y, 0);
@@ -491,7 +498,7 @@ async function rotaAdmin(req, env, url, caminho) {
     }
     if (!id && m === 'GET') {
       const st = url.searchParams.get('status');
-      const q = st ? env.DB.prepare('SELECT id,criado,status,escola,cidade,uf,contato_nome,contato_tel,contato_email,config FROM leads WHERE status=? ORDER BY id DESC LIMIT 300').bind(st) : env.DB.prepare('SELECT id,criado,status,escola,cidade,uf,contato_nome,contato_tel,contato_email,config FROM leads ORDER BY id DESC LIMIT 300');
+      const q = st ? env.DB.prepare('SELECT id,criado,status,escola,cidade,uf,contato_nome,contato_tel,contato_email,config FROM leads WHERE status=? ORDER BY id DESC LIMIT 300').bind(st) : env.DB.prepare("SELECT id,criado,status,escola,cidade,uf,contato_nome,contato_tel,contato_email,config FROM leads WHERE status<>'auto' ORDER BY id DESC LIMIT 300");
       const { results } = await q.all(); return J(results.map(r => ({ ...r, config: undefined, resumo: resumoLead(r.config) })));
     }
     if (id && !acao && m === 'GET') {
