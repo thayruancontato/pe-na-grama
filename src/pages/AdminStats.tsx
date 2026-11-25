@@ -198,22 +198,22 @@ export default function AdminStats() {
                     <div className="est-colunas">{crescimento.map((c) => <div key={c.rotulo} className="est-coluna"><b>{c.n || ''}</b><div><i style={{ height: (c.n / maxCresc) * 100 + '%' }} /></div><span>{c.rotulo}</span></div>)}</div>
                 </Painel>
 
-                <Painel titulo={`Inadimplentes (${emAtraso.length})`} nota="Do mais antigo para o mais recente" acao={emAtraso.length ? <button className="est-btn" onClick={() => generateOverduePDF(emAtraso, true)}><FileText size={14} /> PDF</button> : undefined}>
+                <Painel titulo={`Inadimplentes (${emAtraso.length})`} total={brl(valorAtraso)} tom="neg" nota="Do mais antigo para o mais recente" acao={emAtraso.length ? <button className="est-btn" onClick={() => generateOverduePDF(emAtraso, true)}><FileText size={14} /> PDF</button> : undefined}>
                     <table className="est-tab"><thead><tr><th>Aluno</th><th className="n">Dias</th><th className="n">Valor</th></tr></thead>
                         <tbody>{emAtraso.length ? emAtraso.map((r) => <tr key={r.id}><td>{r.alunos?.[0]?.nome || r.responsavel?.nome}</td><td className="n">{r.daysOverdue}</td><td className="n neg">{brl(r.financialPendingAmount)}</td></tr>) : <tr><td colSpan={3} className="est-vazio">Ninguém em atraso.</td></tr>}</tbody></table>
                 </Painel>
 
-                <Painel titulo={`A receber (${aReceber.length})`} nota="Cobranças em aberto">
+                <Painel titulo={`A receber (${aReceber.length})`} total={brl(valorAReceber)} nota="Cobranças em aberto">
                     <table className="est-tab"><thead><tr><th>Aluno</th><th className="n">Valor</th><th></th></tr></thead>
                         <tbody>{aReceber.length ? aReceber.map((r) => <tr key={r.id}><td>{r.alunos?.[0]?.nome || r.responsavel?.nome}</td><td className="n">{brl(r.financialPendingAmount)}</td><td className="n">{r.financialInvoiceUrl ? <a href={r.financialInvoiceUrl} target="_blank" rel="noreferrer">Fatura</a> : ''}</td></tr>) : <tr><td colSpan={3} className="est-vazio">Nada a receber.</td></tr>}</tbody></table>
                 </Painel>
 
-                <Painel titulo={`Pagamentos ${periodo === 'tudo' ? 'de todo o período' : 'de ' + MESES[mes.m].toLowerCase()} (${recebidos.length})`} nota="Toque em uma linha para ver o recibo" largo>
+                <Painel titulo={`Pagamentos ${periodo === 'tudo' ? 'de todo o período' : 'de ' + MESES[mes.m].toLowerCase()} (${recebidos.length})`} total={brl(receita)} tom="pos" nota="Toque em uma linha para ver o recibo" largo>
                     <table className="est-tab est-clicavel"><thead><tr><th>Data</th><th>Aluno</th><th>Descrição</th><th>Forma</th><th className="n">Valor</th></tr></thead>
                         <tbody>{recebidos.length ? recebidos.map((p) => <tr key={p.id} onClick={() => setRecibo({ ...p, payerName: nomePagador(p) })}><td>{(p.quando as Date).toLocaleDateString('pt-BR')}</td><td>{nomePagador(p)}</td><td>{p.description || '—'}</td><td>{String(p.billingType || '—')}</td><td className="n">{brl(p.value)}</td></tr>) : <tr><td colSpan={5} className="est-vazio">Nenhum pagamento neste mês.</td></tr>}</tbody></table>
                 </Painel>
 
-                <Painel titulo={`Despesas ${periodo === 'tudo' ? 'de todo o período' : 'de ' + MESES[mes.m].toLowerCase()} (${gastosMes.length})`} nota={periodo === 'tudo' ? 'Todos os lançamentos' : 'Lançamentos do mês'} largo>
+                <Painel titulo={`Despesas ${periodo === 'tudo' ? 'de todo o período' : 'de ' + MESES[mes.m].toLowerCase()} (${gastosMes.length})`} total={brl(despesa)} tom="neg" nota={periodo === 'tudo' ? 'Todos os lançamentos' : 'Lançamentos do mês'} largo>
                     <table className="est-tab"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th className="n">Valor</th></tr></thead>
                         <tbody>{gastosMes.length ? gastosMes.map((g, i) => <tr key={g.id || i}><td>{dataDe(g.scheduleDate)?.toLocaleDateString('pt-BR')}</td><td>{g.description || '—'}</td><td>{g.category || '—'}</td><td className="n neg">{brl(g.value)}</td></tr>) : <tr><td colSpan={4} className="est-vazio">Nenhuma despesa neste mês.</td></tr>}</tbody></table>
                 </Painel>
@@ -228,10 +228,10 @@ function Kpi({ cor, rotulo, valor, nota }: { cor: string; rotulo: string; valor:
     return <div className={`est-kpi ${cor}`}><span>{rotulo}</span><strong>{valor}</strong><small>{nota}</small></div>;
 }
 
-function Painel({ titulo, nota, acao, largo, children }: { titulo: string; nota?: string; acao?: React.ReactNode; largo?: boolean; children: React.ReactNode }) {
+function Painel({ titulo, total, tom, nota, acao, largo, children }: { titulo: string; total?: string; tom?: 'neg' | 'pos'; nota?: string; acao?: React.ReactNode; largo?: boolean; children: React.ReactNode }) {
     return (
         <section className={`est-painel${largo ? ' largo' : ''}`}>
-            <header><div><h2>{titulo}</h2>{nota && <small>{nota}</small>}</div>{acao}</header>
+            <header><div><h2>{titulo}{total && <b className={`est-total${tom ? ' ' + tom : ''}`}>{total}</b>}</h2>{nota && <small>{nota}</small>}</div>{acao}</header>
             <div className="est-corpo">{children}</div>
         </section>
     );

@@ -50,7 +50,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .pm-pill{display:inline-block;margin-top:3px;padding:4px 11px;border-radius:999px;background:#ffd84a;color:#2b2100;font-size:12px;font-weight:800}
 .pm-topo h2{margin:2px 0 0;font-size:31px;line-height:1.1;letter-spacing:-.01em}
 .pm-topo p{margin:0;font-size:16px;opacity:.93}
-.pm-tira{display:flex;align-items:center;gap:14px;margin:18px 30px 0;padding:12px 16px;border-radius:12px;background:#f1f8f3}
+.pm-tira{margin:22px 30px 0;text-align:center}.pm-tira h3{margin:0;font-size:34px;font-weight:800;letter-spacing:.03em;line-height:1.1;color:var(--e)}
 .pm-tira i{flex:none;display:grid;place-items:center;width:42px;height:42px;border-radius:11px;background:#fff;color:var(--p);box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .pm-tira b{display:block;font-size:16px;color:var(--e)}.pm-tira span{font-size:13.5px;color:#4b5764}
 .pm-direita{padding:20px 30px 22px}
@@ -103,6 +103,19 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .pm-doc .err{padding:10px 12px;border-radius:8px;background:#fdecec;color:#8a1c1c;font-size:13.5px}
 @media(max-width:760px){.pm-pag{grid-template-columns:1fr;padding:16px 16px 4px}.pm-pag .val{font-size:38px}.pm-rodape{margin:12px 16px 20px;gap:12px}.pm-doc{padding:20px 16px 24px}}
 @media(max-width:760px){.pm-logo{height:60px;min-width:84px}.pm-logo img{height:44px;max-width:120px}.pm-foto{width:100%;opacity:.55;background-position:70% 30%}.pm-topo::before{background:linear-gradient(180deg,color-mix(in srgb,var(--e) 92%,transparent),color-mix(in srgb,var(--e) 62%,transparent))}.pm-topo-in{padding:22px 18px}.pm-topo h2{font-size:23px}.pm-tira{margin:14px 16px 0}.pm-direita{padding:16px 16px 20px}.pm-garantia{grid-template-columns:1fr;gap:6px}.pm-garantia span+span{border-left:0}}
+@media(max-width:760px){
+.pm-fundo{padding:8px}.pm{max-height:95vh;border-radius:18px}
+.pm-topo{min-height:0}.pm-topo-in{gap:8px;padding:16px 16px 14px}.pm-topo p{display:none}.pm-topo h2{font-size:20px;line-height:1.15}
+.pm-logo{height:48px;min-width:64px;padding:5px 9px}.pm-logo img{height:34px}.pm-nome{font-size:13px}.pm-pill{font-size:11.5px;padding:3px 9px}
+.pm-tira{margin:14px 14px 0}.pm-tira h3{font-size:22px}.pm-direita{padding:14px 14px 16px}
+.pm-lista{gap:12px}.pm-card{padding:14px;gap:3px}.pm-card p,.pm-card .dia{display:none}.pm-card .pr{font-size:26px}.pm-card h3{font-size:17px}.pm-card button{margin-top:6px;padding:10px 8px;font-size:14px}
+.pm-garantia{font-size:12.5px;padding:10px 12px}.pm-zap{margin-top:10px;font-size:12.5px}
+.pm-pag{gap:12px;padding:14px 14px 4px}.pm-pag-esq{padding:14px 16px}.pm-pag .rot{font-size:13.5px}.pm-pag .val{font-size:30px;margin:2px 0}.pm-pag .venc{font-size:13px}
+.pm-aguarda{margin:10px 0 0;padding:6px 14px 6px 10px;font-size:13.5px}.pm-pag ol{display:none}
+.pm-pag-dir{padding:16px;gap:6px}.pm-pag-dir>b{font-size:16px}.pm-qr{min-height:0;padding:4px 0}.pm-qr img{width:170px;height:170px}
+.pm-copia{padding:12px;font-size:15px}.pm-rodape{margin:10px 14px 16px;padding:10px 14px;gap:8px 14px;font-size:13px}
+.pm-doc{padding:16px 14px 20px}.pm-ok{padding:28px 18px}
+}
 @media(prefers-reduced-motion:reduce){.pm-fundo,.pm,.pm-ok i{animation:none}}`;
     document.head.appendChild(css);
 
@@ -157,8 +170,8 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
         const fundo = document.createElement('div');
         fundo.className = 'pm-fundo';
         const dias = restam === 0 ? 'termina hoje' : restam === 1 ? 'falta 1 dia' : 'faltam ' + restam + ' dias';
-        const [titulo, sub, tiraT, tiraD] = RECURSOS[item || ''] || PADRAO;
-        fundo.innerHTML = `<div class="pm" role="dialog" aria-modal="true" aria-label="Escolha o seu plano"><button class="pm-x" type="button" aria-label="Fechar">✕</button><div class="pm-topo"><div class="pm-foto" role="img" aria-label="Treinador comemorando com um aluno"></div><div class="pm-topo-in"><div class="pm-id"><div class="pm-logo"><img class="pm-logo-img" alt="Logo da escola"></div><div><div class="pm-nome"></div><span class="pm-pill">Seu teste grátis · ${dias}</span></div></div><h2>${titulo}</h2><p>${sub}</p></div></div><div class="pm-tira"><i>${LOCK}</i><div><b>${tiraT}</b><span>${tiraD}</span></div></div><div class="pm-corpo"><p class="pm-rod">Carregando…</p></div></div>`;
+        const [titulo, sub] = RECURSOS[item || ''] || PADRAO;
+        fundo.innerHTML = `<div class="pm" role="dialog" aria-modal="true" aria-label="Escolha o seu plano"><button class="pm-x" type="button" aria-label="Fechar">✕</button><div class="pm-topo"><div class="pm-foto" role="img" aria-label="Treinador comemorando com um aluno"></div><div class="pm-topo-in"><div class="pm-id"><div class="pm-logo"><img class="pm-logo-img" alt="Logo da escola"></div><div><div class="pm-nome"></div><span class="pm-pill">Seu teste grátis · ${dias}</span></div></div><h2>${titulo}</h2><p>${sub}</p></div></div><div class="pm-tira"><h3>ESCOLHA SEU PLANO</h3></div><div class="pm-corpo"><p class="pm-rod">Carregando…</p></div></div>`;
         document.body.appendChild(fundo);
         prepararLogo().then((l) => { const im = fundo.querySelector('.pm-logo-img') as HTMLImageElement | null; if (im) im.src = l.src; });
         let timer = 0, temDoc = false, escola = '', whats = '';
@@ -188,7 +201,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
                 const lim = (d: string) => { const m = /até\s+(\d+)\s+alunos/i.exec(d || ''); return m ? 'até ' + m[1] + ' alunos' : ''; };
                 const resumo = (d: string) => (d || '').replace(/^[^:]*:\s*/, '').replace(/^até\s+\d+\s+alunos,?\s*/i, '').replace(/^./, (c) => c.toUpperCase());
                 const zapLink = whats ? `<a class="pm-zap" href="https://wa.me/${whats}?text=${encodeURIComponent('Olá! Estou testando o sistema e quero tirar uma dúvida sobre os planos.')}" target="_blank" rel="noreferrer">Prefere conversar antes? Chame no WhatsApp →</a>` : '';
-                msg(`<div class="pm-direita"><div class="pm-lista">${planos.map((p: any, i: number) => `<div class="pm-card${i === meio ? ' top' : ''}">${i === meio ? '<span class="sel">★ Plano recomendado</span>' : ''}<h3>${seguro(p.nome)}</h3><span class="lim">${lim(p.descricao)}</span><div class="pr">${brl(p.mensal)}<small> /mês</small></div><span class="dia">≈ R$ ${(p.mensal / 100 / 30).toFixed(2).replace('.', ',')} por dia</span><p>${seguro(resumo(p.descricao))}</p><button type="button" data-p="${seguro(p.nome)}">${i === meio ? 'Quero o ' + seguro(p.nome) : 'Escolher ' + seguro(p.nome)}</button></div>`).join('')}</div><div class="pm-garantia"><span>✓ Sem fidelidade</span><span>✓ Seus dados são preservados</span><span>✓ Cancele quando quiser</span></div>${zapLink}</div>`);
+                msg(`<div class="pm-direita"><div class="pm-lista">${planos.map((p: any, i: number) => `<div class="pm-card${i === meio ? ' top' : ''}">${i === meio ? '<span class="sel">★ Plano recomendado</span>' : ''}<h3>${seguro(p.nome)}</h3><span class="lim">${lim(p.descricao)}</span><div class="pr">${brl(p.mensal)}<small> /mês</small></div><span class="dia">≈ R$ ${(p.mensal / 100 / 30).toFixed(2).replace('.', ',')} por dia</span><p>${seguro(resumo(p.descricao))}</p><button type="button" data-p="${seguro(p.nome)}">${i === meio ? 'Quero o ' + seguro(p.nome) : 'Escolher ' + seguro(p.nome)}</button></div>`).join('')}</div>${zapLink}</div>`);
                 corpo.querySelectorAll('button[data-p]').forEach((bt) => bt.addEventListener('click', () => escolher((bt as HTMLElement).dataset.p!)));
             }).catch(() => msg('<p class="pm-rod" style="padding:30px">Não consegui carregar os planos agora. Tente de novo em instantes.</p>'));
         };

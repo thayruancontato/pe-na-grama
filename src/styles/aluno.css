@@ -1,0 +1,47 @@
+/* Ficha do aluno (aba Visão geral): painéis planos e organizados, no estilo ERP 2016 */
+.sd{margin-bottom:20px;color:#27323d;font-size:13.5px}
+.sd-abas{display:flex;gap:2px;border-bottom:2px solid #dfe4ea;margin-bottom:14px}
+.sd-abas button{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;margin-bottom:-2px;border:0;border-bottom:3px solid transparent;background:none;color:#66727f;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.sd-abas button:hover{color:#17428f}.sd-abas button.on{color:#17428f;border-bottom-color:#17428f}
+.sd-grade{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:14px;align-items:start}
+.sd-col{display:grid;gap:14px;min-width:0}
+.sd-painel{background:#fff;border:1px solid #dfe4ea;border-top:3px solid #17428f;border-radius:3px}
+.sd-painel>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;border-bottom:1px solid #e9edf1}
+.sd-painel h4{display:inline-flex;align-items:center;gap:7px;margin:0;font-size:14px;font-weight:700;color:#1d2733}
+.sd-painel>header small{font-size:12px;color:#7a8693}
+.sd-perfil{display:flex;align-items:center;gap:18px;padding:18px 20px}
+.sd-foto{position:relative;flex:none;width:112px;height:112px;border-radius:14px;overflow:hidden;background:#eef1f5;border:1px solid #dfe4ea}
+.sd-foto label{display:grid;place-items:center;width:100%;height:100%;position:relative;cursor:default}.sd-foto label.pode{cursor:pointer}
+.sd-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.sd-foto .vazio{display:grid;justify-items:center;gap:2px;color:#9aa5b1}.sd-foto .vazio small{font-size:11px}
+.sd-foto-ov{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:3px;background:rgba(9,36,92,.62);color:#fff;font-size:11.5px;font-weight:700;opacity:0;transition:opacity .15s}
+.sd-foto:hover .sd-foto-ov{opacity:1}
+.sd-foto-x{position:absolute;top:5px;right:5px;z-index:2;display:grid;place-items:center;width:24px;height:24px;border:0;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;cursor:pointer}
+.sd-id{min-width:0;display:grid;gap:10px;flex:1}
+.sd-id h3{margin:0;font-size:1.5rem;font-weight:700;line-height:1.15;color:#10213f;overflow-wrap:anywhere}
+.sd-badges{display:flex;flex-wrap:wrap;gap:6px}
+.sd-tag{display:inline-block;padding:3px 10px;border-radius:999px;background:#eef1f5;color:#4b5764;font-size:11.5px;font-weight:700;letter-spacing:.02em}
+.sd-tag.azul{background:#e5edf9;color:#17428f}.sd-tag.ok{background:#e3f4e8;color:#1c7c3a}.sd-tag.warn{background:#fff3d6;color:#8a6100}.sd-tag.bad{background:#fbe9e7;color:#b83227}
+.sd-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:0;margin:0}
+.sd-dados>div{padding:12px 16px;border-right:1px solid #eef1f4;border-bottom:1px solid #eef1f4}
+.sd-dados dt{margin:0 0 4px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#7a8693}
+.sd-dados dd{margin:0;font-size:15px;font-weight:600;color:#1d2733;overflow-wrap:anywhere}
+.sd-saude{border-top-color:#e08a00}.sd-saude h4{color:#8a5200}
+.sd-input{width:100%;box-sizing:border-box;padding:8px 10px;border:1.5px solid #c9d0d8;border-radius:6px;background:#fff;color:#1d2733;font:inherit;font-size:14.5px;font-weight:600}
+.sd-input:focus{outline:none;border-color:#17428f;box-shadow:0 0 0 3px rgba(23,66,143,.15)}
+.sd-erro{display:block;margin-top:3px;font-size:12px;font-weight:700;color:#d64538}
+.sd-mods{display:grid}
+.sd-mod{display:grid;grid-template-columns:minmax(120px,1fr) minmax(150px,1.3fr) auto auto;align-items:center;gap:10px 16px;padding:12px 16px;border-bottom:1px solid #eef1f4}
+.sd-mod:last-child{border-bottom:0}
+.sd-mod-nome{display:grid;gap:2px}.sd-mod-nome b{font-size:15px;color:#10213f}.sd-mod-nome small{font-size:12px;color:#66727f}
+.sd-mod-turma{display:grid;gap:2px}.sd-mod-turma small{font-size:11px;font-weight:700;text-transform:uppercase;color:#7a8693}.sd-mod-turma span{font-weight:600}
+.sd-mod-acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.sd-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid #c9d0d8;border-radius:6px;background:#fff;color:#27323d;font:inherit;font-size:12.5px;font-weight:700;text-decoration:none;cursor:pointer}
+.sd-btn:hover{background:#eef1f5;border-color:#9aa5b5}
+.sd-btn.forte{background:#17428f;border-color:#17428f;color:#fff}.sd-btn.forte:hover{background:#09245c}
+.sd-btn.perigo{color:#b83227;border-color:#efc5c0}.sd-btn.perigo:hover{background:#fbe9e7}
+.sd-doc{display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px}.sd-vazio{color:#7a8693}
+.sd-cart{padding:14px}.sd-cart>*{max-width:100%}
+@media(max-width:1100px){.sd-grade{grid-template-columns:1fr}.sd-lado{order:-0}}
+@media(max-width:700px){.sd-perfil{flex-direction:column;align-items:flex-start;padding:16px}.sd-foto{width:96px;height:96px}.sd-id h3{font-size:1.25rem}.sd-mod{grid-template-columns:1fr auto;gap:8px 12px}.sd-mod-turma{grid-column:1/-1;order:3}.sd-mod-acoes{grid-column:1/-1;order:4;justify-content:flex-start}.sd-dados>div{padding:10px 14px}}
+.spin{animation:spin 1s linear infinite}@keyframes spin{100%{transform:rotate(360deg)}}

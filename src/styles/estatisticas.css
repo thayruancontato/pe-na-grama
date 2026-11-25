@@ -79,3 +79,6 @@
 .est-sw button{border:0;background:none;padding:6px 14px;border-radius:999px;font:inherit;font-size:12.5px;font-weight:700;color:#5b6772;cursor:pointer;transition:background .15s,color .15s}
 .est-sw button.on{background:#17428f;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
 .est-sw button:focus-visible{outline:2px solid #17428f;outline-offset:2px}
+.est-painel h2{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}
+.est-total{display:inline-block;padding:2px 11px;border-radius:999px;background:#e8eef7;color:#17428f;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.est-total.neg{background:#fbe9e7;color:#b83227}.est-total.pos{background:#e3f4e8;color:#1c7c3a}
