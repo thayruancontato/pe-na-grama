@@ -33,3 +33,66 @@ header{position:sticky;top:0;z-index:30;box-shadow:0 4px 25px #001c191a}html{scr
 .campaign-photo{object-position:62% 12%}@media(max-width:900px){.campaign-photo{object-position:65% 15%}}
 
 .browser img{max-height:none;object-fit:contain}
+/* card de preço: imagem no topo (só desktop), planos em linhas, vantagens com marcador */
+.price{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.price-hero{display:none;position:relative;margin:0;aspect-ratio:16/9;background:#dce5ce}
+.price-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:28% center}
+.price-hero figcaption{position:absolute;left:14px;bottom:14px;display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#ffffffeb;color:#103d2e;font-size:13px;font-weight:700}
+@media(min-width:901px){.price-hero{display:block}}
+.price-body{padding:28px 32px 30px}
+.price-body .price-from{margin:22px 0 0;font-size:14px;color:#4f6049}
+.price-tiers{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:8px}
+.price-tiers li{display:grid;grid-template-columns:1fr auto auto;gap:14px;align-items:baseline;padding:11px 14px;border:1px solid #cbd4c1;border-radius:8px;background:#f7f8f1;font-size:14px}
+.price-tiers b{font-weight:700;color:#103d2e}.price-tiers span{font-size:13px;color:#4f6049}.price-tiers em{font-style:normal;font-weight:700;color:#103d2e;min-width:62px;text-align:right}
+.price-tiers li.hot{border-color:#103d2e;background:#fff;box-shadow:0 0 0 1px #103d2e}
+.price-feats{list-style:none;margin:20px 0 24px;padding:18px 0 0;border-top:1px solid #d5ddca;display:grid;gap:10px}
+.price-feats li{position:relative;padding-left:28px;font-size:15px;color:#142e24}
+.price-feats li::before{content:"✓";position:absolute;left:0;top:1px;width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:#103d2e;color:#dfff00;font-size:11px;font-weight:700}
+.price-body small{display:block;text-align:center;font-size:13px;color:#4f6049;margin-top:14px}
+@media(max-width:560px){.price-body{padding:22px 20px 24px}.price-tiers li{grid-template-columns:1fr auto;}.price-tiers li span{grid-column:1;grid-row:2}.price-tiers li em{grid-row:1/3;grid-column:2}}
+
+/* ===== costura entre seções (landing-fx.js) ===== */
+.cap{position:relative}
+/* seções de fundo cheio entram "por cima" da anterior, com cantos arredondados */
+.product,.automation,.calc-section,.demo-section{margin-top:-34px;padding-top:calc(34px + var(--pt,0px));border-radius:34px 34px 0 0;position:relative;z-index:1}
+.hero{z-index:0}
+@media(max-width:700px){.product,.automation,.calc-section,.demo-section{margin-top:-22px;border-radius:22px 22px 0 0}}
+/* elo que cruza a divisa */
+.costura{position:absolute;left:50%;bottom:0;transform:translate(-50%,50%);z-index:5;display:inline-flex;align-items:center;gap:10px;padding:7px 8px 7px 16px;border-radius:999px;background:#fff;color:#103d2e;border:1px solid #cbd4c1;box-shadow:0 10px 30px #052a2026;font-size:13px;font-weight:700;text-decoration:none;transition:transform .25s,box-shadow .25s}
+.costura i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#103d2e;color:#dfff00;font-style:normal;font-size:14px}
+.costura:hover{transform:translate(-50%,calc(50% - 3px));box-shadow:0 16px 36px #052a2038}
+.costura:focus-visible{outline:3px solid #dfff00;outline-offset:3px}
+.costura:hover i{animation:ponte .6s ease-in-out infinite alternate}
+@keyframes ponte{to{transform:translateY(3px)}}
+@media(max-width:700px){.costura{display:none}}
+/* trilho de capítulos */
+.rail{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:40;display:flex;flex-direction:column;gap:14px;padding:14px 10px;border-radius:999px;background:#ffffffd9;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid #cbd4c1;box-shadow:0 12px 34px #052a2024}
+.rail-fio{position:absolute;left:50%;top:22px;bottom:22px;width:2px;margin-left:-1px;background:#d5ddca;border-radius:2px;overflow:hidden}
+.rail-fio b{display:block;width:100%;height:0;background:#103d2e}
+.rail button{all:unset;position:relative;z-index:1;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #9fb08f;cursor:pointer;transition:transform .2s,background .2s,border-color .2s}
+.rail button.feito{background:#103d2e;border-color:#103d2e}
+.rail button.on{background:#dfff00;border-color:#103d2e;transform:scale(1.5)}
+.rail button span{position:absolute;right:26px;top:50%;transform:translateY(-50%) translateX(6px);padding:6px 10px;border-radius:6px;background:#103d2e;color:#fff;font-size:12px;font-weight:700;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+.rail button:hover span,.rail button:focus-visible span,.rail button.on span{opacity:1;transform:translateY(-50%)}
+.rail button:focus-visible{outline:3px solid #103d2e;outline-offset:3px}
+@media(max-width:1180px){.rail{display:none}}
+/* revelação ao rolar */
+@supports (animation-timeline:view()){
+  .rv{animation:rv linear both;animation-timeline:view();animation-range:entry 4% entry 48%}
+  @keyframes rv{from{opacity:0;transform:translateY(34px) scale(.985)}to{opacity:1;transform:none}}
+}
+.sem-timeline .rv{opacity:0;transform:translateY(28px);transition:opacity .6s ease var(--d,0ms),transform .6s ease var(--d,0ms)}
+.sem-timeline .rv.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.rv{animation:none!important;opacity:1!important;transform:none!important;transition:none!important}.costura:hover i{animation:none}}
+/* troca de tela do tour */
+::view-transition-old(tour-tela),::view-transition-new(tour-tela){animation-duration:.35s;animation-timing-function:ease}
+/* simulador -> plano */
+.calc-rec{margin-top:18px;padding-top:16px;border-top:1px solid #ffffff2e;display:grid;gap:6px}
+.calc-rec span{font-size:12px;letter-spacing:.06em;opacity:.85}
+.calc-rec b{font-size:20px}
+.calc-rec p{margin:0!important;font-size:14px}
+.calc-ver{align-self:start;margin-top:6px;border:0;border-radius:999px;padding:11px 18px;background:#dfff00;color:#103d2e;font:inherit;font-size:14px;font-weight:700;cursor:pointer}
+.calc-ver:hover{filter:brightness(.95)}
+.price-tiers li{transition:box-shadow .3s,border-color .3s,background .3s,transform .3s}
+.price-tiers li.sugerido{border-color:#103d2e;background:#f4ffd0;box-shadow:0 0 0 3px #dfff00,0 0 0 4px #103d2e;transform:scale(1.02);animation:sugere 1.4s ease 2}
+@keyframes sugere{50%{box-shadow:0 0 0 8px #dfff0080,0 0 0 4px #103d2e}}
