@@ -121,6 +121,8 @@ function moldura(f: Element) {
         if (c.classList.contains('ux-root') || c.classList.contains('ux-root-box')) continue;
         if (c.matches('.ux-overlay, [style*="position: fixed"]')) break;
         const cs = getComputedStyle(c);
+        // spinner/ícone pequeno de carregamento não é invólucro de página: esticá-lo a 100% quebra o loading
+        if ((cs.animationName && cs.animationName !== 'none') || (c.children.length === 0 && c.getBoundingClientRect().width < 160)) break;
         // invólucro com fundo/sombra próprios é um painel: mantém o respiro de dentro
         const painel = alfa(cs.backgroundColor) > 0.05 || cs.boxShadow !== 'none' || px(cs.borderTopWidth) > 0;
         c.classList.add(painel ? 'ux-root-box' : 'ux-root');

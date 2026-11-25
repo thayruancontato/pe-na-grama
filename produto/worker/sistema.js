@@ -513,6 +513,7 @@ export async function rotaSistema(req, env, tenant, p) {
 
 // Nome antigo do sistema ("Rumo ao Esporte", "... e ao Lazer - REAL", "... 2026") vira o nome da escola do subdomínio.
 const NOME_ANTIGO = /Rumo ao Esporte( e ao Lazer\s*[-–]\s*REAL)?( 2026)?/gi;
+export const sessaoDoToken = lerToken; // a rota de assinatura (index.js) confere a sessão da escola
 const LOGOS = new Set(['/rumo-ao-esporte-logo.png', '/logo-dashboard.png', '/real-logo-transparente.svg', '/escola/pwa/icon-192.png', '/escola/pwa/icon-512.png']);
 const PNG_TRANSPARENTE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 const PNG_VAZIO ='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';

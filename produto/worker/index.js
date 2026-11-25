@@ -1,4 +1,4 @@
-import { rotaSistema, servirSistema, importarSistema, tokenParaDono, revogar, auditar, confereSenha } from './sistema.js';
+import { rotaSistema, servirSistema, importarSistema, tokenParaDono, revogar, auditar, confereSenha, sessaoDoToken } from './sistema.js';
 import { CATALOGO, INTERNO, limparControle, limparInterno, controleDe, esquecerControle } from './controle.js';
 // Worker do Pé na Grama: recebe os pedidos do formulário, gera proposta e contrato, cobra por Pix e alimenta a Central do dono.
 // Tudo no mesmo domínio: /api/* cai aqui; o resto é servido como arquivo estático.
@@ -225,6 +225,91 @@ async function descartaAsaas(env, faturaId) {
   } catch { /* o Asaas pode estar fora do ar: a fatura local segue valendo */ }
 }
 /** Webhook do Asaas: pagamento confirmado ou recebido baixa a fatura sozinho. Sempre responde 200 (o Asaas pausa o envio se vier erro). */
+
+// ---------- assinatura da escola em teste (Asaas): escolhe o plano -> assinatura mensal por Pix -> primeira fatura com QR code ----------
+const PAGOS = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'];
+async function ativarAssinatura(env, cid, a, dia) {
+  const c = await env.DB.prepare('SELECT id,escola,url_sistema,status FROM clientes WHERE id=?').bind(cid).first(); if (!c) return;
+  await env.DB.prepare("UPDATE clientes SET status='ativo', plano_nome=?, mensal=? WHERE id=?").bind(a.plano, a.valor, cid).run();
+  if (c.url_sistema) {
+    const t = new URL(c.url_sistema).host;
+    await env.DB.prepare("UPDATE sys_docs SET data=json_set(data,'$.valores.teste_ativo',json('false'),'$.valores.banner_ativo',json('false')) WHERE tenant=? AND col='sys_owner' AND id='controle'").bind(t).run();
+    esquecerControle(t);
+  }
+  await env.DB.prepare('DELETE FROM settings WHERE k=?').bind('teste:' + cid).run();
+  const ja = await env.DB.prepare("SELECT 1 x FROM faturas WHERE cliente_id=? AND descricao LIKE 'Assinatura%'").bind(cid).first();
+  if (!ja) await env.DB.prepare("INSERT INTO faturas(token,cliente_id,descricao,competencia,valor,vencimento,status,criado,pago_em) VALUES(?,?,?,?,?,?,'paga',?,?)").bind(token(16), cid, 'Assinatura ' + a.plano + ' (primeira fatura)', (dia || tz()).slice(0, 7), a.valor, a.venc || dia || tz(), agora(), dia || tz()).run();
+  a.status = 'paga'; await setSet(env, 'assin:' + cid, JSON.stringify(a));
+  await log(env, 'plano', c.escola + ' pagou a primeira fatura e assinou o plano ' + a.plano + ' (' + brl(a.valor) + '/mês)');
+}
+const publicoAssin = (a) => ({ status: a.status, plano: a.plano, valor: a.valor, vencimento: a.venc, imagem: a.pix ? a.pix.imagem : '', codigo: a.pix ? a.pix.codigo : '' });
+async function cancelarAssinatura(env, cfg, cid, a) {
+  if (a && a.status === 'pendente') {
+    if (a.subId) await asaas(cfg, 'DELETE', '/subscriptions/' + a.subId).catch(() => {});
+    if (a.pid) await asaas(cfg, 'DELETE', '/payments/' + a.pid).catch(() => {});
+    a.status = 'cancelada'; await setSet(env, 'assin:' + cid, JSON.stringify(a));
+  }
+}
+async function rotaAssinatura(req, env, host) {
+  const s = await sessaoDoToken(req, env, host);
+  if (!s || s.role !== 'admin') return erro('Faça login como administrador.', 401);
+  const c = await env.DB.prepare('SELECT id,escola,contato_nome,contato_tel,contato_email FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
+  if (!c) return erro('Escola não encontrada.', 404);
+  const cfg = await asaasCfg(env), m = req.method, caminho = new URL(req.url).pathname, chave = 'assin:' + c.id;
+  const lido = await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind(chave).first();
+  let a = lido ? JSON.parse(lido.v) : null;
+  const ok = Boolean(cfg.chave && cfg.ativo);
+  // confere o pagamento no Asaas e garante o QR code guardado
+  const atualiza = async () => {
+    if (!a || a.status !== 'pendente' || !ok) return a;
+    try {
+      const pg = await asaas(cfg, 'GET', '/payments/' + a.pid);
+      if (PAGOS.includes(pg.status)) { await ativarAssinatura(env, c.id, a, pg.paymentDate || pg.confirmedDate); return a; }
+      if (pg.status === 'DELETED' || pg.status === 'REFUNDED') { a.status = 'cancelada'; await setSet(env, chave, JSON.stringify(a)); return a; }
+      if (!a.pix || !a.pix.codigo) { const q = await asaas(cfg, 'GET', '/payments/' + a.pid + '/pixQrCode'); a.pix = { imagem: q.encodedImage ? 'data:image/png;base64,' + q.encodedImage : '', codigo: q.payload || '' }; await setSet(env, chave, JSON.stringify(a)); }
+      if (pg.dueDate) a.venc = pg.dueDate;
+    } catch { /* mostra o que já tem */ }
+    return a;
+  };
+  if (m === 'GET') {
+    const x = await atualiza();
+    const temDoc = Boolean(await env.DB.prepare('SELECT 1 x FROM settings WHERE k=?').bind('doc:' + c.id).first());
+    return J({ disponivel: ok, temDoc, assinatura: x && (x.status === 'pendente' || x.status === 'paga') ? publicoAssin(x) : null });
+  }
+  if (m !== 'POST') return erro('Método não permitido.', 405);
+  let b = {}; try { b = await req.json(); } catch { /* corpo vazio */ }
+  if (caminho.endsWith('/trocar')) { await cancelarAssinatura(env, cfg, c.id, a); await log(env, 'plano', c.escola + ' pediu para trocar de plano'); return J({ ok: true }); }
+  if (!ok) return J({ ok: false, indisponivel: true });
+  if (!(await limite(env, 'assin:' + c.id, 10, 3600))) return erro('Muitas tentativas. Tente de novo em instantes.', 429);
+  const plano = await env.DB.prepare('SELECT nome,mensal FROM planos WHERE ativo=1 AND nome=?').bind(String(b.plano || '').slice(0, 60)).first();
+  if (!plano) return erro('Plano não encontrado.', 404);
+  if (a && a.status === 'pendente') {
+    if (a.plano === plano.nome) return J({ ok: true, assinatura: publicoAssin(await atualiza()) });
+    await cancelarAssinatura(env, cfg, c.id, a); // trocou de plano: cancela a assinatura anterior e cria outra
+  }
+  const docSalvo = (await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('doc:' + c.id).first() || {}).v || '';
+  const doc = String(b.doc || docSalvo).replace(/\D/g, '');
+  if (!docValido(doc)) return erro('Informe um CPF ou CNPJ válido de quem vai pagar.');
+  try {
+    let cid = (await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('asaas:c:' + c.id).first() || {}).v;
+    if (!cid) {
+      const achado = await asaas(cfg, 'GET', '/customers?externalReference=' + encodeURIComponent('cliente:' + c.id));
+      cid = achado.data && achado.data.length ? achado.data[0].id : (await asaas(cfg, 'POST', '/customers', { name: c.escola, cpfCnpj: doc, email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.contato_email || '') ? c.contato_email : undefined, mobilePhone: String(c.contato_tel || '').replace(/\D/g, '') || undefined, externalReference: 'cliente:' + c.id, notificationDisabled: true })).id;
+      await setSet(env, 'asaas:c:' + c.id, cid);
+    }
+    await asaas(cfg, 'PUT', '/customers/' + cid, { cpfCnpj: doc }).catch(() => {});
+    await setSet(env, 'doc:' + c.id, doc);
+    const sub = await asaas(cfg, 'POST', '/subscriptions', { customer: cid, billingType: 'PIX', value: plano.mensal / 100, nextDueDate: somaDias(tz(), 1), cycle: 'MONTHLY', description: 'Pé na Grama · Plano ' + plano.nome + ' · ' + c.escola, externalReference: 'assin:' + c.id });
+    let pg = null;
+    for (let i = 0; i < 4 && !pg; i++) { const l = await asaas(cfg, 'GET', '/subscriptions/' + sub.id + '/payments'); pg = l.data && l.data[0]; if (!pg) await new Promise((r) => setTimeout(r, 1200)); }
+    if (!pg) throw new Error('O Asaas ainda não gerou a primeira fatura. Tente de novo em instantes.');
+    a = { plano: plano.nome, valor: plano.mensal, subId: sub.id, pid: pg.id, venc: pg.dueDate, status: 'pendente', criado: agora() };
+    await setSet(env, chave, JSON.stringify(a)); await setSet(env, 'assin_sub:' + sub.id, String(c.id));
+    await log(env, 'plano', c.escola + ' escolheu o plano ' + plano.nome + ' (aguardando o pagamento da primeira fatura)');
+    return J({ ok: true, assinatura: publicoAssin(await atualiza()) });
+  } catch (e) { return erro('Não foi possível gerar a cobrança: ' + e.message, 502); }
+}
+
 async function webhookAsaas(req, env) {
   const cfg = await asaasCfg(env), enviado = req.headers.get('asaas-access-token') || '';
   const igual = cfg.token && enviado.length === cfg.token.length && [...enviado].reduce((a, ch, i) => a | (ch.charCodeAt(0) ^ cfg.token.charCodeAt(i)), 0) === 0;
@@ -232,6 +317,13 @@ async function webhookAsaas(req, env) {
   let b = {}; try { b = await req.json(); } catch { return J({ ok: true }); }
   const ev = String(b.event || ''), pg = b.payment || {};
   if (['PAYMENT_CONFIRMED', 'PAYMENT_RECEIVED'].includes(ev)) {
+    const sub = pg.subscription ? await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('assin_sub:' + pg.subscription).first() : null;
+    if (sub) { // pagamento de uma assinatura: a primeira libera o plano; as seguintes viram só um aviso na Central
+      const cid = +sub.v, l = await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('assin:' + cid).first(), a = l ? JSON.parse(l.v) : null;
+      if (a && a.status === 'pendente' && a.pid === pg.id) await ativarAssinatura(env, cid, a, pg.paymentDate || pg.confirmedDate);
+      else if (a) await log(env, 'plano', 'Mensalidade da assinatura recebida pelo Asaas (cliente ' + cid + ')');
+      return J({ ok: true });
+    }
     const ref = /^fatura:(\d+)$/.exec(String(pg.externalReference || '')), id = ref ? +ref[1] : 0;
     const f = id ? await env.DB.prepare('SELECT f.*, c.escola FROM faturas f JOIN clientes c ON c.id=f.cliente_id WHERE f.id=?').bind(id).first() : null;
     if (f && f.status !== 'paga' && f.status !== 'cancelada') {
@@ -858,6 +950,7 @@ export default {
       if (p.startsWith('/api/')) return erro('Não encontrado.', 404);
       if (p.startsWith('/ds/')) return env.ASSETS.fetch(req);
       const esc = await env.DB.prepare('SELECT status FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
+      if (esc && p.startsWith('/sys/assinatura') && esc.status !== 'teste_fim') return rotaAssinatura(req, env, host);
       if (esc && p.startsWith('/sys/') && esc.status !== 'teste_fim') return rotaSistema(req, env, host, p);
       if (esc && (esc.status === 'ativo' || esc.status === 'teste')) return servirSistema(req, env, p, host); // escola ativa: o sistema de verdade
       return paginaEscola(req, env, host, p);
