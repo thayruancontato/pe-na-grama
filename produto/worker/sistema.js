@@ -317,8 +317,8 @@ export async function rotaSistema(req, env, tenant, p) {
     return new Response(JSON.stringify({ catalogo: r ? JSON.parse(r.v) : null }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' } });
   }
   if (partes[0] === 'public' && partes[1] === 'planos' && m === 'GET') { // planos para a escola em teste escolher (modal "Escolha seu plano")
-    const pl = await env.DB.prepare('SELECT nome,mensal,implantacao,descricao FROM planos WHERE ativo=1 ORDER BY mensal').all(), w = await env.DB.prepare("SELECT v FROM settings WHERE k='empresa_whats'").first();
-    return new Response(JSON.stringify({ planos: pl.results || [], whats: w ? String(w.v).replace(/\D/g, '') : '' }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+    const pl = await env.DB.prepare('SELECT nome,mensal,implantacao,descricao FROM planos WHERE ativo=1 ORDER BY mensal').all(), w = await env.DB.prepare("SELECT v FROM settings WHERE k='empresa_whats'").first(), e = await env.DB.prepare('SELECT escola FROM clientes WHERE url_sistema=?').bind('https://' + tenant).first();
+    return new Response(JSON.stringify({ escola: e ? e.escola : '', planos: pl.results || [], whats: w ? String(w.v).replace(/\D/g, '') : '' }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
   }
   if (partes[0] === 'plano' && m === 'POST') { // a escola em teste escolhe o plano: fica registrado em Clientes (notas) e na atividade da Central
     const s = await lerToken(req, env, tenant);
