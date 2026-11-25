@@ -739,12 +739,12 @@ async function rotaAdmin(req, env, url, caminho) {
       }
       if (acao === 'sessoes' && m === 'POST') { const r = await q('SELECT email FROM sys_users WHERE tenant=?', t).all(); for (const u of r.results || []) await revogar(env, t, u.email); await log(env, 'sistema', 'Todas as sessões de ' + c0.escola + ' encerradas'); return J({ ok: true, usuarios: (r.results || []).length }); }
       if (acao === 'dados' && m === 'GET') { const r = await q('SELECT col, COUNT(*) n, COALESCE(SUM(LENGTH(data)),0) b FROM sys_docs WHERE tenant=? GROUP BY col ORDER BY b DESC', t).all(); return J({ colecoes: (r.results || []).map((x) => ({ col: x.col, n: x.n, kb: Math.round(x.b / 1024) })) }); }
-      if (acao === 'popular' && m === 'POST') { // injeta na escola os dados de teste (cópia da escola de demonstração); o que já existe não é sobrescrito
+      if (acao === 'popular' && m === 'POST') { // injeta na escola os dados de teste (cópia da escola de demonstração); os registros de teste são atualizados
         const molde = await q("SELECT url_sistema FROM clientes WHERE escola LIKE '%Bosque%' AND url_sistema<>'' ORDER BY id LIMIT 1").first();
         if (!molde) return erro('A escola de demonstração (Bosque das Araucárias) não foi encontrada.', 404);
         const origem = new URL(molde.url_sistema).host; if (origem === t) return erro('Esta é a própria escola de demonstração.');
         const cols = ['rumo_ao_esporte_2026_plans', 'turmas', 'teachers', 'rumo_ao_esporte_2026_registrations', 'financial_payments'], n = {};
-        for (const col of cols) { const r = await q('INSERT INTO sys_docs(tenant,col,id,data) SELECT ?,col,id,data FROM sys_docs WHERE tenant=? AND col=? ON CONFLICT(tenant,col,id) DO NOTHING', t, origem, col).run(); n[col] = r.meta ? r.meta.changes : 0; }
+        for (const col of cols) { const r = await q('INSERT INTO sys_docs(tenant,col,id,data) SELECT ?,col,id,data FROM sys_docs WHERE tenant=? AND col=? ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data', t, origem, col).run(); n[col] = r.meta ? r.meta.changes : 0; }
         const total = Object.values(n).reduce((x, y) => x + y, 0);
         await log(env, 'sistema', 'Dados de teste injetados em ' + c0.escola + ' (' + total + ' registros)'); return J({ ok: true, total, inseridos: n });
       }

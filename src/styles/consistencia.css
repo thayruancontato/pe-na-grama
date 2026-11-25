@@ -226,7 +226,10 @@ aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip:
 .al-lado input:not([type="checkbox"]) { box-sizing: border-box; padding: 15px 16px !important; border: 1.5px solid #cfd8e3 !important; border-radius: 12px !important; background: #fff !important; font-size: 1rem !important; transition: border-color .15s, box-shadow .15s !important; }
 .al-lado input:not([type="checkbox"]):focus { border-color: #17428f !important; box-shadow: 0 0 0 4px rgba(23, 66, 143, .14); }
 .al-lado button[type="submit"] { padding: 16px !important; border-radius: 12px !important; font-size: .95rem !important; letter-spacing: .06em; }
-.al-lado form label[for="admin-keep-signed-in"] { padding: 14px 16px !important; gap: 14px !important; border-radius: 12px !important; }
+.al-lado form label[for$="keep-signed-in"] { padding: 14px 16px !important; gap: 14px !important; border-radius: 12px !important; }
 
 /* celular: o menu (e o fundo escuro) ficam acima de barras fixas da página, como o rodapé da lista de alunos */
 @media (max-width: 1023px) { aside { z-index: 1000 !important; } }
+.al-lado .al-nota { padding: 14px 16px !important; gap: 10px !important; border-radius: 12px !important; background: #f4f6fb !important; border: 1px solid #dde4ef !important; }
+.al-lado .al-nota span { font-size: .86rem !important; line-height: 1.5 !important; color: #475569 !important; }
+.al-lado form > div:last-of-type { margin-top: 2px; }

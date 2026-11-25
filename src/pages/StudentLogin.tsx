@@ -616,7 +616,7 @@ export default function StudentLogin() {
                 </div>
 
                 {/* Right Side: Form */}
-                <div style={{
+                <div className="al-lado" style={{
                     flex: '1 1 400px',
                     padding: '50px',
                     display: 'flex',
@@ -714,7 +714,7 @@ export default function StudentLogin() {
                             onChange={setKeepSignedIn}
                         />
 
-                        <div style={{
+                        <div className="al-nota" style={{
                             display: 'flex', gap: '8px', padding: '10px 12px',
                             background: '#fff9e6', border: '1px solid #ffeeba', borderRadius: '8px'
                         }}>
