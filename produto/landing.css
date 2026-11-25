@@ -31,3 +31,5 @@ header{position:sticky;top:0;z-index:30;box-shadow:0 4px 25px #001c191a}html{scr
 .sys-card{border-radius:0;overflow:visible;background:none;box-shadow:none;border:0}.sys-card img{filter:drop-shadow(0 28px 36px #02140e99)}.more-card img{background:none;border-radius:0}
 
 .campaign-photo{object-position:62% 12%}@media(max-width:900px){.campaign-photo{object-position:65% 15%}}
+
+.browser img{max-height:none;object-fit:contain}
