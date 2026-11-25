@@ -262,3 +262,12 @@ tr.lin-click{cursor:pointer}
 .us-ac .us-del{color:#b91c1c!important;border-color:#b91c1c!important}
 .us-ac .pg-btn.green{background:#00a63a!important;color:#fff!important;border-color:#00a63a!important}
 @media(max-width:560px){.us-item{padding:12px}.us-av{width:34px;height:34px}.us-ac .pg-btn{flex:1 1 auto;justify-content:center}}
+/* formulário "Novo usuário" do Controle total */
+.nu-card{margin-bottom:16px;padding:20px 22px;border:1px solid #dbe3ec;border-radius:14px;background:#fff;box-shadow:0 2px 10px rgba(15,33,63,.05)}
+.nu-cab{display:grid;gap:3px;margin-bottom:16px}.nu-cab b{font-size:16px;color:#10213f}.nu-cab span{font-size:13px;color:#64748b}
+.nu-grade{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1.2fr) minmax(0,1fr);gap:14px}
+.nu-campo{display:grid;gap:6px;min-width:0}.nu-campo>span{font-size:12.5px;font-weight:700;color:#334155}.nu-campo em{font-style:normal;font-weight:600;color:#94a3b8}
+.nu-campo .pg-input,.nu-campo .pg-select{width:100%;box-sizing:border-box;min-height:44px}
+.nu-rod{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid #e8edf3}
+.nu-rod small{font-size:12.5px;color:#64748b;line-height:1.45}.nu-rod .pg-btn{flex:none;min-height:44px;padding:0 22px}
+@media(max-width:720px){.nu-grade{grid-template-columns:1fr}.nu-rod{flex-direction:column;align-items:stretch}.nu-rod .pg-btn{width:100%}}

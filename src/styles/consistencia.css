@@ -215,3 +215,18 @@ aside *::-webkit-scrollbar { width: 8px; }
 aside *::-webkit-scrollbar-track { background: transparent; }
 aside *::-webkit-scrollbar-thumb { background: #ffffff40; border: 2px solid transparent; background-clip: padding-box; }
 aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip: padding-box; }
+
+/* ---------- tela de login: organização e respiro ---------- */
+.al-lado { align-items: stretch !important; padding: clamp(28px, 5vw, 56px) !important; }
+.al-lado h2 { margin: 0 0 6px !important; font-size: 1.9rem !important; letter-spacing: -.01em; text-align: left !important; }
+.al-lado > p { margin: 0 0 28px !important; text-align: left !important; font-size: 1rem !important; line-height: 1.5; }
+.al-lado form { gap: 20px !important; }
+.al-lado label { text-align: left !important; }
+.al-lado .form-group > label { margin-bottom: 8px !important; color: #334155 !important; font-size: .86rem !important; font-weight: 700 !important; letter-spacing: .01em; }
+.al-lado input:not([type="checkbox"]) { box-sizing: border-box; padding: 15px 16px !important; border: 1.5px solid #cfd8e3 !important; border-radius: 12px !important; background: #fff !important; font-size: 1rem !important; transition: border-color .15s, box-shadow .15s !important; }
+.al-lado input:not([type="checkbox"]):focus { border-color: #17428f !important; box-shadow: 0 0 0 4px rgba(23, 66, 143, .14); }
+.al-lado button[type="submit"] { padding: 16px !important; border-radius: 12px !important; font-size: .95rem !important; letter-spacing: .06em; }
+.al-lado form label[for="admin-keep-signed-in"] { padding: 14px 16px !important; gap: 14px !important; border-radius: 12px !important; }
+
+/* celular: o menu (e o fundo escuro) ficam acima de barras fixas da página, como o rodapé da lista de alunos */
+@media (max-width: 1023px) { aside { z-index: 1000 !important; } }

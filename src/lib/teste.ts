@@ -23,7 +23,7 @@ export function instalarTeste(v: Valores) {
     new Image().src = '/teste-foto.webp'; // já carrega a foto do modal, para ele abrir completo
     const css = document.createElement('style');
     css.textContent = `
-.tb{--p:${pri};--e:${esc};position:sticky;top:0;z-index:300;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 24px;color:#fff;background:linear-gradient(100deg,var(--e),var(--p));box-shadow:0 4px 18px rgba(0,0,0,.18);font-family:inherit}
+.tb{--p:${pri};--e:${esc};position:sticky;top:0;z-index:1200;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 24px;color:#fff;background:linear-gradient(100deg,var(--e),var(--p));box-shadow:0 4px 18px rgba(0,0,0,.18);font-family:inherit}
 aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!important}
 .tb-sel{flex:none;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);font-size:11px;font-weight:800;letter-spacing:.08em}
 .tb-txt{flex:1 1 300px;font-size:14px;line-height:1.35}.tb-txt b{font-weight:800}.tb-txt small{display:block;font-size:12px;opacity:.85}
@@ -33,7 +33,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .tb-btn{flex:none;display:inline-flex;align-items:center;gap:9px;border:0;border-radius:999px;padding:10px 12px 10px 20px;background:#fff;color:var(--e);font:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);transition:transform .15s,box-shadow .15s}
 .tb-btn i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:13px}
 .tb-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(0,0,0,.3)}.tb-btn:hover i{transform:translateX(2px)}.tb-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
-@media(max-width:760px){.tb{padding:9px 14px;gap:10px}.tb-dir{width:100%;margin-left:0;justify-content:space-between;gap:12px}.tb-prog{flex:1;min-width:0}.tb-sel{display:none}}
+@media(max-width:760px){.tb{flex-wrap:nowrap;padding:8px 12px;gap:10px}.tb-sel,.tb-prog,.tb-txt small{display:none}.tb-txt{flex:1 1 auto;min-width:0;font-size:13px}.tb-dir{margin-left:auto}.tb-btn{padding:8px 8px 8px 14px;font-size:13px}}
 .sb-bloq{opacity:.72}.sb-bloq .sb-cad{display:inline-flex;margin-left:auto;opacity:.9}
 .sb-bloq:hover{opacity:1}
 .pm-fundo{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:14px;background:rgba(5,20,16,.66);backdrop-filter:blur(5px);animation:pm-in .22s ease}
@@ -117,6 +117,8 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
     const raiz = document.getElementById('root');
     raiz ? raiz.parentNode!.insertBefore(bar, raiz) : document.body.prepend(bar);
     medeBarra();
+    const naLogin = () => { const oculta = location.pathname.includes('/login') || !localStorage.getItem('pg_sys_token'); bar.style.display = oculta ? 'none' : ''; medeBarra(); };
+    naLogin(); setInterval(naLogin, 700);
 
     // ---- cadeados no menu ----
     const marca = (raizDom: ParentNode) => raizDom.querySelectorAll?.('.sb-item, .sb-sub').forEach((b) => {
@@ -231,7 +233,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
         const telaPagamento = (a: any) => {
             clearInterval(timer);
             topo('O Plano ' + seguro(a.plano) + ' é seu próximo passo', 'Pague a primeira fatura para liberar os recursos do seu plano.', 'Primeira fatura via Pix', false);
-            msg(`<div class="pm-pag"><div class="pm-pag-esq"><span class="rot">Valor da primeira fatura</span><div class="val">${dinheiro(a.valor)}</div><div class="venc">Vencimento: ${dataBr(a.vencimento)}</div><div class="pm-aguarda"><i></i>Aguardando pagamento</div><ol><li>Abra o app do seu banco.</li><li>Escolha Pix e escaneie o QR Code ou cole o código.</li><li>Pronto! Liberamos os recursos na hora.</li></ol></div><div class="pm-pag-dir"><b>Pague com Pix</b><div class="pm-qr">${a.imagem ? `<img src="${a.imagem}" alt="QR Code do Pix">` : '<p>Gerando o QR code…</p>'}</div><label for="pm-cod">Pix copia e cola</label><input id="pm-cod" readonly value="${seguro(a.codigo || '')}"><button type="button" class="pm-copia">Copiar código</button></div></div><div class="pm-rodape"><span>🔒 Pagamento seguro</span><span>✓ Sem fidelidade</span><button type="button" class="pm-trocar">Trocar de plano</button></div>`);
+            msg(`<div class="pm-pag"><div class="pm-pag-esq"><span class="rot">Valor da primeira fatura</span><div class="val">${dinheiro(a.valor)}</div><div class="venc">Vencimento: ${dataBr(a.vencimento)}</div><div class="pm-aguarda"><i></i>Aguardando pagamento</div><ol><li>Abra o app do seu banco.</li><li>Escolha Pix e escaneie o QR Code ou cole o código.</li><li>Pronto! Liberamos os recursos na hora.</li></ol></div><div class="pm-pag-dir"><b>Pague com Pix</b><div class="pm-qr">${a.imagem ? `<img src="${a.imagem}" alt="QR Code do Pix">` : '<p>Gerando o QR code…</p>'}</div><label for="pm-cod">Pix copia e cola</label><input id="pm-cod" readonly value="${seguro(a.codigo || '')}"><button type="button" class="pm-copia">Copiar código</button></div></div><div class="pm-rodape"><span>✓ Pagamento seguro</span><span>✓ Sem fidelidade</span><button type="button" class="pm-trocar">Trocar de plano</button></div>`);
             const cod = corpo.querySelector('#pm-cod') as HTMLInputElement, bc = corpo.querySelector('.pm-copia') as HTMLButtonElement;
             bc.addEventListener('click', async () => {
                 if (!a.codigo) return;

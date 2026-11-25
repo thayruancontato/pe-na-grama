@@ -236,7 +236,7 @@ export default function AdminLogin() {
                 </div>
 
                 {/* Right Side: Form */}
-                <div style={{
+                <div className="al-lado" style={{
                     flex: '1 1 400px',
                     padding: '50px',
                     display: 'flex',
@@ -355,7 +355,7 @@ export default function AdminLogin() {
                         </button>
                     </form>
 
-                    <div style={{ marginTop: '30px', textAlign: 'center' }}>
+                    <div style={{ marginTop: '26px', textAlign: 'center' }}>
                         <a href="/" style={{ color: '#63708a', fontSize: '0.9rem', textDecoration: 'none', fontWeight: 700 }} onMouseOver={e => e.currentTarget.style.color = '#17428f'} onMouseOut={e => e.currentTarget.style.color = '#63708a'}>
                             ← Voltar ao Início
                         </a>

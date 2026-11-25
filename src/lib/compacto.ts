@@ -9,6 +9,9 @@ const UNIDADE = /(-?\d*\.?\d+)(px|rem|em)\b/g;
 const feito = new WeakMap<HTMLElement, string>();
 
 function reduz(el: HTMLElement) {
+    const f = el.closest('form');
+    if (f && f.querySelector('input[type="password"]')) return; // telas de login mantêm o respiro original
+    if (el.closest('[data-sem-compacto]')) return;
     const atual = el.getAttribute('style');
     if (!atual || feito.get(el) === atual) return;
     for (let i = el.style.length - 1; i >= 0; i--) {

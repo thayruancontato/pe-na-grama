@@ -27,6 +27,7 @@ export default function AdminStats() {
     const workerUrl = import.meta.env.VITE_WORKER_URL || '';
     const hoje = new Date();
     const [mes, setMes] = useState({ ano: hoje.getFullYear(), m: hoje.getMonth() });
+    const [periodo, setPeriodo] = useState<'mes' | 'tudo'>('mes'); // 'tudo' = todo o período, sem filtro de mês
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState('');
     const [regs, setRegs] = useState<Reg[]>([]);
@@ -66,7 +67,7 @@ export default function AdminStats() {
     const mrr = useMemo(() => ativos.reduce((t, r) => t + mensalidade(r), 0), [ativos, planos]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ---------- mês selecionado ----------
-    const doMes = (d: Date | null) => !!d && d.getFullYear() === mes.ano && d.getMonth() === mes.m;
+    const doMes = (d: Date | null) => !!d && (periodo === 'tudo' || (d.getFullYear() === mes.ano && d.getMonth() === mes.m));
     const nomePagador = (p: any) => {
         const r = regs.find((x) => x.id === p.studentId);
         return r?.alunos?.[0]?.nome || r?.responsavel?.nome || 'Desconhecido';
@@ -75,8 +76,8 @@ export default function AdminStats() {
         .filter((p) => PAGO.includes(p.status))
         .map((p) => ({ ...p, quando: dataDe(p.paymentDate || p.dateCreated || p.lastUpdate) }))
         .filter((p) => doMes(p.quando))
-        .sort((a, b) => (b.quando as Date).getTime() - (a.quando as Date).getTime()), [pags, mes]); // eslint-disable-line react-hooks/exhaustive-deps
-    const gastosMes = useMemo(() => gastos.filter((g) => doMes(dataDe(g.scheduleDate))), [gastos, mes]); // eslint-disable-line react-hooks/exhaustive-deps
+        .sort((a, b) => (b.quando as Date).getTime() - (a.quando as Date).getTime()), [pags, mes, periodo]); // eslint-disable-line react-hooks/exhaustive-deps
+    const gastosMes = useMemo(() => gastos.filter((g) => doMes(dataDe(g.scheduleDate))), [gastos, mes, periodo]); // eslint-disable-line react-hooks/exhaustive-deps
     const receita = recebidos.reduce((t, p) => t + (p.value || 0), 0);
     const despesa = gastosMes.reduce((t, g) => t + (g.value || 0), 0);
     // Tarifas da Cora: Pix = 1% (máx. R$ 0,50) por cobrança; boleto compensado = R$ 1,70.
@@ -121,6 +122,12 @@ export default function AdminStats() {
     }, [regs, mes]);
     const maxCresc = Math.max(1, ...crescimento.map((c) => c.n));
     const maxFaixa = Math.max(1, ...faixas.map((f) => f[1]));
+    // alunos (com ou sem foto) do cadastro mais recente para o mais antigo
+    const recentes = useMemo(() => regs
+        .filter((r) => String(r.contractStatus || '').toLowerCase() !== 'desativado')
+        .sort((x, y) => (dataDe(y.createdAt)?.getTime() || 0) - (dataDe(x.createdAt)?.getTime() || 0))
+        .flatMap((r) => (Array.isArray(r.alunos) ? r.alunos : []).map((al: any) => ({ nome: String(al?.nome || 'Aluno'), foto: al?.fotoUrl || '' })))
+        .slice(0, 80), [regs]);
     const totalAlunos = ativos.reduce((t, r) => t + nAlunos(r), 0);
     const novosNoMes = regs.filter((r) => doMes(dataDe(r.createdAt)) && String(r.contractStatus || '').toLowerCase() !== 'desativado').length;
 
@@ -144,22 +151,38 @@ export default function AdminStats() {
             </div>
 
             <div className="est-filtro">
-                <button className="est-btn" onClick={anterior} aria-label="Mês anterior"><ChevronLeft size={14} /></button>
-                <strong>{MESES[mes.m]} de {mes.ano}</strong>
-                <button className="est-btn" onClick={proximo} aria-label="Próximo mês"><ChevronRight size={14} /></button>
-                <span className="est-dica">Receita, despesas e lucro seguem o mês escolhido. Alunos, mensalidades e inadimplência mostram a situação de hoje.</span>
+                <div className="est-sw" role="group" aria-label="Período">
+                    <button type="button" className={periodo === 'mes' ? 'on' : ''} aria-pressed={periodo === 'mes'} onClick={() => setPeriodo('mes')}>Mês</button>
+                    <button type="button" className={periodo === 'tudo' ? 'on' : ''} aria-pressed={periodo === 'tudo'} onClick={() => setPeriodo('tudo')}>Todo o período</button>
+                </div>
+                {periodo === 'mes' ? <>
+                    <button className="est-btn" onClick={anterior} aria-label="Mês anterior"><ChevronLeft size={14} /></button>
+                    <strong>{MESES[mes.m]} de {mes.ano}</strong>
+                    <button className="est-btn" onClick={proximo} aria-label="Próximo mês"><ChevronRight size={14} /></button>
+                </> : <strong>Desde o primeiro registro</strong>}
+                <span className="est-dica">{periodo === 'mes' ? 'Receita, despesas e lucro seguem o mês escolhido.' : 'Receita, despesas e lucro somam tudo o que já foi registrado.'} Alunos, mensalidades e inadimplência mostram a situação de hoje.</span>
             </div>
 
             <div className="est-kpis">
-                <Kpi cor="verde" rotulo="Receita do mês" valor={brl(receita)} nota={`${recebidos.length} pagamento(s)`} />
-                <Kpi cor="vermelho" rotulo="Despesas do mês" valor={brl(despesa)} nota={`${gastosMes.length} lançamento(s)`} />
+                <Kpi cor="verde" rotulo={periodo === 'tudo' ? 'Receita total' : 'Receita do mês'} valor={brl(receita)} nota={`${recebidos.length} pagamento(s)`} />
+                <Kpi cor="vermelho" rotulo={periodo === 'tudo' ? 'Despesas totais' : 'Despesas do mês'} valor={brl(despesa)} nota={`${gastosMes.length} lançamento(s)`} />
                 <Kpi cor={lucro >= 0 ? 'azul' : 'vermelho'} rotulo="Lucro líquido" valor={brl(lucro)} nota={`Já descontadas as tarifas (${brl(tarifas)})`} />
                 <Kpi cor="azul" rotulo="Receita mensal prevista" valor={brl(mrr)} nota="Mensalidades dos planos ativos" />
-                <Kpi cor="cinza" rotulo="Alunos ativos" valor={String(totalAlunos)} nota={`${ativos.length} cadastro(s) · ${novosNoMes} novo(s) no mês`} />
+                <Kpi cor="cinza" rotulo="Alunos ativos" valor={String(totalAlunos)} nota={`${ativos.length} cadastro(s) · ${novosNoMes} novo(s) ${periodo === 'tudo' ? 'no total' : 'no mês'}`} />
                 <Kpi cor="amarelo" rotulo="A receber" valor={brl(valorAReceber)} nota={`${aReceber.length} cadastro(s)`} />
                 <Kpi cor="vermelho" rotulo="Inadimplência" valor={brl(valorAtraso)} nota={`${emAtraso.length} em atraso`} />
                 <Kpi cor="cinza" rotulo="Aguardando aprovação" valor={String(pendentes.length)} nota="Cadastros pendentes" />
             </div>
+
+            <section className="est-painel est-alunos" aria-label="Alunos mais recentes">
+                <div className="est-alunos-tit"><h2>Alunos</h2><small>Cadastros mais recentes</small></div>
+                <div className="est-pilha">
+                    {recentes.length ? recentes.map((al, i) => (al.foto
+                        ? <img key={i} src={al.foto} alt={al.nome} title={al.nome} loading="lazy" />
+                        : <span key={i} className="av" title={al.nome}>{al.nome.trim().charAt(0).toUpperCase()}</span>)) : <p className="est-vazio">Nenhum aluno cadastrado ainda.</p>}
+                </div>
+                <Link to="/admin/dashboard" className="est-btn est-btn-forte">Ver todos <ChevronRight size={14} /></Link>
+            </section>
 
             <div className="est-grade">
                 <Painel titulo="Modalidades" nota="Alunos ativos, previsão mensal e recebido no mês">
@@ -185,12 +208,12 @@ export default function AdminStats() {
                         <tbody>{aReceber.length ? aReceber.map((r) => <tr key={r.id}><td>{r.alunos?.[0]?.nome || r.responsavel?.nome}</td><td className="n">{brl(r.financialPendingAmount)}</td><td className="n">{r.financialInvoiceUrl ? <a href={r.financialInvoiceUrl} target="_blank" rel="noreferrer">Fatura</a> : ''}</td></tr>) : <tr><td colSpan={3} className="est-vazio">Nada a receber.</td></tr>}</tbody></table>
                 </Painel>
 
-                <Painel titulo={`Pagamentos de ${MESES[mes.m].toLowerCase()} (${recebidos.length})`} nota="Toque em uma linha para ver o recibo" largo>
+                <Painel titulo={`Pagamentos ${periodo === 'tudo' ? 'de todo o período' : 'de ' + MESES[mes.m].toLowerCase()} (${recebidos.length})`} nota="Toque em uma linha para ver o recibo" largo>
                     <table className="est-tab est-clicavel"><thead><tr><th>Data</th><th>Aluno</th><th>Descrição</th><th>Forma</th><th className="n">Valor</th></tr></thead>
                         <tbody>{recebidos.length ? recebidos.map((p) => <tr key={p.id} onClick={() => setRecibo({ ...p, payerName: nomePagador(p) })}><td>{(p.quando as Date).toLocaleDateString('pt-BR')}</td><td>{nomePagador(p)}</td><td>{p.description || '—'}</td><td>{String(p.billingType || '—')}</td><td className="n">{brl(p.value)}</td></tr>) : <tr><td colSpan={5} className="est-vazio">Nenhum pagamento neste mês.</td></tr>}</tbody></table>
                 </Painel>
 
-                <Painel titulo={`Despesas de ${MESES[mes.m].toLowerCase()} (${gastosMes.length})`} nota="Lançamentos do mês" largo>
+                <Painel titulo={`Despesas ${periodo === 'tudo' ? 'de todo o período' : 'de ' + MESES[mes.m].toLowerCase()} (${gastosMes.length})`} nota={periodo === 'tudo' ? 'Todos os lançamentos' : 'Lançamentos do mês'} largo>
                     <table className="est-tab"><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th className="n">Valor</th></tr></thead>
                         <tbody>{gastosMes.length ? gastosMes.map((g, i) => <tr key={g.id || i}><td>{dataDe(g.scheduleDate)?.toLocaleDateString('pt-BR')}</td><td>{g.description || '—'}</td><td>{g.category || '—'}</td><td className="n neg">{brl(g.value)}</td></tr>) : <tr><td colSpan={4} className="est-vazio">Nenhuma despesa neste mês.</td></tr>}</tbody></table>
                 </Painel>

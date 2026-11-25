@@ -131,7 +131,7 @@ export function SidebarOverlay({ isOpen, onClose }: { isOpen: boolean, onClose: 
     return (
         <div
             onClick={onClose}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 99, backdropFilter: 'blur(2px)' }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 999, backdropFilter: 'blur(2px)' }}
         />
     );
 }
