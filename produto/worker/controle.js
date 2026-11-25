@@ -80,6 +80,8 @@ export const CATALOGO = [
 
   // ---- Avisos na tela ----
   B('Avisos na tela', 'banner_ativo', 'Faixa de aviso no topo de todas as telas', false),
+  B('Avisos na tela', 'teste_ativo', 'Escola em teste grátis (barra de aviso e opções pagas bloqueadas no menu)', false),
+  T('Avisos na tela', 'teste_ate', 'Fim do teste grátis (AAAA-MM-DD)', '', '2026-12-31', true),
   T('Avisos na tela', 'banner_texto', 'Texto da faixa de aviso', '', '', true),
   C('Avisos na tela', 'banner_cor', 'Cor da faixa de aviso', '#b45309'),
   T('Avisos na tela', 'banner_link', 'Link da faixa de aviso (opcional)', '', 'https://...', true),

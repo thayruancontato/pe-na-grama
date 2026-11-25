@@ -323,7 +323,7 @@ async function postTeste(req, env, dono = false) { // dono: criado pela Central 
   const cor = (x) => (/^#[0-9a-f]{6}$/i.test(String(x || '')) ? String(x).toLowerCase() : null), cs = b.cores && typeof b.cores === 'object' ? b.cores : {};
   const valores = { fonte_titulo: 'Segoe UI', fonte_texto: 'Segoe UI', fonte_tabelas: 'Tahoma' };
   for (const k of ['cor_primaria', 'cor_secundaria', 'cor_escura', 'cor_destaque']) if (cor(cs[k])) valores[k] = cor(cs[k]);
-  if (!dono) Object.assign(valores, { banner_ativo: true, banner_texto: 'Teste grátis até ' + dataBr(fim) + '. Para continuar depois, fale com a gente no WhatsApp.', banner_cor: cor(cs.cor_primaria) || '#0f7a3a' });
+  if (!dono) Object.assign(valores, { teste_ativo: true, teste_ate: fim }); // a barra de aviso e o bloqueio do menu saem daqui
   await env.DB.prepare("INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data")
     .bind(host, 'sys_owner', 'controle', JSON.stringify({ valores: limparControle(valores), interno: {} })).run();
   if (!dono) await setSet(env, 'teste:' + cid, fim);
@@ -701,9 +701,9 @@ async function rotaAdmin(req, env, url, caminho) {
       }
       if (!campos.length && !logoTrocada) return erro('Nada para alterar.');
       if (campos.length) await env.DB.prepare('UPDATE clientes SET ' + campos.join(',') + ' WHERE id=?').bind(...vals, id).run();
-      if (b.status === 'ativo') { // saiu do teste: tira a faixa "Teste grátis" e o prazo
+      if (b.status === 'ativo') { // saiu do teste: tira a barra de teste, o bloqueio do menu e o prazo
         const u = await env.DB.prepare('SELECT url_sistema FROM clientes WHERE id=?').bind(id).first();
-        if (u && u.url_sistema) { const t = new URL(u.url_sistema).host; await env.DB.prepare("UPDATE sys_docs SET data=json_set(data,'$.valores.banner_ativo',json('false')) WHERE tenant=? AND col='sys_owner' AND id='controle' AND json_extract(data,'$.valores.banner_texto') LIKE 'Teste grátis%'").bind(t).run(); esquecerControle(t); }
+        if (u && u.url_sistema) { const t = new URL(u.url_sistema).host; await env.DB.prepare("UPDATE sys_docs SET data=json_set(data,'$.valores.banner_ativo',json('false'),'$.valores.teste_ativo',json('false')) WHERE tenant=? AND col='sys_owner' AND id='controle' AND (json_extract(data,'$.valores.teste_ativo')=1 OR json_extract(data,'$.valores.banner_texto') LIKE 'Teste grátis%')").bind(t).run(); esquecerControle(t); }
         await env.DB.prepare('DELETE FROM settings WHERE k=?').bind('teste:' + id).run();
       }
       if (b.status) { const c = await env.DB.prepare('SELECT escola FROM clientes WHERE id=?').bind(id).first(); await log(env, 'cliente', (c ? c.escola : 'Cliente') + ' agora está: ' + b.status); }

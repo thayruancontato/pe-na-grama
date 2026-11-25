@@ -316,6 +316,24 @@ export async function rotaSistema(req, env, tenant, p) {
     const r = await env.DB.prepare("SELECT v FROM settings WHERE k='criativos'").first();
     return new Response(JSON.stringify({ catalogo: r ? JSON.parse(r.v) : null }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'public, max-age=60' } });
   }
+  if (partes[0] === 'public' && partes[1] === 'planos' && m === 'GET') { // planos para a escola em teste escolher (modal "Escolha seu plano")
+    const pl = await env.DB.prepare('SELECT nome,mensal,implantacao,descricao FROM planos WHERE ativo=1 ORDER BY mensal').all(), w = await env.DB.prepare("SELECT v FROM settings WHERE k='empresa_whats'").first();
+    return new Response(JSON.stringify({ planos: pl.results || [], whats: w ? String(w.v).replace(/\D/g, '') : '' }), { headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+  }
+  if (partes[0] === 'plano' && m === 'POST') { // a escola em teste escolhe o plano: fica registrado em Clientes (notas) e na atividade da Central
+    const s = await lerToken(req, env, tenant);
+    if (!s || s.role !== 'admin') return erro('Faça login como administrador.', 401);
+    const nome = String(corpo.plano || '').slice(0, 60), pl = await env.DB.prepare('SELECT nome,mensal FROM planos WHERE ativo=1 AND nome=?').bind(nome).first();
+    if (!pl) return erro('Plano não encontrado.', 404);
+    const c = await env.DB.prepare('SELECT id,escola,notas FROM clientes WHERE url_sistema=?').bind('https://' + tenant).first();
+    if (!c) return erro('Escola não encontrada.', 404);
+    const quando = new Date().toISOString();
+    await env.DB.prepare('INSERT INTO settings(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').bind('plano_escolhido:' + c.id, JSON.stringify({ plano: pl.nome, quando })).run();
+    await env.DB.prepare('UPDATE clientes SET notas=? WHERE id=?').bind(((c.notas || '') + '\nEscolheu o plano ' + pl.nome + ' em ' + quando.slice(0, 10)).trim(), c.id).run();
+    await env.DB.prepare('INSERT INTO atividade(quando,tipo,texto) VALUES(?,?,?)').bind(quando, 'plano', c.escola + ' escolheu o plano ' + pl.nome).run();
+    const w = await env.DB.prepare("SELECT v FROM settings WHERE k='empresa_whats'").first();
+    return new Response(JSON.stringify({ ok: true, plano: pl.nome, whats: w ? String(w.v).replace(/\D/g, '') : '' }), { headers: { 'content-type': 'application/json; charset=utf-8' } });
+  }
   if (partes[0] === 'public' && partes[1] === 'patrocinadores' && m === 'GET') {
     const r = await env.DB.prepare("SELECT id,data FROM sys_docs WHERE tenant=? AND col='patrocinadores'").bind(tenant).all();
     const cfg = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='system_settings' AND id='patrocinadores'").bind(tenant).first();
