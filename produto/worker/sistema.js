@@ -586,6 +586,8 @@ function selo(nome) {
 export async function servirSistema(req, env, p, host) {
   const r = await servirSistemaBase(req, env, p, host), h = new Headers(r.headers);
   if ((h.get('content-type') || '').includes('text/html')) h.set('content-security-policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; media-src 'self' https: data:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests");
+  if (r.ok && p.startsWith('/escola/assets/')) h.set('cache-control', 'public, max-age=31536000, immutable'); // arquivos com hash no nome nunca mudam: não voltam à rede
+  else if (r.ok && /^\/(escola\/)?(login-foto|teste-foto|fotos-teste\/)/.test(p)) h.set('cache-control', 'public, max-age=604800');
   h.set('x-content-type-options', 'nosniff'); h.set('x-frame-options', 'SAMEORIGIN'); h.set('referrer-policy', 'same-origin');
   h.set('strict-transport-security', 'max-age=31536000; includeSubDomains'); h.set('cross-origin-opener-policy', 'same-origin'); h.set('x-permitted-cross-domain-policies', 'none'); h.set('permissions-policy', 'camera=(self), microphone=(), geolocation=()');
   return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });

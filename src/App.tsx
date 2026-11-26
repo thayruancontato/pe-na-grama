@@ -1,41 +1,42 @@
 
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import PublicForm from './pages/PublicForm';
-import SchoolSystemRequestForm from './pages/SchoolSystemRequestForm';
-import SchoolSystemRequestsView from './pages/SchoolSystemRequestsView';
-import AdminLogin from './pages/AdminLogin';
-import AdminLayout from './layouts/AdminLayout';
-import AdminDashboard from './pages/AdminDashboard/index';
-import AdminDetails from './pages/AdminDetails';
-import AdminStats from './pages/AdminStats';
-import AdminExport from './pages/AdminExport';
+const PublicForm = lazy(() => import('./pages/PublicForm'));
+const SchoolSystemRequestForm = lazy(() => import('./pages/SchoolSystemRequestForm'));
+const SchoolSystemRequestsView = lazy(() => import('./pages/SchoolSystemRequestsView'));
+const AdminLogin = lazy(() => import('./pages/AdminLogin'));
+const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard/index'));
+const AdminDetails = lazy(() => import('./pages/AdminDetails'));
+const AdminStats = lazy(() => import('./pages/AdminStats'));
+const AdminExport = lazy(() => import('./pages/AdminExport'));
 
-import AdminSettings from './pages/AdminSettings';
-import AdminWhatsApp from './pages/AdminWhatsApp';
-import AdminTurmas from './pages/AdminTurmas';
-import AdminTurmaDetails from './pages/AdminTurmaDetails';
-import AdminAutoAllocation from './pages/AdminAutoAllocation';
-import AdminPlanAutoAllocation from './pages/AdminPlanAutoAllocation';
-import AdminBirthdays from './pages/AdminBirthdays';
-import AdminCarteirinhas from './pages/AdminCarteirinhas';
-import AdminTestes from './pages/AdminTestes';
-import AdminLinks from './pages/AdminLinks';
-import AdminFinanceiro from './pages/AdminFinanceiro';
-import AdminFinanceiroCobrancas from './pages/AdminFinanceiroCobrancas';
-import AdminRelatorioFinanceiro from './pages/AdminRelatorioFinanceiro';
-import AdminPaymentDetails from './pages/AdminPaymentDetails';
-import AdminPaymentProviderSettings from './pages/AdminPaymentProviderSettings';
-import AdminPatrocinadores from './pages/AdminPatrocinadores';
-import AdminMeuPlano from './pages/AdminMeuPlano';
-import AdminWhatsappServidor from './pages/AdminWhatsappServidor';
-import AdminEscolaControle from './pages/AdminEscolaControle';
-import AdminDadosEscola from './pages/AdminDadosEscola';
-import AdminGastos from './pages/AdminGastos';
-import AdminNovoCadastro from './pages/AdminNovoCadastro';
-import AdminMigrateTurmas from './pages/AdminMigrateTurmas'; // Migration tool
-import AdminAttendanceRecords from './pages/AdminAttendanceRecords';
-import ChamadaTurma from './pages/ChamadaTurma';
-import StudentContract from './pages/StudentContract';
+const AdminSettings = lazy(() => import('./pages/AdminSettings'));
+const AdminWhatsApp = lazy(() => import('./pages/AdminWhatsApp'));
+const AdminTurmas = lazy(() => import('./pages/AdminTurmas'));
+const AdminTurmaDetails = lazy(() => import('./pages/AdminTurmaDetails'));
+const AdminAutoAllocation = lazy(() => import('./pages/AdminAutoAllocation'));
+const AdminPlanAutoAllocation = lazy(() => import('./pages/AdminPlanAutoAllocation'));
+const AdminBirthdays = lazy(() => import('./pages/AdminBirthdays'));
+const AdminCarteirinhas = lazy(() => import('./pages/AdminCarteirinhas'));
+const AdminTestes = lazy(() => import('./pages/AdminTestes'));
+const AdminLinks = lazy(() => import('./pages/AdminLinks'));
+const AdminFinanceiro = lazy(() => import('./pages/AdminFinanceiro'));
+const AdminFinanceiroCobrancas = lazy(() => import('./pages/AdminFinanceiroCobrancas'));
+const AdminRelatorioFinanceiro = lazy(() => import('./pages/AdminRelatorioFinanceiro'));
+const AdminPaymentDetails = lazy(() => import('./pages/AdminPaymentDetails'));
+const AdminPaymentProviderSettings = lazy(() => import('./pages/AdminPaymentProviderSettings'));
+const AdminPatrocinadores = lazy(() => import('./pages/AdminPatrocinadores'));
+const AdminMeuPlano = lazy(() => import('./pages/AdminMeuPlano'));
+const AdminWhatsappServidor = lazy(() => import('./pages/AdminWhatsappServidor'));
+const AdminEscolaControle = lazy(() => import('./pages/AdminEscolaControle'));
+const AdminDadosEscola = lazy(() => import('./pages/AdminDadosEscola'));
+const AdminGastos = lazy(() => import('./pages/AdminGastos'));
+const AdminNovoCadastro = lazy(() => import('./pages/AdminNovoCadastro'));
+const AdminMigrateTurmas = lazy(() => import('./pages/AdminMigrateTurmas')); // Migration tool
+const AdminAttendanceRecords = lazy(() => import('./pages/AdminAttendanceRecords'));
+const ChamadaTurma = lazy(() => import('./pages/ChamadaTurma'));
+const StudentContract = lazy(() => import('./pages/StudentContract'));
 import { CustomDialogProvider } from './context/CustomDialogContext';
 import MaintenanceGuard from './components/MaintenanceGuard';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
@@ -44,71 +45,71 @@ import NewVersionPrompt from './components/NewVersionPrompt';
 import './App.css';
 
 // Student Portal Imports
-import StudentLogin from './pages/StudentLogin';
-import StudentLayout from './layouts/StudentLayout';
-import StudentHome from './pages/StudentHome';
-import StudentCarteirinha from './pages/StudentCarteirinha';
-import StudentPayments from './pages/StudentPayments';
-import StudentSettings from './pages/StudentSettings';
-import StudentWhatsApp from './pages/StudentWhatsApp';
-import StudentProfile from './pages/StudentProfile';
-import StudentAccess from './pages/StudentAccess';
-import StudentReservas from './pages/StudentReservas';
-import StudentWhatsPortaria from './pages/StudentWhatsPortaria';
-import StudentWhatsGrupo from './pages/StudentWhatsGrupo';
-import StudentEstatuto from './pages/StudentEstatuto';
-import StudentRegimento from './pages/StudentRegimento';
-import StudentRadio from './pages/StudentRadio';
-import StudentHorarios from './pages/StudentHorarios';
-import StudentFrequencia from './pages/StudentFrequencia';
-import StudentStore from './pages/StudentStore';
-import StudentAutorizacoes from './pages/StudentAutorizacoes';
-import MandatoryContractPage from './pages/MandatoryContractPage';
-import StudentContractView from './pages/StudentContractView';
+const StudentLogin = lazy(() => import('./pages/StudentLogin'));
+const StudentLayout = lazy(() => import('./layouts/StudentLayout'));
+const StudentHome = lazy(() => import('./pages/StudentHome'));
+const StudentCarteirinha = lazy(() => import('./pages/StudentCarteirinha'));
+const StudentPayments = lazy(() => import('./pages/StudentPayments'));
+const StudentSettings = lazy(() => import('./pages/StudentSettings'));
+const StudentWhatsApp = lazy(() => import('./pages/StudentWhatsApp'));
+const StudentProfile = lazy(() => import('./pages/StudentProfile'));
+const StudentAccess = lazy(() => import('./pages/StudentAccess'));
+const StudentReservas = lazy(() => import('./pages/StudentReservas'));
+const StudentWhatsPortaria = lazy(() => import('./pages/StudentWhatsPortaria'));
+const StudentWhatsGrupo = lazy(() => import('./pages/StudentWhatsGrupo'));
+const StudentEstatuto = lazy(() => import('./pages/StudentEstatuto'));
+const StudentRegimento = lazy(() => import('./pages/StudentRegimento'));
+const StudentRadio = lazy(() => import('./pages/StudentRadio'));
+const StudentHorarios = lazy(() => import('./pages/StudentHorarios'));
+const StudentFrequencia = lazy(() => import('./pages/StudentFrequencia'));
+const StudentStore = lazy(() => import('./pages/StudentStore'));
+const StudentAutorizacoes = lazy(() => import('./pages/StudentAutorizacoes'));
+const MandatoryContractPage = lazy(() => import('./pages/MandatoryContractPage'));
+const StudentContractView = lazy(() => import('./pages/StudentContractView'));
 
 // Teacher Portal Imports
-import TeacherLayout from './layouts/TeacherLayout';
-import TeacherDashboard from './pages/TeacherDashboard';
-import TeacherTurmaDetails from './pages/TeacherTurmaDetails';
-import TeacherStudentDetails from './pages/TeacherStudentDetails';
+const TeacherLayout = lazy(() => import('./layouts/TeacherLayout'));
+const TeacherDashboard = lazy(() => import('./pages/TeacherDashboard'));
+const TeacherTurmaDetails = lazy(() => import('./pages/TeacherTurmaDetails'));
+const TeacherStudentDetails = lazy(() => import('./pages/TeacherStudentDetails'));
 
-import AdminTeachers from './pages/AdminTeachers'; // Import new component
+const AdminTeachers = lazy(() => import('./pages/AdminTeachers')); // Import new component
 
 import { LoadingProvider } from './components/LoadingService';
 
-import AdminPlans from './pages/AdminPlans'; // Import new component
-import AdminContractList from './pages/AdminContractList';
-import AdminContractTemplate from './pages/AdminContractTemplate';
-import AdminEmployees from './pages/AdminEmployees';
-import Portaria from './pages/Portaria';
-import AdminRentals from './pages/AdminRentals';
-import AdminReportsPage from './pages/AdminReportsPage';
-import AdminSimuladorPage from './pages/AdminSimuladorPage';
-import AdminConvocacaoList from './pages/AdminConvocacaoList';
-import AdminConvocacaoDetails from './pages/AdminConvocacaoDetails';
-import AdminMidias from './pages/AdminMidias';
-import AdminDocumentos from './pages/AdminDocumentos';
-import AdminMensagens from './pages/AdminMensagens';
-import AdminMensagensCobrancas from './pages/AdminMensagens/AdminMensagensCobrancas';
-import AdminMensagensAutomacao from './pages/AdminMensagens/AdminMensagensAutomacao';
-import AdminMensagensFila from './pages/AdminMensagens/AdminMensagensFila';
-import AdminMensagensConfig from './pages/AdminMensagens/AdminMensagensConfig';
-import AdminMensagensHistorico from './pages/AdminMensagens/AdminMensagensHistorico';
-import AdminEvolutionMessages from './pages/AdminEvolutionMessages';
-import AdminStore from './pages/AdminStore';
+const AdminPlans = lazy(() => import('./pages/AdminPlans')); // Import new component
+const AdminContractList = lazy(() => import('./pages/AdminContractList'));
+const AdminContractTemplate = lazy(() => import('./pages/AdminContractTemplate'));
+const AdminEmployees = lazy(() => import('./pages/AdminEmployees'));
+const Portaria = lazy(() => import('./pages/Portaria'));
+const AdminRentals = lazy(() => import('./pages/AdminRentals'));
+const AdminReportsPage = lazy(() => import('./pages/AdminReportsPage'));
+const AdminSimuladorPage = lazy(() => import('./pages/AdminSimuladorPage'));
+const AdminConvocacaoList = lazy(() => import('./pages/AdminConvocacaoList'));
+const AdminConvocacaoDetails = lazy(() => import('./pages/AdminConvocacaoDetails'));
+const AdminMidias = lazy(() => import('./pages/AdminMidias'));
+const AdminDocumentos = lazy(() => import('./pages/AdminDocumentos'));
+const AdminMensagens = lazy(() => import('./pages/AdminMensagens'));
+const AdminMensagensCobrancas = lazy(() => import('./pages/AdminMensagens/AdminMensagensCobrancas'));
+const AdminMensagensAutomacao = lazy(() => import('./pages/AdminMensagens/AdminMensagensAutomacao'));
+const AdminMensagensFila = lazy(() => import('./pages/AdminMensagens/AdminMensagensFila'));
+const AdminMensagensConfig = lazy(() => import('./pages/AdminMensagens/AdminMensagensConfig'));
+const AdminMensagensHistorico = lazy(() => import('./pages/AdminMensagens/AdminMensagensHistorico'));
+const AdminEvolutionMessages = lazy(() => import('./pages/AdminEvolutionMessages'));
+const AdminStore = lazy(() => import('./pages/AdminStore'));
 
 // Eventos (campeonatos, torneios e corridas)
-import EventosLista from './pages/Eventos/EventosLista';
-import EventoPublico from './pages/Eventos/EventoPublico';
-import EventoEntrar from './pages/Eventos/EventoEntrar';
-import EventoInscrever from './pages/Eventos/EventoInscrever';
-import MinhaArea from './pages/Eventos/MinhaArea';
-import EquipePainel from './pages/Eventos/EquipePainel';
-import InscricaoPainel from './pages/Eventos/InscricaoPainel';
-import AdminEventos from './pages/AdminEventos';
-import AdminEventoForm from './pages/AdminEventos/AdminEventoForm';
-import AdminEventoDetalhe from './pages/AdminEventos/AdminEventoDetalhe';
-import AdminSumulaDigital from './pages/AdminEventos/AdminSumulaDigital';
+const EventosLista = lazy(() => import('./pages/Eventos/EventosLista'));
+const EventoPublico = lazy(() => import('./pages/Eventos/EventoPublico'));
+const EventoEntrar = lazy(() => import('./pages/Eventos/EventoEntrar'));
+const EventoInscrever = lazy(() => import('./pages/Eventos/EventoInscrever'));
+const MinhaArea = lazy(() => import('./pages/Eventos/MinhaArea'));
+const EquipePainel = lazy(() => import('./pages/Eventos/EquipePainel'));
+const InscricaoPainel = lazy(() => import('./pages/Eventos/InscricaoPainel'));
+const AdminEventos = lazy(() => import('./pages/AdminEventos'));
+const AdminEventoForm = lazy(() => import('./pages/AdminEventos/AdminEventoForm'));
+const AdminEventoDetalhe = lazy(() => import('./pages/AdminEventos/AdminEventoDetalhe'));
+const AdminSumulaDigital = lazy(() => import('./pages/AdminEventos/AdminSumulaDigital'));
 
 function App() {
   return (
@@ -117,6 +118,7 @@ function App() {
         <BrowserRouter>
           {!valorControle('ocultar_instalar_app') && <PWAInstallPrompt />}
           <NewVersionPrompt />
+          <Suspense fallback={<div className="rota-carregando" role="status" aria-label="Carregando"><i /></div>}>
           <Routes>
             <Route path="/" element={<PublicForm />} />
             <Route path="/solicitar-sistema-escola" element={<SchoolSystemRequestForm />} />
@@ -235,6 +237,7 @@ function App() {
 
             <Route path="/admin/financeiro/fatura/:id" element={<AdminPaymentDetails />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </LoadingProvider>
     </CustomDialogProvider >

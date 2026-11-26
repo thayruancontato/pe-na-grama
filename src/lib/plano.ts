@@ -37,8 +37,10 @@ export function instalarPlano(v: Valores) {
     async function carrega() {
         if (!noAdmin()) return;
         try {
+            // vale por 10 minutos: o servidor consulta o Asaas a cada chamada, então não repetimos à toa
+            const guardado = sessionStorage.getItem('pg_plano'); if (guardado) { const g = JSON.parse(guardado); if (Date.now() - g.t < 600000) { info = g.i; pinta(); return; } }
             const r = await fetch('/sys/assinatura', { headers: { authorization: 'Bearer ' + token() }, cache: 'no-store' });
-            if (r.ok) { info = await r.json(); pinta(); }
+            if (r.ok) { info = await r.json(); try { sessionStorage.setItem('pg_plano', JSON.stringify({ t: Date.now(), i: info })); } catch { /* sem armazenamento */ } pinta(); }
         } catch { /* tenta no próximo ciclo */ }
     }
 
@@ -73,6 +75,7 @@ export function instalarPlano(v: Valores) {
         topo.after(chip);
     }
 
-    new MutationObserver(() => requestAnimationFrame(pinta)).observe(document.body, { childList: true, subtree: true });
-    carrega(); setInterval(carrega, 60000); setInterval(pinta, 2000);
+    let esperaPinta = false; // várias mudanças seguidas viram uma só atualização
+    new MutationObserver(() => { if (!esperaPinta) { esperaPinta = true; requestAnimationFrame(() => { esperaPinta = false; pinta(); }); } }).observe(document.body, { childList: true, subtree: true });
+    carrega(); setInterval(() => { if (!document.hidden) carrega(); }, 600000); setInterval(() => { if (!document.hidden) pinta(); }, 3000);
 }

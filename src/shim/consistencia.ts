@@ -194,7 +194,7 @@ const agenda = () => {
 
 const iniciar = () => {
     new MutationObserver(agenda).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-    setInterval(agenda, 1500); // elementos que aparecem ao mostrar abas/janelas
+    setInterval(() => { if (!document.hidden) agenda(); }, 6000); // rede de segurança: o observador já pega o resto
     agenda();
 };
 if (document.body) iniciar(); else document.addEventListener('DOMContentLoaded', iniciar);

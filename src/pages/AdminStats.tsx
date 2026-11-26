@@ -42,8 +42,8 @@ export default function AdminStats() {
             const tb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tb-h')) || 0;
             filtroRef.current?.style.setProperty('--fx-top', (tb + (h ? h.getBoundingClientRect().height : 0)) + 'px');
         };
-        ajusta(); window.addEventListener('resize', ajusta); const t = setInterval(ajusta, 1500);
-        return () => { window.removeEventListener('resize', ajusta); clearInterval(t); };
+        ajusta(); window.addEventListener('resize', ajusta); const t1 = setTimeout(ajusta, 800), t2 = setTimeout(ajusta, 2500); // o cabeçalho e a barra do teste só mudam de altura no carregamento ou ao girar a tela
+        return () => { window.removeEventListener('resize', ajusta); clearTimeout(t1); clearTimeout(t2); };
     }, []);
     const workerUrl = import.meta.env.VITE_WORKER_URL || '';
     const hoje = new Date();
@@ -159,7 +159,7 @@ export default function AdminStats() {
                 resp: String(r.responsavel?.nome || ''), tel: String(r.responsavel?.telefonePrincipal || ''), mod: modalidade(r),
                 idade: idadeDe(al?.dataNascimento), quando: dataDe(r.createdAt),
             })));
-        return [...lista.filter((a) => a.pendente), ...lista.filter((a) => !a.pendente)].slice(0, 80);
+        return [...lista.filter((a) => a.pendente), ...lista.filter((a) => !a.pendente)].slice(0, 36); // a faixa mostra ~30; mais que isso só gastaria dados
     }, [regs]); // eslint-disable-line react-hooks/exhaustive-deps
     const nPendentes = recentes.filter((a) => a.pendente).length;
     const totalAlunos = ativos.reduce((t, r) => t + nAlunos(r), 0);

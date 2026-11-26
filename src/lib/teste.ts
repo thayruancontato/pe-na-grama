@@ -190,7 +190,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
     raiz ? raiz.parentNode!.insertBefore(bar, raiz) : document.body.prepend(bar);
     medeBarra();
     const naLogin = () => { const oculta = location.pathname.includes('/login') || !localStorage.getItem('pg_sys_token'); bar.style.display = oculta ? 'none' : ''; medeBarra(); };
-    naLogin(); setInterval(naLogin, 700);
+    naLogin(); setInterval(() => { if (!document.hidden) naLogin(); }, 2000);
     if (modo !== 'teste') { bar.remove(); document.documentElement.style.setProperty('--tb-h', '0px'); } // assinante: só os modais ficam disponíveis
 
     // ---- cadeados no menu ----
@@ -212,7 +212,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
     marca();
     let agendado = false;
     new MutationObserver(() => { if (!agendado) { agendado = true; requestAnimationFrame(() => { agendado = false; marca(); }); } }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'title'] });
-    setInterval(marca, 500);
+    setInterval(() => { if (!document.hidden) marca(); }, 2000); // o observador já cobre as mudanças; isto é só rede de segurança
     const barra = (e: Event) => {
         const b = (e.target as Element).closest?.('[data-bloq]') as HTMLElement | null;
         if (!b) return;
@@ -234,7 +234,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
         abrirPlanos(NOME_ROTA[m[1]]);
     };
     (['pushState', 'replaceState'] as const).forEach((k) => { const o = history[k].bind(history); history[k] = ((...a: Parameters<History['pushState']>) => { o(...a); guarda(); }) as History['pushState']; });
-    window.addEventListener('popstate', guarda); setInterval(guarda, 400);
+    window.addEventListener('popstate', guarda); setInterval(() => { if (!document.hidden) guarda(); }, 1000);
     if (modo === 'teste' && ROTAS_PAGAS.test(location.pathname.toLowerCase())) document.documentElement.classList.add('pg-bloq'); // some o conteúdo até redirecionar
     Promise.resolve().then(guarda); // depois que o restante do módulo (modal de planos) terminar de carregar
 

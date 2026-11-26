@@ -10,7 +10,17 @@ const token = () => { try { return localStorage.getItem(TOKEN_KEY) || sessionSto
 const guardarToken = (t: string) => { try { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); (guardarNaSessao ? sessionStorage : localStorage).setItem(TOKEN_KEY, t); } catch { /* sem armazenamento */ } };
 const limparToken = () => { try { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); } catch { /* sem armazenamento */ } };
 
-async function chamar(method: string, path: string, body?: unknown) {
+const emVoo = new Map<string, Promise<any>>(); // leituras iguais e simultâneas dividem a mesma resposta (várias telas pedem a mesma coleção)
+function chamar(method: string, path: string, body?: unknown): Promise<any> {
+    if (method !== 'GET') { emVoo.clear(); return chamarRede(method, path, body).then((j) => { try { window.dispatchEvent(new Event('pg-gravou')); } catch { /* sem janela */ } return j; }); }
+    const k = path + '|' + token(), e = emVoo.get(k);
+    if (e) return e;
+    const pr = chamarRede(method, path, body); emVoo.set(k, pr);
+    const solta = () => setTimeout(() => { if (emVoo.get(k) === pr) emVoo.delete(k); }, 1200);
+    pr.then(solta, solta);
+    return pr;
+}
+async function chamarRede(method: string, path: string, body?: unknown) {
     const t = token();
     const r = await fetch(base + path, { method, headers: { 'content-type': 'application/json', ...(t ? { authorization: `Bearer ${t}` } : {}) }, body: body === undefined ? undefined : JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
@@ -148,18 +158,23 @@ export function writeBatch() {
 }
 
 export function onSnapshot(alvo: any, next: (s: any) => void, erro?: (e: unknown) => void) {
-    let vivo = true, ultimo = '';
+    // Economia de dados: aba escondida não consulta; sem mudanças o intervalo cresce (4 s → 30 s); voltar à aba ou gravar acorda na hora.
+    let vivo = true, ultimo = '', espera = 4000, timer: ReturnType<typeof setTimeout> | undefined;
     const ciclo = async () => {
         if (!vivo) return;
+        if (document.hidden || !navigator.onLine) { agenda(); return; }
         try {
             const s: any = alvo.type === 'document' ? await getDoc(alvo) : await getDocs(alvo);
             const assinatura = JSON.stringify(alvo.type === 'document' ? s.data() ?? null : s.docs.map((d: DocSnap) => [d.id, d.data()]));
-            if (assinatura !== ultimo) { ultimo = assinatura; next(s); }
-        } catch (e) { if (erro) erro(e); }
-        if (vivo) setTimeout(ciclo, 4000);
+            if (assinatura !== ultimo) { ultimo = assinatura; espera = 4000; next(s); } else espera = Math.min(Math.round(espera * 1.5), 30000);
+        } catch (e) { if (erro) erro(e); espera = Math.min(espera * 2, 30000); }
+        agenda();
     };
+    const agenda = () => { clearTimeout(timer); if (vivo) timer = setTimeout(ciclo, espera); };
+    const acorda = () => { if (!vivo || document.hidden) return; espera = 4000; clearTimeout(timer); timer = setTimeout(ciclo, 150); };
+    document.addEventListener('visibilitychange', acorda); window.addEventListener('pg-gravou', acorda); window.addEventListener('online', acorda);
     ciclo();
-    return () => { vivo = false; };
+    return () => { vivo = false; clearTimeout(timer); document.removeEventListener('visibilitychange', acorda); window.removeEventListener('pg-gravou', acorda); window.removeEventListener('online', acorda); };
 }
 
 /* ---------------- auth ---------------- */

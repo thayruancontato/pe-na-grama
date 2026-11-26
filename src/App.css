@@ -1914,3 +1914,5 @@ textarea:focus-visible {
 .animate-slide-left {
   animation: slideLeft 0.3s ease-out;
 }
+
+.rota-carregando{display:grid;place-items:center;min-height:50vh}.rota-carregando i{width:34px;height:34px;border-radius:50%;border:4px solid #dce5f2;border-top-color:#17428f;animation:rota-g .8s linear infinite}@keyframes rota-g{to{transform:rotate(360deg)}}

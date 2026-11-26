@@ -1039,9 +1039,20 @@ export default {
       if (p.startsWith('/ds/')) return env.ASSETS.fetch(req);
       const esc = await env.DB.prepare('SELECT status FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
       // respostas da API da escola: nunca em cache, sem adivinhar tipo de conteúdo, sem vazar o endereço de origem
-      const protegida = (r) => { const h = new Headers(r.headers); h.set('cache-control', 'no-store'); h.set('x-content-type-options', 'nosniff'); h.set('referrer-policy', 'same-origin'); h.set('strict-transport-security', 'max-age=31536000; includeSubDomains'); return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h }); };
+      const protegida = (r) => { const h = new Headers(r.headers); if (!h.get('etag')) h.set('cache-control', 'no-store'); h.set('x-content-type-options', 'nosniff'); h.set('referrer-policy', 'same-origin'); h.set('strict-transport-security', 'max-age=31536000; includeSubDomains'); return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h }); };
       if (esc && p.startsWith('/sys/assinatura') && esc.status !== 'teste_fim') return protegida(await rotaAssinatura(req, env, host));
-      if (esc && p.startsWith('/sys/') && esc.status !== 'teste_fim') return protegida(await rotaSistema(req, env, host, p));
+      if (esc && p.startsWith('/sys/') && esc.status !== 'teste_fim') {
+        const resp = await rotaSistema(req, env, host, p);
+        // leituras do banco: ETag do conteúdo; se o navegador já tem a mesma versão, responde 304 sem corpo (poupa dados nas atualizações automáticas)
+        const publica = p.startsWith('/sys/public/'); // logos de patrocinadores etc.: mudam pouco, ficam 2 min no navegador e depois só revalidam
+        if (req.method === 'GET' && (publica || p.startsWith('/sys/db/')) && resp.status === 200) {
+          const corpo = await resp.text(), dig = new Uint8Array(await crypto.subtle.digest('SHA-1', new TextEncoder().encode(corpo)));
+          const etag = '"' + btoa(String.fromCharCode(...dig.slice(0, 12))).replace(/=+$/, '') + '"', h304 = { etag, 'cache-control': publica ? 'public, max-age=120, stale-while-revalidate=600' : 'private, no-cache', vary: 'Authorization', 'x-content-type-options': 'nosniff' };
+          if ((req.headers.get('if-none-match') || '').split(',').some((v) => v.trim().replace(/^W\//, '') === etag)) return new Response(null, { status: 304, headers: h304 }); // o Cloudflare devolve o ETag como fraco (W/)
+          return protegida(new Response(corpo, { status: 200, headers: { 'content-type': 'application/json; charset=utf-8', ...h304 } }));
+        }
+        return protegida(resp);
+      }
       if (esc && (esc.status === 'ativo' || esc.status === 'teste')) return servirSistema(req, env, p, host); // escola ativa: o sistema de verdade
       return paginaEscola(req, env, host, p);
     }
