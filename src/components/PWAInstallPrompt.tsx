@@ -256,7 +256,8 @@ export default function PWAInstallPrompt() {
     return (
         <>
             {showBanner && (
-                <aside
+                <div
+                    role="complementary"
                     className={`pwa-install-card${hasPortalNavigation ? ' pwa-install-card--above-nav' : ''}`}
                     aria-label="Instalar aplicativo Rumo ao Esporte"
                     aria-live="polite"
@@ -272,7 +273,7 @@ export default function PWAInstallPrompt() {
 
                     <img
                         className="pwa-install-card__icon"
-                        src="/pwa/icon-192.png"
+                        src="/escola/pwa/icon-192.png"
                         alt=""
                         aria-hidden="true"
                     />
@@ -285,7 +286,7 @@ export default function PWAInstallPrompt() {
                             {canInstallNatively ? 'Instalar aplicativo' : 'Ver como instalar'}
                         </button>
                     </div>
-                </aside>
+                </div>
             )}
 
             {instructions && (
@@ -306,7 +307,7 @@ export default function PWAInstallPrompt() {
                             <X size={20} />
                         </button>
 
-                        <img src="/pwa/icon-192.png" alt="" aria-hidden="true" />
+                        <img src="/escola/pwa/icon-192.png" alt="" aria-hidden="true" />
                         <h2 id="pwa-install-title">{instructions.title}</h2>
                         <p>{instructions.intro}</p>
 

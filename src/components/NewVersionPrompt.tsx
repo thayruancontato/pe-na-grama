@@ -100,7 +100,7 @@ export default function NewVersionPrompt() {
     };
 
     return (
-        <aside className="rae-update-card" role="status" aria-live="polite">
+        <div className="rae-update-card" role="status" aria-live="polite">
             <div className="rae-update-card__badge" aria-hidden="true">
                 <Sparkles size={22} />
             </div>
@@ -119,6 +119,6 @@ export default function NewVersionPrompt() {
                 <RefreshCw size={16} className={reloading ? 'rae-update-card__spin' : undefined} />
                 {reloading ? 'Atualizando' : 'Recarregar'}
             </button>
-        </aside>
+        </div>
     );
 }

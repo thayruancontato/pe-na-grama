@@ -45,7 +45,8 @@ export default function StudentLayout() {
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-    const [collapsed, setCollapsed] = useState(false);
+    const [recolhido, setCollapsed] = useState(false);
+    const collapsed = !isMobile && recolhido; // no celular o menu nunca é recolhido
     const [studentName, setStudentName] = useState('Aluno / Responsável');
     const [allStudents, setAllStudents] = useState<any[]>([]);
     const [selectedStudentIndex, setSelectedStudentIndex] = useState(0);
@@ -465,7 +466,7 @@ export default function StudentLayout() {
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
                     <img
-                        src="/pwa/icon-192.png"
+                        src="/escola/pwa/icon-192.png"
                         alt=""
                         aria-hidden="true"
                         style={{ width: '76px', height: '76px', borderRadius: '18px' }}

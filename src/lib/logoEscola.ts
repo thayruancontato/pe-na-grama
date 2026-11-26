@@ -38,7 +38,8 @@ function processar(src: string): Promise<LogoPronta> {
                 const opacos = cantos.every((i) => d[i + 3] > 240);
                 const ref = [d[cantos[0]], d[cantos[0] + 1], d[cantos[0] + 2]];
                 const dist = (i: number) => Math.hypot(d[i] - ref[0], d[i + 1] - ref[1], d[i + 2] - ref[2]);
-                if (opacos && cantos.every((i) => dist(i) < 40)) {
+                // só tira fundo claro (branco, creme); fundo azul, preto ou colorido é parte da arte e fica como a escola enviou
+                if (opacos && cantos.every((i) => dist(i) < 40) && lum(ref[0], ref[1], ref[2]) > 0.55) {
                     const visto = new Uint8Array(W * H), pilha: number[] = [];
                     const empurra = (x: number, y: number) => { const k = y * W + x; if (!visto[k] && dist(k * 4) < 60) { visto[k] = 1; pilha.push(k); } };
                     for (let x = 0; x < W; x++) { empurra(x, 0); empurra(x, H - 1); }

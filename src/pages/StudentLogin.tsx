@@ -560,7 +560,7 @@ export default function StudentLogin() {
             >
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', color: '#17428f' }}>
                     <img
-                        src="/pwa/icon-192.png"
+                        src="/escola/pwa/icon-192.png"
                         alt=""
                         aria-hidden="true"
                         style={{ width: '76px', height: '76px', borderRadius: '18px' }}

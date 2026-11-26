@@ -65,7 +65,7 @@ export const ListView: React.FC<ListViewProps> = ({
                 </div>
             )}
             {isMobile ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '140px' }}>
+                <div className="sc-grade" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '140px' }}>
                     {selectionEnabled && (
                         <button
                             type="button"

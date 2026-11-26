@@ -247,10 +247,10 @@ aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip:
 .al-lado h2 { font-size: clamp(1.9rem, 3vw, 2.4rem) !important; letter-spacing: -.02em !important; }
 .al-lado .form-group > label { font-size: .95rem !important; color: #10213f !important; }
 .al-lado form label[for$="keep-signed-in"] { padding: 4px 0 !important; border: 0 !important; background: none !important; gap: 12px !important; }
-.al-lado .al-nota { background: #eaf4ec !important; border: 0 !important; padding: 16px 18px !important; }
-.al-lado .al-nota span { font-size: .93rem !important; color: #27423a !important; }
+.al-lado .al-nota { background: color-mix(in srgb, #17428f 9%, #fff) !important; border: 0 !important; padding: 16px 18px !important; }
+.al-lado .al-nota span { font-size: .93rem !important; color: #09245c !important; }
 .al-lado .al-nota span::before { content: "i"; display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 10px; border: 2px solid #1c7c3a; border-radius: 50%; color: #1c7c3a; font-size: 13px; font-weight: 800; font-style: italic; vertical-align: -5px; }
-.al-lado button[type="submit"] { background: #10301f !important; box-shadow: 0 12px 26px rgba(16, 48, 31, .28) !important; font-size: 1.05rem !important; letter-spacing: .02em !important; text-transform: none !important; }
+.al-lado button[type="submit"] { background: #09245c !important; box-shadow: 0 12px 26px color-mix(in srgb, #09245c 38%, transparent) !important; font-size: 1.05rem !important; letter-spacing: .02em !important; text-transform: none !important; }
 @media (max-width: 800px) { .al-brand { min-height: 220px; flex: 1 1 100% !important; } .al-brand h1 { font-size: 1.5rem !important; } }
 .al-lado small, .al-lado .form-group > p { text-align: left !important; font-size: .82rem !important; }
 .al-lado.al-lado input:not([type="checkbox"]) { min-height: 52px; color: #10213f; }

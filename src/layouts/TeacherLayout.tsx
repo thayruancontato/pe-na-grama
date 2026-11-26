@@ -13,7 +13,8 @@ export default function TeacherLayout() {
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-    const [collapsed, setCollapsed] = useState(false);
+    const [recolhido, setCollapsed] = useState(false);
+    const collapsed = !isMobile && recolhido; // no celular o menu nunca é recolhido
     const [teacherName, setTeacherName] = useState('');
     const [loading, setLoading] = useState(true);
     const [rentalsEnabled, setRentalsEnabled] = useState(true);

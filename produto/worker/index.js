@@ -306,7 +306,7 @@ async function rotaAssinatura(req, env, host) {
     const x = await atualiza();
     const prox = await proximaDoAsaas();
     const temDoc = Boolean(await env.DB.prepare('SELECT 1 x FROM settings WHERE k=?').bind('doc:' + c.id).first());
-    return J({ disponivel: ok, temDoc, situacao: { status: c.status, plano: c.plano_nome, mensal: c.mensal }, proxima: prox ? { vencimento: prox.vencimento, valor: prox.valor, dias: prox.dias, atrasada: prox.atrasada } : null, assinatura: x && (x.status === 'pendente' || x.status === 'paga') ? publicoAssin(x) : null });
+    return J({ disponivel: ok, temDoc, contato: c.contato_nome || '', situacao: { status: c.status, plano: c.plano_nome, mensal: c.mensal }, proxima: prox ? { vencimento: prox.vencimento, valor: prox.valor, dias: prox.dias, atrasada: prox.atrasada } : null, assinatura: x && (x.status === 'pendente' || x.status === 'paga') ? publicoAssin(x) : null });
   }
   if (m !== 'POST') return erro('Método não permitido.', 405);
   let b = {}; try { b = await req.json(); } catch { /* corpo vazio */ }

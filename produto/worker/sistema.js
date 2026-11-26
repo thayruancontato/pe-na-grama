@@ -163,8 +163,22 @@ function senhaFraca(cfg, pw) {
   return '';
 }
 /** Quem pode o quê no banco, segundo a Central (vale para o administrador da escola). Devolve a mensagem de recusa ou ''. */
+// Escola em teste grátis: os recursos pagos ficam bloqueados AQUI, no servidor (o cadeado do menu é só aviso).
+// Financeiro só pode ser lido (as Estatísticas usam), nunca gravado; contratos, jogos, mídias, eventos e documentos ficam fechados.
+const TESTE_FECHADO = [/^contract/i, /^contratos?$/i, /^rumo_ao_esporte_2026_(convocacoes|midias)$/, /^rae_eventos/i, /^evento/i, /^documentos?$/i, /^rae_store/i];
+function recusaTeste(cfg, op, col, id) {
+  if (cfg.teste_ativo !== true) return '';
+  const escrita = op !== 'get', msg = 'Recurso dos planos pagos. Escolha um plano para liberar.';
+  if (/^financial_/i.test(col) || /^expense/i.test(col)) return escrita ? msg : '';
+  if (TESTE_FECHADO.some((re) => re.test(col))) return msg;
+  if (col === 'rae_settings' && /contract|contrato|termo/i.test(String(id))) return msg;
+  if (col === 'system_settings' && /contra|termo|evento|cora|asaas|pagamento|pix|provedor/i.test(String(id))) return msg;
+  return '';
+}
+
 function recusaDb(cfg, op, col, id) {
   const escrita = op !== 'get';
+  const trava = recusaTeste(cfg, op, col, id); if (trava) return trava;
   for (const [re, chave, rotulo] of PERMISSAO_COLECAO) if (escrita && re.test(col) && cfg[chave] === false) return 'A Central desligou: ' + rotulo + '.';
   if (op === 'delete' && col === 'rumo_ao_esporte_2026_registrations' && cfg.adm_apagar_matriculas === false) return 'A Central desligou: apagar matrículas.';
   if (op === 'delete' && col === 'turmas' && cfg.adm_apagar_turmas === false) return 'A Central desligou: apagar turmas.';

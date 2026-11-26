@@ -1,6 +1,7 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
 import type { Student, Turma } from '../types';
+import '../../../styles/student-card.css';
 
 interface MobileCardProps {
     item: Student;
@@ -27,49 +28,36 @@ export const MobileCard: React.FC<MobileCardProps> = ({
     const turma = turmas.find(t => t.id === student?.turmaId);
     const isDesativados = filterStatus === 'desativados';
 
+    const tel = String(item.responsavel?.telefonePrincipal || '').replace(/\D/g, '');
+    const pendente = item.financialPendingAmount > 0;
+    const inicial = String(student?.nome || '?').trim().charAt(0).toUpperCase();
+
     return (
-        <div style={{ background: selected ? '#e9f8ef' : '#fff', borderRadius: '6px', padding: '12px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)', border: selected ? '1px solid #00a63a' : '1px solid #eee' }}>
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '10px' }}>
+        <article className={`sc${selected ? ' sc-sel' : ''}`}>
+            <div className="sc-topo">
                 {selectionEnabled && (
-                    <label style={{ display: 'flex', alignItems: 'center', alignSelf: 'flex-start', paddingTop: '10px' }}>
-                        <input
-                            type="checkbox"
-                            checked={selected}
-                            onChange={() => onToggleSelection?.(item.regId)}
-                            aria-label={`Selecionar cadastro de ${student?.nome || 'aluno'}`}
-                            style={{ width: '18px', height: '18px', accentColor: '#00a63a' }}
-                        />
+                    <label className="sc-marca">
+                        <input type="checkbox" checked={selected} onChange={() => onToggleSelection?.(item.regId)} aria-label={`Selecionar cadastro de ${student?.nome || 'aluno'}`} />
                     </label>
                 )}
-                {student?.fotoUrl ? <img src={student.fotoUrl} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} /> : <div style={{ width: '40px', height: '40px', background: '#f8f9fa' }} />}
-                <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{student?.nome || 'Sem Aluno'}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#888' }}>Resp: {item.responsavel?.nome || '-'}</div>
-                    <div style={{ padding: '2px 8px', borderRadius: '4px', fontSize: '0.65rem', background: '#f8f9fa', color: '#00a63a', border: '1px solid #eee', marginTop: '6px', display: 'inline-block' }}>
-                        {turma?.nome || item.modalidade || 'N/A'}
+                {student?.fotoUrl ? <img className="sc-foto" src={student.fotoUrl} alt="" loading="lazy" /> : <div className="sc-foto sc-ini" aria-hidden>{inicial}</div>}
+                <div className="sc-id">
+                    <h3>{student?.nome || 'Sem Aluno'}</h3>
+                    <p>Resp: {item.responsavel?.nome || '-'}</p>
+                    <div className="sc-chips">
+                        <span className="sc-chip">{turma?.nome || item.modalidade || 'N/A'}</span>
+                        {!isDesativados && <span className={`sc-chip ${pendente ? 'pend' : 'ok'}`}>{pendente ? 'Pendente' : 'Em dia'}</span>}
                     </div>
                 </div>
-
-                {!isDesativados && (
-                    <div style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: '900', background: item.financialPendingAmount > 0 ? '#eef8ff' : '#f0fdf4', color: item.financialPendingAmount > 0 ? '#c53030' : '#15803d', border: `1px solid ${item.financialPendingAmount > 0 ? '#feb2b2' : '#bbf7d0'}` }}>
-                        {item.financialPendingAmount > 0 ? 'PENDENTE' : 'EM DIA'}
-                    </div>
-                )}
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', borderTop: '1px solid #f0f0f0', paddingTop: '10px' }}>
-                <button onClick={() => onNavigate(item.regId)} style={{ padding: '6px', background: '#fff', color: '#00a63a', border: '1px solid #00a63a', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}>Detalhes</button>
-                {item.responsavel?.telefonePrincipal ? (
-                    <a href={`https://wa.me/55${item.responsavel.telefonePrincipal.replace(/\D/g, '')}`} target="_blank" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '8px', background: '#25D366', color: '#fff', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', textDecoration: 'none' }}>WhatsApp</a>
-                ) : <div style={{ color: '#ccc', fontSize: '0.75rem', background: '#f9f9f9', borderRadius: '4px', border: '1px dashed #ddd', textAlign: 'center' }}>Sem Telefone</div>}
+            <div className="sc-acoes">
+                <button type="button" className="sc-btn" onClick={() => onNavigate(item.regId)}>Detalhes</button>
+                {tel ? <a className="sc-btn zap" href={`https://wa.me/55${tel}`} target="_blank" rel="noreferrer"><MessageCircle size={15} />WhatsApp</a>
+                    : <span className="sc-btn off">Sem telefone</span>}
             </div>
-            {
-                item.contractStatus === 'aprovado' && (
-                    <button onClick={() => onResendApproval(item)} style={{ width: '100%', marginTop: '8px', padding: '8px', background: '#f8f9fa', color: '#00a63a', border: '1px solid #eee', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                        <MessageCircle size={14} /> Reenviar Aprovação
-                    </button>
-                )
-            }
-        </div >
+            {item.contractStatus === 'aprovado' && (
+                <button type="button" className="sc-reenviar" onClick={() => onResendApproval(item)}><MessageCircle size={14} />Reenviar aprovação</button>
+            )}
+        </article>
     );
 };

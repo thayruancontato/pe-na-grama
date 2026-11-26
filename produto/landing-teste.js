@@ -37,7 +37,8 @@
     const im = cx.getImageData(0, 0, W, H), d = im.data, at = (x, y) => (y * W + x) * 4;
     const cantos = [at(0, 0), at(W - 1, 0), at(0, H - 1), at(W - 1, H - 1)];
     const ref = [d[cantos[0]], d[cantos[0] + 1], d[cantos[0] + 2]], dd = (i) => Math.hypot(d[i] - ref[0], d[i + 1] - ref[1], d[i + 2] - ref[2]);
-    if (cantos.every((i) => d[i + 3] > 240 && dd(i) < 40)) {
+    // só tira fundo claro (branco, creme); fundo azul, preto ou colorido é parte da arte e fica como veio
+    if (cantos.every((i) => d[i + 3] > 240 && dd(i) < 40) && (0.299 * ref[0] + 0.587 * ref[1] + 0.114 * ref[2]) / 255 > 0.62) {
       const visto = new Uint8Array(W * H), pilha = [], put = (x, y) => { const k = y * W + x; if (!visto[k] && dd(k * 4) < 60) { visto[k] = 1; pilha.push(k); } };
       for (let x = 0; x < W; x++) { put(x, 0); put(x, H - 1); } for (let y = 0; y < H; y++) { put(0, y); put(W - 1, y); }
       while (pilha.length) { const k = pilha.pop(), x = k % W, y = (k / W) | 0; if (x > 0) put(x - 1, y); if (x < W - 1) put(x + 1, y); if (y > 0) put(x, y - 1); if (y < H - 1) put(x, y + 1); }

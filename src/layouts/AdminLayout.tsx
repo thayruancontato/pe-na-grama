@@ -18,10 +18,17 @@ export default function AdminLayout() {
     const location = useLocation();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
-    const [collapsed, setCollapsed] = useState(false);
+    const [recolhido, setCollapsed] = useState(false);
+    const collapsed = !isMobile && recolhido; // no celular o menu nunca é recolhido
     const [showAdvancedFinanceMenu, setShowAdvancedFinanceMenu] = useState(false);
 
     const { isAllowed, user, loading: permissionsLoading } = useAdminPermissions();
+    // quem criou a escola: o nome digitado no formulário da página de teste grátis
+    const [donoNome, setDonoNome] = useState('');
+    useEffect(() => {
+        const tk = localStorage.getItem('pg_sys_token'); if (!tk) return;
+        fetch('/sys/assinatura', { headers: { authorization: 'Bearer ' + tk } }).then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.contato) setDonoNome(String(d.contato)); }).catch(() => undefined);
+    }, []);
 
     // Global QR Scanner - works from any page
     const { modalData: scannerModalData, loading: scannerLoading, closeModal: closeScannerModal } = useGlobalQRScanner();
@@ -188,7 +195,7 @@ export default function AdminLayout() {
                     isMobile={isMobile}
                     onLogout={handleLogout}
                     logoutLabel="Sair"
-                    userName={user?.nome || "Administrador"}
+                    userName={user?.nome || donoNome || "Administrador"}
                     userRole={user?.nome ? "Administrador" : "Acesso total"}
                 >
                     {(() => {

@@ -1,0 +1,21 @@
+/* Card do aluno (lista do painel) — compacto no celular, em grade nas telas maiores */
+.sc{display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid #dfe4ea;border-left:4px solid #17428f;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(15,33,63,.06);transition:box-shadow .15s,transform .15s}
+.sc:hover{box-shadow:0 8px 20px rgba(15,33,63,.12);transform:translateY(-1px)}
+.sc-sel{border-color:#00a63a;border-left-color:#00a63a;background:#f1fbf4}
+.sc-topo{display:flex;align-items:center;gap:12px;min-width:0}
+.sc-marca{display:flex;align-self:center}.sc-marca input{width:20px;height:20px;accent-color:#00a63a}
+.sc-foto{flex:none;width:56px;height:56px;border-radius:12px;object-fit:cover;box-shadow:0 0 0 2px #fff,0 0 0 3px #dfe4ea}
+.sc-ini{display:grid;place-items:center;background:#dce5f2;color:#17428f;font-weight:800;font-size:22px}
+.sc-id{min-width:0;flex:1}
+.sc-id h3{margin:0;font-size:16px;font-weight:800;line-height:1.2;color:#10213f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-id p{margin:2px 0 0;font-size:13px;color:#66727f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.sc-chip{display:inline-block;padding:3px 10px;border-radius:999px;background:#eef2f8;color:#17428f;font-size:11.5px;font-weight:700}
+.sc-chip.ok{background:#e3f4e8;color:#16692f}.sc-chip.pend{background:#fff3d6;color:#8a6100}
+.sc-acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sc-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 10px;border:1.5px solid #17428f;border-radius:8px;background:#fff;color:#17428f;font:inherit;font-size:14px;font-weight:700;text-decoration:none;cursor:pointer;transition:filter .12s,transform .12s}
+.sc-btn:hover{filter:brightness(.95)}.sc-btn:active{transform:scale(.98)}
+.sc-btn.zap{border-color:#1faa59;background:#1faa59;color:#fff}
+.sc-btn.off{border:1.5px dashed #cfd8e3;color:#8a95a3;cursor:default;font-weight:600}
+.sc-reenviar{display:inline-flex;align-items:center;justify-content:center;gap:6px;align-self:center;padding:4px 8px;border:0;background:none;color:#17428f;font:inherit;font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+@media(min-width:640px){.sc-grade{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px!important}}

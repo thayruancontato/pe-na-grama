@@ -140,6 +140,7 @@ export function SidebarOverlay({ isOpen, onClose }: { isOpen: boolean, onClose: 
 
 // Helper for Mobile Header
 export function MobileHeader({ title, toggleSidebar, isOpen }: { title: string, toggleSidebar: () => void, isOpen: boolean }) {
+    void title; // o nome da área não aparece mais no cabeçalho
     const logo = useLogoEscola();
     return (
         <div style={{
@@ -147,6 +148,7 @@ export function MobileHeader({ title, toggleSidebar, isOpen }: { title: string, 
             background: 'linear-gradient(135deg, #17428f 0%, #09245c 100%)',
             borderBottom: '1px solid rgba(255,255,255,0.14)',
             display: 'flex',
+            flexDirection: 'row-reverse', // botão do menu à esquerda, logo à direita
             justifyContent: 'space-between',
             alignItems: 'center',
             position: 'sticky',
@@ -155,7 +157,6 @@ export function MobileHeader({ title, toggleSidebar, isOpen }: { title: string, 
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <span style={{ background: logo.clara ? 'transparent' : '#fff', borderRadius: '8px', padding: logo.clara ? 0 : '3px 8px', display: 'inline-flex' }}><img src={logo.src} alt="Logo da escola" data-logo-ok="1" style={{ height: '34px', maxWidth: '150px', objectFit: 'contain' }} /></span>
-                <span style={{ fontWeight: 'bold', color: '#fff', fontSize: '0.9rem' }}>{title}</span>
             </div>
             <button
                 onClick={toggleSidebar}

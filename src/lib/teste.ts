@@ -22,7 +22,7 @@ export function instalarTeste(v: Valores, modo: 'teste' | 'ativo' = 'teste') {
     if (modo === 'teste') new Image().src = '/teste-foto.webp'; // já carrega a foto do modal, para ele abrir completo
     const css = document.createElement('style');
     css.textContent = `
-.tb{--p:${pri};--e:${esc};position:sticky;top:0;z-index:1200;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 24px;color:#fff;background:linear-gradient(100deg,var(--e),var(--p));box-shadow:0 4px 18px rgba(0,0,0,.18);font-family:inherit}
+.tb{--p:${pri};--e:${esc};position:fixed;top:0;left:0;right:0;z-index:1200;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 24px;color:#fff;background:linear-gradient(100deg,var(--e),var(--p));box-shadow:0 4px 18px rgba(0,0,0,.18);font-family:inherit}
 aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!important}
 .tb-sel{flex:none;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);font-size:11px;font-weight:800;letter-spacing:.08em}
 .tb-txt{flex:1 1 300px;font-size:14px;line-height:1.35}.tb-txt b{font-weight:800}.tb-txt small{display:block;font-size:12px;opacity:.85}
@@ -32,12 +32,16 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .tb-cont b{font-size:19px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .tb-cont span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.85}
 .tb-cont>div:first-child{background:#fff;color:var(--e);border-color:#fff}.tb-cont>div:first-child span{opacity:.75}
-.tb-btn{flex:none;display:inline-flex;align-items:center;gap:9px;border:0;border-radius:999px;padding:10px 12px 10px 20px;background:#fff;color:var(--e);font:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);transition:transform .15s,box-shadow .15s}
-.tb-btn i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:13px}
-.tb-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(0,0,0,.3)}.tb-btn:hover i{transform:translateX(2px)}.tb-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
-@media(max-width:760px){.tb{flex-wrap:nowrap;padding:8px 12px;gap:10px}.tb-sel,.tb-cont,.tb-txt small{display:none}.tb-txt{flex:1 1 auto;min-width:0;font-size:13px}.tb-dir{margin-left:auto}.tb-btn{padding:8px 8px 8px 14px;font-size:13px}}
+.tb-btn{position:relative;overflow:hidden;flex:none;display:inline-flex;align-items:center;gap:10px;border:0;border-radius:12px;padding:9px 10px 9px 18px;background:linear-gradient(180deg,#fff,#eef2f7);color:var(--e);font:inherit;font-size:14px;font-weight:800;letter-spacing:.01em;cursor:pointer;box-shadow:0 1px 0 #fff inset,0 8px 20px rgba(0,0,0,.28);transition:transform .15s,box-shadow .15s}
+.tb-btn::after{content:"";position:absolute;top:0;bottom:0;width:38px;left:-60px;background:linear-gradient(100deg,transparent,rgba(255,255,255,.9),transparent);transform:skewX(-20deg);animation:tb-brilho 4.5s ease-in-out infinite}
+@keyframes tb-brilho{0%,60%{left:-60px}100%{left:130%}}
+.tb-btn i{display:grid;place-items:center;width:24px;height:24px;background:none;color:#d99a00;line-height:0;transition:transform .15s}.tb-btn:hover i{transform:rotate(-8deg) scale(1.1)}
+.tb-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(0,0,0,.3)}.tb-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media(max-width:760px){.tb{flex-wrap:nowrap;padding:8px 12px;gap:10px}.tb-sel,.tb-cont,.tb-txt small{display:none}.tb-txt{flex:1 1 auto;min-width:0;font-size:13px}.tb-dir{margin-left:auto}.tb-btn{padding:7px 8px 7px 14px;font-size:13px}}@media(prefers-reduced-motion:reduce){.tb-btn::after{animation:none;display:none}}
 .sb-bloq{opacity:.72}.sb-bloq .sb-cad{display:inline-flex;margin-left:auto;opacity:.9}
 .sb-bloq:hover{opacity:1}
+:root{--tb-h:0px}body{padding-top:var(--tb-h)!important}
+:root.pg-bloq main{visibility:hidden!important}
 .pm-fundo{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:14px;background:rgba(5,20,16,.66);backdrop-filter:blur(5px);animation:pm-in .22s ease}
 @keyframes pm-in{from{opacity:0}}@keyframes pm-up{from{opacity:0;transform:translateY(18px) scale(.98)}}
 .pm{--p:${pri};--e:${esc};position:relative;width:min(980px,100%);max-height:96vh;overflow:auto;border-radius:20px;background:#fff;color:#1d2733;box-shadow:0 40px 100px rgba(0,0,0,.45);font-family:inherit;animation:pm-up .3s ease}
@@ -66,6 +70,15 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .pm-card .dia{font-size:12px;color:#66727f}
 .pm-card p{margin:0;font-size:13.5px;color:#3f4a56;line-height:1.45;flex:1}
 .pm-card button{margin-top:8px;border:2px solid var(--p);border-radius:10px;padding:12px 8px;background:#fff;color:var(--p);font:inherit;font-size:14.5px;font-weight:800;cursor:pointer;transition:background .15s,color .15s}
+.pm-det{margin-top:8px;border-top:1px dashed #d9dee5;padding-top:6px}
+.pm-det summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 2px;font-size:13px;font-weight:700;color:var(--e);cursor:pointer;list-style:none}
+.pm-det summary::-webkit-details-marker{display:none}
+.pm-det summary::after{content:"";flex:none;width:8px;height:8px;border-right:2px solid var(--p);border-bottom:2px solid var(--p);transform:rotate(45deg);margin:-3px 4px 0 0;transition:transform .2s}
+.pm-det[open] summary::after{transform:rotate(-135deg);margin-top:3px}
+.pm-det ul{list-style:none;margin:2px 0 4px;padding:0;display:grid;gap:6px;animation:pm-troca .25s ease both}
+.pm-det li{position:relative;padding-left:24px;font-size:13px;line-height:1.35;color:#27323d}
+.pm-det li::before{content:"✓";position:absolute;left:0;top:0;display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:color-mix(in srgb,var(--p) 14%,#fff);color:var(--p);font-size:10px;font-weight:900}
+.pm-det li.herda{font-weight:800;color:var(--e)}
 .pm-card.top button{background:var(--p);color:#fff}
 .pm-card button:hover{background:var(--p);color:#fff;filter:brightness(.95)}.pm-card button:disabled{opacity:.6;cursor:wait}
 .pm-garantia{display:grid;grid-template-columns:repeat(3,1fr);margin:16px 0 0;padding:12px 6px;border-radius:10px;background:#f1f8f3;font-size:13.5px;font-weight:700;color:#24523a;text-align:center}
@@ -134,6 +147,16 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .pm-card.escolhendo{pointer-events:none;opacity:.55}
 @media(prefers-reduced-motion:reduce){.pm-corpo.pm-anim>*,.pm-lista .pm-card,.pm-qr img,.pm-ok .anel-ok,.pm-sk,.pm-fundo.saindo,.pm-fundo.saindo .pm{animation:none!important}.pm-carga .anel{animation-duration:2.4s}.pm-barra i{animation-duration:.01s}}
 @media(max-width:760px){
+.pm-card{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:12px;row-gap:2px;align-items:center;padding:13px 14px 12px}
+.pm-card h3{grid-column:1;font-size:18px}.pm-card .lim{grid-column:1;font-size:12.5px}
+.pm-card .pr{grid-column:2;grid-row:1/3;text-align:right;font-size:27px}.pm-card .pr small{font-size:12px}
+.pm-card .dia,.pm-card p{display:none}
+.pm-det{grid-column:1/-1;margin-top:6px}
+.pm-card button{grid-column:1/-1;margin-top:8px;padding:10px 8px;font-size:14px}
+.pm-card .sel{top:-11px;font-size:11px;padding:4px 11px}
+.pm-lista{gap:12px!important}
+}
+@media(max-width:760px){
 .pm-fundo{padding:8px}.pm{max-height:95vh;border-radius:18px}
 .pm-topo{min-height:0}.pm-topo-in{gap:8px;padding:16px 16px 14px}.pm-topo p{display:none}.pm-topo h2{font-size:20px;line-height:1.15}
 .pm-logo{height:48px;min-width:64px;padding:5px 9px}.pm-logo img{height:34px}.pm-nome{font-size:13px}.pm-pill{font-size:11.5px;padding:3px 9px}
@@ -152,7 +175,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
     // ---- barra de aviso ----
     const bar = document.createElement('div');
     bar.className = 'tb'; bar.setAttribute('role', 'status');
-    bar.innerHTML = `<span class="tb-sel">TESTE GRÁTIS</span><div class="tb-txt"><b>${restam === 0 ? 'Seu teste termina hoje' : restam === 1 ? 'Falta 1 dia' : 'Faltam ' + restam + ' dias'}</b> para o fim do teste${fim ? ' (' + fim.toLocaleDateString('pt-BR') + ')' : ''}<small>Alunos, turmas e professores já estão liberados. Escolha um plano para liberar o restante.</small></div><div class="tb-dir"><div class="tb-cont" role="timer" aria-label="Tempo restante do teste"><div><b data-d>--</b><span>dias</span></div><div><b data-h>--</b><span>horas</span></div><div><b data-m>--</b><span>min</span></div><div><b data-s>--</b><span>seg</span></div></div><button type="button" class="tb-btn">Escolher plano <i>→</i></button></div>`;
+    bar.innerHTML = `<span class="tb-sel">TESTE GRÁTIS</span><div class="tb-txt"><b>${restam === 0 ? 'Seu teste termina hoje' : restam === 1 ? 'Falta 1 dia' : 'Faltam ' + restam + ' dias'}</b> para o fim do teste${fim ? ' (' + fim.toLocaleDateString('pt-BR') + ')' : ''}<small>Alunos, turmas e professores já estão liberados. Escolha um plano para liberar o restante.</small></div><div class="tb-dir"><div class="tb-cont" role="timer" aria-label="Tempo restante do teste"><div><b data-d>--</b><span>dias</span></div><div><b data-h>--</b><span>horas</span></div><div><b data-m>--</b><span>min</span></div><div><b data-s>--</b><span>seg</span></div></div><button type="button" class="tb-btn">Escolher plano <i><svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z"/></svg></i></button></div>`;
     bar.querySelector('.tb-btn')!.addEventListener('click', () => abrirPlanos());
     const tique = () => {
         if (!fim) return;
@@ -171,20 +194,49 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
     if (modo !== 'teste') { bar.remove(); document.documentElement.style.setProperty('--tb-h', '0px'); } // assinante: só os modais ficam disponíveis
 
     // ---- cadeados no menu ----
-    const marca = (raizDom: ParentNode) => modo === 'teste' && raizDom.querySelectorAll?.('.sb-item, .sb-sub').forEach((b) => {
-        if (b.classList.contains('sb-bloq')) return;
-        const nome = b.querySelector('.sb-label')?.textContent?.trim() || '';
-        if (!BLOQUEADOS.includes(nome)) return;
-        b.classList.add('sb-bloq'); b.setAttribute('aria-label', nome + ' (bloqueado no teste grátis)');
-        const c = document.createElement('span'); c.className = 'sb-cad'; c.innerHTML = LOCK; b.appendChild(c);
-    });
-    marca(document);
-    new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => { if (n instanceof Element) { if (n.matches?.('.sb-item,.sb-sub')) marca(n.parentNode!); marca(n); } }))).observe(document.body, { childList: true, subtree: true });
-    document.addEventListener('click', (e) => {
-        const b = (e.target as Element).closest?.('.sb-bloq');
+    // O React troca as classes dos botões a cada clique, então a trava não pode depender de classe: usa data-bloq,
+    // revisa o menu a cada mudança e também no intervalo. Subitens herdam o bloqueio do grupo (Mensalidades, Gastos...).
+    const nomeDoItem = (el: Element) => (el.querySelector('.sb-label')?.textContent || el.getAttribute('title') || '').trim();
+    const marca = () => {
+        if (modo !== 'teste') return;
+        document.querySelectorAll<HTMLElement>('.sb-item, .sb-sub').forEach((b) => {
+            let nome = nomeDoItem(b);
+            if (b.classList.contains('sb-sub')) { const g = b.closest('.sb-subs')?.parentElement?.querySelector('.sb-item.grupo'); if (g) nome = nomeDoItem(g); }
+            if (!BLOQUEADOS.includes(nome)) return;
+            b.dataset.bloq = nome;
+            if (!b.classList.contains('sb-bloq')) b.classList.add('sb-bloq');
+            b.setAttribute('aria-label', nome + ' (bloqueado no teste grátis)');
+            if (!b.querySelector('.sb-cad')) { const c = document.createElement('span'); c.className = 'sb-cad'; c.innerHTML = LOCK; b.appendChild(c); }
+        });
+    };
+    marca();
+    let agendado = false;
+    new MutationObserver(() => { if (!agendado) { agendado = true; requestAnimationFrame(() => { agendado = false; marca(); }); } }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'title'] });
+    setInterval(marca, 500);
+    const barra = (e: Event) => {
+        const b = (e.target as Element).closest?.('[data-bloq]') as HTMLElement | null;
         if (!b) return;
-        e.preventDefault(); e.stopPropagation(); abrirPlanos(b.querySelector('.sb-label')?.textContent?.trim());
-    }, true);
+        e.preventDefault(); e.stopImmediatePropagation(); abrirPlanos(b.dataset.bloq);
+    };
+    ['click', 'auxclick', 'mousedown', 'pointerdown'].forEach((t) => document.addEventListener(t, (e) => { if (t === 'click' || t === 'auxclick') barra(e); else if ((e.target as Element).closest?.('[data-bloq]')) e.stopPropagation(); }, true));
+    document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && (e.target as Element).closest?.('[data-bloq]')) barra(e); }, true);
+
+    // ---- guarda de rotas: digitar o endereço, voltar/avançar ou abrir em nova aba também não passa ----
+    const ROTAS_PAGAS = /^\/admin\/(aniversariantes|financeiro|plans|contratos|jogos|midias|eventos|carteirinhas|documentos)(\/|$)/;
+    const NOME_ROTA: Record<string, string> = { aniversariantes: 'Aniversariantes', financeiro: 'Financeiro', plans: 'Financeiro', contratos: 'Contratos', jogos: 'Jogos', midias: 'Jogos', eventos: 'Eventos', carteirinhas: 'Carteirinhas', documentos: 'Documentos' };
+    const guarda = () => {
+        if (modo !== 'teste') return;
+        const m = ROTAS_PAGAS.exec(location.pathname.toLowerCase());
+        if (!m) { document.documentElement.classList.remove('pg-bloq'); return; }
+        document.documentElement.classList.add('pg-bloq');
+        history.replaceState({}, '', '/admin/stats'); window.dispatchEvent(new PopStateEvent('popstate'));
+        document.documentElement.classList.remove('pg-bloq');
+        abrirPlanos(NOME_ROTA[m[1]]);
+    };
+    (['pushState', 'replaceState'] as const).forEach((k) => { const o = history[k].bind(history); history[k] = ((...a: Parameters<History['pushState']>) => { o(...a); guarda(); }) as History['pushState']; });
+    window.addEventListener('popstate', guarda); setInterval(guarda, 400);
+    if (modo === 'teste' && ROTAS_PAGAS.test(location.pathname.toLowerCase())) document.documentElement.classList.add('pg-bloq'); // some o conteúdo até redirecionar
+    Promise.resolve().then(guarda); // depois que o restante do módulo (modal de planos) terminar de carregar
 
     // ---- modal de planos ----
     const RECURSOS: Record<string, [string, string, string, string]> = {
@@ -243,9 +295,11 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
                 if (!planos?.length) { msg('<p class="pm-rod" style="padding:30px">Nenhum plano disponível agora. Fale com a gente pelo WhatsApp.</p>'); return; }
                 const meio = Math.min(1, planos.length - 1);
                 const lim = (d: string) => { const m = /até\s+(\d+)\s+alunos/i.exec(d || ''); return m ? 'até ' + m[1] + ' alunos' : ''; };
-                const resumo = (d: string) => (d || '').replace(/^[^:]*:\s*/, '').replace(/^até\s+\d+\s+alunos,?\s*/i, '').replace(/^./, (c) => c.toUpperCase());
+                // lista completa do que o plano inclui, tirada da descrição cadastrada (cada plano herda o anterior)
+                const itens = (d: string) => (d || '').replace(/^[^:]*:\s*/, '').replace(/\.$/, '').split(/,\s*|\s+e\s+(?=[a-zà-ú])/i).map((x) => x.trim()).filter(Boolean).map((x) => x.replace(/^./, (c) => c.toUpperCase()));
+                const detalhe = (d: string, i: number) => `<details class="pm-det"><summary>Ver tudo o que está incluso</summary><ul>${i > 0 ? `<li class="herda">Tudo do plano ${seguro(String(planos[i - 1].nome))}</li>` : ''}${itens(d).map((x) => `<li>${seguro(x)}</li>`).join('')}<li>Painel do administrador e suporte</li></ul></details>`;
                 const zapLink = whats ? `<a class="pm-zap" href="https://wa.me/${whats}?text=${encodeURIComponent('Olá! Estou testando o sistema e quero tirar uma dúvida sobre os planos.')}" target="_blank" rel="noreferrer">Prefere conversar antes? Chame no WhatsApp →</a>` : '';
-                msg(`<div class="pm-direita"><div class="pm-lista">${planos.map((p: any, i: number) => `<div class="pm-card${i === meio ? ' top' : ''}">${i === meio ? '<span class="sel">★ Plano recomendado</span>' : ''}<h3>${seguro(p.nome)}</h3><span class="lim">${lim(p.descricao)}</span><div class="pr">${brl(p.mensal)}<small> /mês</small></div><span class="dia">≈ R$ ${(p.mensal / 100 / 30).toFixed(2).replace('.', ',')} por dia</span><p>${seguro(resumo(p.descricao))}</p><button type="button" data-p="${seguro(p.nome)}">${i === meio ? 'Quero o ' + seguro(p.nome) : 'Escolher ' + seguro(p.nome)}</button></div>`).join('')}</div>${zapLink}</div>`);
+                msg(`<div class="pm-direita"><div class="pm-lista">${planos.map((p: any, i: number) => `<div class="pm-card${i === meio ? ' top' : ''}">${i === meio ? '<span class="sel">★ Plano recomendado</span>' : ''}<h3>${seguro(p.nome)}</h3><span class="lim">${lim(p.descricao)}</span><div class="pr">${brl(p.mensal)}<small> /mês</small></div><span class="dia">≈ R$ ${(p.mensal / 100 / 30).toFixed(2).replace('.', ',')} por dia</span>${detalhe(p.descricao, i)}<button type="button" data-p="${seguro(p.nome)}">${i === meio ? 'Quero o ' + seguro(p.nome) : 'Escolher ' + seguro(p.nome)}</button></div>`).join('')}</div>${zapLink}</div>`);
                 corpo.querySelectorAll('button[data-p]').forEach((bt) => bt.addEventListener('click', () => escolher((bt as HTMLElement).dataset.p!)));
             }).catch(() => msg('<p class="pm-rod" style="padding:30px">Não consegui carregar os planos agora. Tente de novo em instantes.</p>'));
         };
