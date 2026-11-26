@@ -11,6 +11,8 @@ interface SidebarProps {
     children: React.ReactNode;
     logoutLabel?: string;
     headerContent?: React.ReactNode; // Optional custom header content
+    userName?: string;
+    userRole?: string;
 }
 
 export default function Sidebar({
@@ -21,7 +23,9 @@ export default function Sidebar({
     onLogout,
     children,
     logoutLabel = "Sair do Sistema",
-    headerContent
+    headerContent,
+    userName,
+    userRole
 }: SidebarProps) {
     const logo = useLogoEscola();
     return (
@@ -90,35 +94,33 @@ export default function Sidebar({
                         )}
                     </button>
                 )}
+                {userName && !collapsed && (
+                    <div className="sb-user" title={userName}>
+                        <span className="sb-user-av">{userName.trim().charAt(0).toUpperCase()}</span>
+                        <span className="sb-user-tx"><b>{userName}</b><small>{userRole || 'Usuário'}</small></span>
+                    </div>
+                )}
                 <button
                     onClick={onLogout}
+                    title={logoutLabel}
                     style={{
                         width: '100%',
-                        padding: '12px',
-                        background: '#fff',
-                        border: '1px solid #dce7f3',
-                        color: '#17428f',
-                        borderRadius: '8px',
+                        padding: collapsed ? '10px 0' : '4px 0 0',
+                        background: 'none',
+                        border: 0,
+                        color: '#dfe9f7',
                         cursor: 'pointer',
-                        fontWeight: '700',
-                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        fontSize: '0.82rem',
+                        textDecoration: collapsed ? 'none' : 'underline',
+                        textUnderlineOffset: '3px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '8px',
-                        transition: 'all 0.2s'
-                    }}
-                    onMouseOver={e => {
-                        e.currentTarget.style.borderColor = '#00a63a';
-                        e.currentTarget.style.color = '#00a63a';
-                    }}
-                    onMouseOut={e => {
-                        e.currentTarget.style.borderColor = '#dce7f3';
-                        e.currentTarget.style.color = '#17428f';
                     }}
                 >
-                    <LogOut size={18} />
-                    {!collapsed && logoutLabel}
+                    {collapsed ? <LogOut size={18} /> : 'Sair'}
                 </button>
             </div>
         </aside>

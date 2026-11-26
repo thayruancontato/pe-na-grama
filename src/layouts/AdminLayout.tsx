@@ -187,7 +187,9 @@ export default function AdminLayout() {
                     setCollapsed={setCollapsed}
                     isMobile={isMobile}
                     onLogout={handleLogout}
-                    logoutLabel={user?.nome ? `Sair (${user.nome.split(' ')[0]})` : "Sair do Sistema"}
+                    logoutLabel="Sair"
+                    userName={user?.nome || "Administrador"}
+                    userRole={user?.nome ? "Administrador" : "Acesso total"}
                 >
                     {(() => {
                         let secaoAnterior: string | undefined;

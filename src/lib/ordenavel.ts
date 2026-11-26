@@ -17,6 +17,19 @@ th.n .ord-btn{margin-left:0;margin-right:5px;float:none}
 .ord-busca.tem button{display:block}
 .ord-nada{margin:8px 2px 0;font-size:12.5px;color:#8a95a3}.ord-nada[hidden]{display:none}`;
 
+const MOBILE_CSS = `
+@media(max-width:700px){
+table.est-tab,table.est-tab tbody,.mp-tabela table,.mp-tabela tbody{display:block;width:100%}
+table.est-tab thead,.mp-tabela thead{display:none}
+table.est-tab tr,.mp-tabela tr{display:block;padding:8px 12px;border-bottom:1px solid #e6ebf1}
+table.est-tab td,.mp-tabela td{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:3px 0!important;border:0!important;text-align:right!important;white-space:normal!important;background:none!important}
+table.est-tab td::before,.mp-tabela td::before{content:attr(data-label);flex:none;text-align:left;color:#66727f;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+table.est-tab td:first-child,.mp-tabela td:first-child{display:block;text-align:left!important;font-weight:700;padding-bottom:5px!important}
+table.est-tab td:first-child::before,.mp-tabela td:first-child::before{display:none}
+table.est-tab td[colspan]::before,.mp-tabela td[colspan]::before{display:none}
+.cm-rolagem,.mp-rolagem,.est-corpo{overflow-x:hidden!important}
+}`;
+
 const SVG = '<svg viewBox="0 0 10 14" aria-hidden="true"><path class="c" d="M5 0l4.5 5.5h-9z"/><path class="b" d="M5 14L.5 8.5h9z"/></svg>';
 
 const norm = (t: string) => t.replace(/\s+/g, ' ').trim();
@@ -57,8 +70,15 @@ function buscar(t: HTMLTableElement) {
     pai.insertBefore(box, alvo);
 }
 
+function rotular(t: HTMLTableElement) { // no celular a tabela vira lista de cartões: cada célula leva o nome da sua coluna
+    const nomes = [...(t.tHead?.rows[0]?.cells || [])].map((th) => norm(th.textContent || ''));
+    if (!nomes.length || !t.tBodies[0]) return;
+    [...t.tBodies[0].rows].forEach((r) => { if (r.cells.length !== nomes.length) return; [...r.cells].forEach((td, i) => { if (td.dataset.label !== nomes[i]) td.dataset.label = nomes[i]; }); });
+}
+
 function preparar(t: HTMLTableElement) {
     buscar(t);
+    rotular(t);
     const ths = [...t.querySelectorAll<HTMLTableCellElement>('thead th')];
     const corpo = t.tBodies[0];
     if (!ths.length || !corpo || t.dataset.semOrdem !== undefined) return;
@@ -93,7 +113,7 @@ function preparar(t: HTMLTableElement) {
 export function instalarOrdenavel() {
     if ((window as any).__ordenavel) return;
     (window as any).__ordenavel = true;
-    const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+    const st = document.createElement('style'); st.textContent = css + MOBILE_CSS; document.head.appendChild(st);
     let agendado = false;
     const varre = () => { agendado = false; document.querySelectorAll<HTMLElement>('.ord-busca').forEach((b) => { if (!(b as any)._t?.isConnected) b.remove(); }); document.querySelectorAll<HTMLTableElement>('table').forEach(preparar); };
     new MutationObserver(() => { if (!agendado) { agendado = true; requestAnimationFrame(varre); } }).observe(document.body, { childList: true, subtree: true });

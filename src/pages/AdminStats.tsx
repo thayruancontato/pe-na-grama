@@ -166,7 +166,7 @@ export default function AdminStats() {
 
             {analise !== null && <CadastrosMesModal indice={analise} meses={crescimento} pags={pags} mensalidade={mensalidade} modalidade={modalidade} dataDe={dataDe} onIr={setAnalise} onFechar={() => setAnalise(null)} />}
 
-            <div className={`est-filtro${periodo === 'mes' ? ' fixo' : ''}`} ref={filtroRef}>
+            <div className="est-filtro fixo" ref={filtroRef}>
                 <div className="est-sw" role="group" aria-label="Período">
                     <button type="button" className={periodo === 'mes' ? 'on' : ''} aria-pressed={periodo === 'mes'} onClick={() => setPeriodo('mes')}>Mês</button>
                     <button type="button" className={periodo === 'tudo' ? 'on' : ''} aria-pressed={periodo === 'tudo'} onClick={() => setPeriodo('tudo')}><span className="lg">Todo o período</span><span className="sm">Tudo</span></button>

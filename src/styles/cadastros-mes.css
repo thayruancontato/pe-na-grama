@@ -1,7 +1,7 @@
 /* Modal "Análise de cadastros do mês" */
 .cm-fundo{position:fixed;inset:0;z-index:9500;display:grid;place-items:center;padding:20px;background:rgba(10,22,40,.55);backdrop-filter:blur(2px);animation:cm-f .18s ease both}
 @keyframes cm-f{from{opacity:0}}
-.cm{display:flex;flex-direction:column;width:min(980px,100%);max-height:min(88vh,860px);border-radius:10px;background:#fff;box-shadow:0 30px 70px rgba(0,0,0,.4);overflow:hidden;animation:cm-up .26s cubic-bezier(.2,.8,.2,1) both;color:#1d2733;font-size:13.5px}
+.cm{display:flex;flex-direction:column;width:min(1180px,100%);max-height:min(88vh,860px);border-radius:10px;background:#fff;box-shadow:0 30px 70px rgba(0,0,0,.4);overflow:hidden;animation:cm-up .26s cubic-bezier(.2,.8,.2,1) both;color:#1d2733;font-size:13.5px}
 @keyframes cm-up{from{opacity:0;transform:translateY(16px) scale(.98)}}
 .cm-topo{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:#09245c;color:#fff;border-top:4px solid #f4c20d}
 .cm-topo small{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;opacity:.75;font-weight:700}
@@ -43,3 +43,69 @@
 @media(max-width:820px){.cm-kpis{grid-template-columns:repeat(3,1fr)}.cm-duas{grid-template-columns:1fr}}
 @media(max-width:520px){.cm-fundo{padding:0;align-items:end}.cm{max-height:94vh;border-radius:12px 12px 0 0}.cm-kpis{grid-template-columns:repeat(2,1fr)}.cm-barras>div{grid-template-columns:92px 1fr 56px}.cm-topo h2{font-size:18px}.cm-corpo{padding:12px}}
 @media(prefers-reduced-motion:reduce){.cm,.cm-fundo,.cm-corpo{animation:none}}
+
+/* versão organizada: veredito, duas colunas, destaques de pico */
+.cm-resumo{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.cm-ver{display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:6px;font-weight:800;font-size:14px;color:#fff;background:#16692f;white-space:nowrap}
+.cm-ver.fraco{background:#a3281a}.cm-ver.medio{background:#17428f}.cm-ver.vz{background:#66727f}
+.cm-grade{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;align-items:start}
+.cm-dir{position:sticky;top:0;margin-bottom:0}.cm-dir .cm-rolagem{max-height:620px;overflow:auto}
+.cm-dir .est-tab td,.cm-dir .est-tab th{padding:7px 8px;font-size:12.5px}
+.cm-tag{display:inline-block;margin:8px 0 0;padding:3px 12px;border-radius:999px;background:#fff3d6;color:#6d4c00;font-size:12px;font-weight:700}
+.cm-col>.pico i{background:#d9a800}.cm-col>.pico b,.cm-col>.pico span{color:#6d4c00;font-weight:800}
+.cm-sit{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px}.cm-sit h3{margin:0 8px 0 0}
+.cm-sit span{padding:5px 12px;font-size:13px}.cm-sit b{font-size:17px}
+@media(max-width:980px){.cm-grade{grid-template-columns:1fr}.cm-dir{position:static}}
+@media(max-width:620px){.cm-duas{grid-template-columns:1fr}.cm-ver{font-size:13px}}
+@media(min-width:981px){.cm-grade{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr)}}
+.cm-dir .est-tab th{font-size:10.5px;padding:8px 5px;letter-spacing:0}
+.cm-dir .est-tab td{padding:6px 5px}
+.cm-dir .ord-btn{margin-left:2px;padding:1px}
+.cm-dir .cm-al{gap:6px}.cm-dir .cm-al img,.cm-dir .cm-al i{width:22px;height:22px}
+.cm-dir .cm-rolagem{overflow-x:auto}
+
+/* desktop: tudo cabe na tela, sem rolagem vertical do modal (só a lista de alunos rola por dentro) */
+@media(min-width:981px){
+  .cm{height:min(94vh,780px);max-height:94vh}
+  .cm-topo{padding:10px 18px}.cm-topo h2{font-size:19px}.cm-topo button{width:30px;height:30px}
+  .cm-corpo{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;padding:10px 16px 12px}
+  .cm-resumo{margin:0 0 8px;padding:7px 12px;font-size:13.5px}.cm-ver{padding:4px 12px;font-size:13px}
+  .cm-kpis{gap:6px;margin-bottom:8px}.cm-kpis>div{padding:7px 10px}.cm-kpis small{font-size:10px}.cm-kpis b{margin:1px 0;font-size:18px}.cm-kpis em{font-size:11px}
+  .cm-grade{flex:1;min-height:0;align-items:stretch;gap:10px}
+  .cm-esq{display:flex;flex-direction:column;gap:8px;min-height:0}
+  .cm-esq .cm-sec,.cm-esq .cm-duas{margin:0}.cm-esq .cm-duas{gap:8px}
+  .cm-sec{padding:8px 12px}.cm-sec h3{margin:0 0 6px;font-size:13px}
+  .cm-serie{height:88px;gap:4px}.cm-serie button{grid-template-rows:14px 1fr 14px}
+  .cm-barras{gap:4px}.cm-barras>div>div{height:10px}.cm-barras>div{font-size:12px}
+  .cm-col{height:70px;gap:6px}.cm-col>div{grid-template-rows:14px 1fr 14px}
+  .cm-tag{margin-top:4px;padding:1px 10px;font-size:11.5px}
+  .cm-sit{padding:7px 12px}.cm-sit span{padding:3px 10px;font-size:12.5px}
+  .cm-dir{position:static;display:flex;flex-direction:column;min-height:0;margin:0}
+  .cm-dir .cm-rolagem{flex:1;min-height:0;max-height:none;overflow-y:auto}
+  .cm-dir .ord-busca{padding:6px 0}
+}
+@media(min-width:981px) and (max-height:760px){
+  .cm-kpis em{display:none}.cm-serie{height:70px}.cm-col{height:56px}
+}
+
+.cm-topo12{margin-bottom:10px}
+@media(min-width:981px){.cm-topo12{margin-bottom:8px;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:14px}.cm-topo12 h3{margin:0;max-width:96px;line-height:1.25}.cm-topo12 .cm-serie{height:64px}.cm-topo12 .cm-serie button{grid-template-rows:13px 1fr 13px}}
+
+/* seletor de mês (12 meses): botões de verdade, mês escolhido em destaque */
+.cm-serie{gap:5px!important;align-items:stretch}
+.cm-serie button{grid-template-rows:auto 1fr auto;gap:3px;padding:5px 2px 4px;border:1px solid #e1e6ec;border-radius:8px;background:#f6f8fb;transition:background .15s,border-color .15s,transform .12s}
+.cm-serie button:hover{background:#eaf0f8;border-color:#b9c8dd;transform:translateY(-1px)}
+.cm-serie button.on{background:#17428f;border-color:#17428f;box-shadow:0 4px 10px -4px rgba(23,66,143,.6)}
+.cm-serie button.on b,.cm-serie button.on span,.cm-serie button.on small{color:#fff!important}
+.cm-serie button.on i{background:#f4c20d}
+.cm-serie button span{display:grid;line-height:1.1;font-weight:700;font-size:11.5px;color:#27323d}
+.cm-serie button span small{font-size:9.5px;font-weight:500;color:#7a8693}
+.cm-serie i{border-radius:3px 3px 0 0}
+@media(max-width:620px){
+  .cm-serie{grid-template-columns:repeat(6,1fr);height:auto!important;gap:6px!important}
+  .cm-serie button{min-height:78px;padding:7px 2px 6px}.cm-serie b{font-size:14px}.cm-serie button span{font-size:12.5px}.cm-serie button span small{font-size:10.5px}
+  .cm-dir{width:100%}.cm-dir .cm-rolagem{max-height:none;overflow:visible}
+  .cm-corpo{padding:12px}.cm-sec{padding:14px}
+  .cm-barras>div{grid-template-columns:96px 1fr 62px}
+  .cm-col{height:96px}.cm-col>div{font-size:11.5px}
+}

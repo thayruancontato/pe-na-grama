@@ -15,6 +15,7 @@ type Props = {
 const brl = (v: number) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const pct = (v: number) => (v > 0 ? '+' : '') + v.toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + '%';
 const PAGO = ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH', 'pago', 'confirmado'];
+const DIAS_LONGOS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 const STATUS: Record<string, string> = { aprovado: 'Ativo', pendente: 'Aguardando', desativado: 'Desativado' };
 
 function idadeDe(a: any): number | null {
@@ -70,8 +71,12 @@ export default function CadastrosMesModal({ indice, meses, pags, mensalidade, mo
     const totalAlunos = a.alunos.length, maxSerie = Math.max(1, ...meses.map((m) => m.n)), maxSem = Math.max(1, ...a.porSem), maxDia = Math.max(1, ...a.porDia.map((d) => d[1]));
     const Seta = a.dif > 0 ? TrendingUp : a.dif < 0 ? TrendingDown : Minus;
     const vsMedia = a.media ? ((mes.n - a.media) / a.media) * 100 : 0;
-    const txt = !mes.n ? 'Nenhum cadastro neste mês.'
-        : `${mes.longo} teve ${mes.n} ${mes.n === 1 ? 'cadastro' : 'cadastros'} (${totalAlunos} ${totalAlunos === 1 ? 'aluno' : 'alunos'}), ${a.rank}º melhor mês dos últimos ${meses.length}${a.difPct !== null ? `, ${a.dif >= 0 ? 'alta' : 'queda'} de ${Math.abs(Math.round(a.difPct))}% sobre o mês anterior` : ''}. ${a.ativos.length} já estão ativos${a.pend.length ? ` e ${a.pend.length} aguardam aprovação` : ''}.`;
+    const nomeMes = mes.longo.split(' ')[0], nomeAnt = ant ? ant.longo.split(' ')[0] : '';
+    const veredito = !mes.n ? { cls: 'vz', t: 'Sem cadastros', I: Minus } : vsMedia > 15 ? { cls: 'forte', t: 'Mês forte', I: TrendingUp } : vsMedia < -15 ? { cls: 'fraco', t: 'Mês fraco', I: TrendingDown } : { cls: 'medio', t: 'Na média', I: Minus };
+    const VIcon = veredito.I;
+    const comp = !ant ? '' : a.dif === 0 ? `, o mesmo que ${nomeAnt.toLowerCase()}` : `, ${Math.abs(a.dif)} a ${a.dif > 0 ? 'mais' : 'menos'} que ${nomeAnt.toLowerCase()}`;
+    const txt = !mes.n ? `${nomeMes} não teve nenhum cadastro novo.` : `${nomeMes} teve ${mes.n} ${mes.n === 1 ? 'cadastro' : 'cadastros'}${comp} e ${Math.abs(Math.round(vsMedia))}% ${vsMedia >= 0 ? 'acima' : 'abaixo'} da média.`;
+    const pico = (arr: number[]) => arr.indexOf(Math.max(...arr));
 
     return createPortal(
         <div className="cm-fundo" onMouseDown={(e) => { if (e.target === e.currentTarget) onFechar(); }}>
@@ -88,66 +93,70 @@ export default function CadastrosMesModal({ indice, meses, pags, mensalidade, mo
                     </nav>
                 </header>
                 <div className="cm-corpo" key={indice}>
-                    <p className="cm-resumo">{txt}</p>
+                            <section className="cm-sec cm-topo12">
+                                <h3>Cadastros nos últimos 12 meses</h3>
+                                <div className="cm-serie">{meses.map((m, i) => (
+                                    <button type="button" key={m.rotulo} className={i === indice ? 'on' : ''} onClick={() => onIr(i)} title={`${m.longo}: ${m.n}`}>
+                                        <b>{m.n}</b><i style={{ height: Math.max(3, (m.n / maxSerie) * 34) + 'px' }} /><span>{m.rotulo.slice(0, 3)}<small>{m.rotulo.slice(4)}</small></span>
+                                    </button>))}</div>
+                            </section>
+
+                    <p className="cm-resumo"><span className={`cm-ver ${veredito.cls}`}><VIcon size={16} />{veredito.t}</span><span>{txt}</span></p>
 
                     <div className="cm-kpis">
-                        <div><small>Cadastros</small><b>{mes.n}</b><em>{totalAlunos} {totalAlunos === 1 ? 'aluno' : 'alunos'}</em></div>
-                        <div><small>Vs. mês anterior</small><b className={a.dif > 0 ? 'pos' : a.dif < 0 ? 'neg' : ''}><Seta size={18} />{ant ? (a.difPct !== null ? pct(a.difPct) : a.dif > 0 ? 'novo' : '0%') : '—'}</b><em>{ant ? `${ant.n} em ${ant.longo.split(' ')[0]}` : 'sem mês anterior'}</em></div>
-                        <div><small>Vs. média de 12 meses</small><b className={vsMedia > 0 ? 'pos' : vsMedia < 0 ? 'neg' : ''}>{pct(vsMedia)}</b><em>média de {a.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por mês</em></div>
-                        <div><small>Posição no ano</small><b>{mes.n ? a.rank + 'º' : '—'}</b><em>de {meses.length} meses{a.melhor === mes ? ' · o melhor' : ''}</em></div>
-                        <div><small>Mensalidades previstas</small><b>{brl(a.prev)}</b><em>dos que já estão ativos</em></div>
-                        <div><small>Já pago por eles</small><b>{brl(a.receita)}</b><em>{a.atrasados.length ? `${a.atrasados.length} em atraso` : 'nenhum em atraso'}</em></div>
+                        <div><small>Cadastros</small><b>{mes.n}</b><em>{totalAlunos === mes.n ? `Novos alunos em ${nomeMes.toLowerCase()}` : `${totalAlunos} alunos no total`}</em></div>
+                        <div><small>{ant ? `Em relação a ${nomeAnt.toLowerCase()}` : 'Mês anterior'}</small><b className={a.dif > 0 ? 'pos' : a.dif < 0 ? 'neg' : ''}><Seta size={18} />{ant ? (a.difPct !== null ? pct(a.difPct) : a.dif > 0 ? 'novo' : '0%') : '—'}</b><em>{ant ? `${nomeAnt} teve ${ant.n}` : 'sem dados'}</em></div>
+                        <div><small>{vsMedia >= 0 ? 'Acima da média' : 'Abaixo da média'}</small><b className={vsMedia > 0 ? 'pos' : vsMedia < 0 ? 'neg' : ''}>{pct(vsMedia)}</b><em>Média de {a.media.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} por mês</em></div>
+                        <div><small>Posição no período</small><b>{mes.n ? a.rank + 'º' : '—'}</b><em>Entre os últimos {meses.length} meses{a.melhor === mes ? ' · o melhor' : ''}</em></div>
+                        <div><small>Mensalidades previstas</small><b>{brl(a.prev)}</b><em>Dos alunos ativos</em></div>
+                        <div><small>Já pago</small><b>{brl(a.receita)}</b><em>Pagamentos desses alunos</em></div>
                     </div>
 
-                    <section className="cm-sec">
-                        <h3>Os 12 meses lado a lado</h3>
-                        <div className="cm-serie">{meses.map((m, i) => (
-                            <button type="button" key={m.rotulo} className={i === indice ? 'on' : ''} onClick={() => onIr(i)} title={`${m.longo}: ${m.n}`}>
-                                <b>{m.n || ''}</b><i style={{ height: Math.max(2, (m.n / maxSerie) * 70) + 'px' }} /><span>{m.rotulo.slice(0, 3)}</span>
-                            </button>))}</div>
-                    </section>
+                    <div className="cm-grade">
+                        <div className="cm-esq">
 
-                    <div className="cm-duas">
-                        <section className="cm-sec"><h3>Por modalidade</h3><Barras dados={a.mod} total={totalAlunos} vazio="Sem dados." /></section>
-                        <section className="cm-sec"><h3>Faixa etária{a.idadeMedia !== null && <small> · idade média {a.idadeMedia.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} anos</small>}</h3>
-                            <Barras dados={a.fx} total={totalAlunos - a.semIdade} vazio="Sem datas de nascimento." />
-                            {a.semIdade > 0 && <p className="cm-nota">{a.semIdade} sem data de nascimento informada.</p>}
-                        </section>
-                    </div>
+                            <div className="cm-duas">
+                                <section className="cm-sec"><h3>Por modalidade</h3><Barras dados={a.mod} total={totalAlunos} vazio="Sem dados." /></section>
+                                <section className="cm-sec"><h3>Faixa etária{a.idadeMedia !== null && <small> · idade média {a.idadeMedia.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} anos</small>}</h3>
+                                    <Barras dados={a.fx} total={totalAlunos - a.semIdade} vazio="Sem datas de nascimento." />
+                                    {a.semIdade > 0 && <p className="cm-nota">{a.semIdade} sem data de nascimento informada.</p>}
+                                </section>
+                            </div>
 
-                    <div className="cm-duas">
-                        <section className="cm-sec"><h3>Ritmo ao longo do mês</h3>
-                            <div className="cm-col">{a.porSem.map((n, i) => <div key={i}><b>{n}</b><i style={{ height: Math.max(2, (n / maxSem) * 56) + 'px' }} /><span>{i * 7 + 1}–{Math.min(i * 7 + 7, new Date(mes.ano, mes.m + 1, 0).getDate())}</span></div>)}</div>
-                        </section>
-                        <section className="cm-sec"><h3>Dia da semana</h3>
-                            <div className="cm-col">{a.porDia.map(([d, n]) => <div key={d}><b>{n || ''}</b><i style={{ height: Math.max(2, (n / maxDia) * 56) + 'px' }} /><span>{d}</span></div>)}</div>
-                        </section>
-                    </div>
+                            <div className="cm-duas">
+                                <section className="cm-sec"><h3>Ritmo ao longo do mês</h3>
+                                    <div className="cm-col">{a.porSem.map((n, i) => <div key={i} className={n && i === pico(a.porSem) ? 'pico' : ''}><b>{n}</b><i style={{ height: Math.max(2, (n / maxSem) * 36) + 'px' }} /><span>{i + 1}ª sem</span></div>)}</div>
+                                    {mes.n > 0 && <p className="cm-tag">Pico: {pico(a.porSem) + 1}ª semana · {Math.max(...a.porSem)}</p>}
+                                </section>
+                                <section className="cm-sec"><h3>Dia da semana</h3>
+                                    <div className="cm-col">{a.porDia.map(([d, n], i) => <div key={d} className={n && i === pico(a.porDia.map((x) => x[1])) ? 'pico' : ''}><b>{n}</b><i style={{ height: Math.max(2, (n / maxDia) * 36) + 'px' }} /><span>{d}</span></div>)}</div>
+                                    {mes.n > 0 && <p className="cm-tag">Destaque: {DIAS_LONGOS[pico(a.porDia.map((x) => x[1]))]} · {maxDia}</p>}
+                                </section>
+                            </div>
 
-                    <section className="cm-sec">
-                        <h3>Situação dos {mes.n === 1 ? 'cadastros' : mes.n + ' cadastros'}</h3>
-                        <div className="cm-sit">
-                            <span className="ok"><b>{a.ativos.length}</b>ativos</span>
-                            <span className="pe"><b>{a.pend.length}</b>aguardando aprovação</span>
-                            <span className="at"><b>{a.atrasados.length}</b>com pagamento em atraso</span>
+                            <section className="cm-sec cm-sit">
+                                <h3>Situação dos cadastros</h3>
+                                <span className="ok"><b>{a.ativos.length}</b> ativos</span>
+                                <span className="pe"><b>{a.pend.length}</b> aguardando aprovação</span>
+                                <span className="at"><b>{a.atrasados.length}</b> em atraso</span>
+                            </section>
                         </div>
-                    </section>
 
-                    <section className="cm-sec">
-                        <h3>Todos os cadastros do mês</h3>
-                        {a.alunos.length ? (
-                            <div className="cm-rolagem"><table className="est-tab"><thead><tr><th>Aluno</th><th>Cadastro</th><th>Modalidade</th><th>Responsável</th><th>Situação</th><th className="n">Mensalidade</th></tr></thead>
-                                <tbody>{a.alunos.map(({ al, r }, i) => (
-                                    <tr key={r.id + i}>
-                                        <td><span className="cm-al">{al.fotoUrl ? <img src={al.fotoUrl} alt="" loading="lazy" /> : <i>{String(al.nome || '?').trim().charAt(0).toUpperCase()}</i>}{al.nome || 'Aluno'}</span></td>
-                                        <td>{dataDe(r.createdAt)?.toLocaleDateString('pt-BR') || '—'}</td>
-                                        <td>{modalidade(r)}</td>
-                                        <td>{r.responsavel?.nome || '—'}</td>
-                                        <td><span className={`cm-st ${String(r.contractStatus || '').toLowerCase()}`}>{STATUS[String(r.contractStatus || '').toLowerCase()] || 'Aguardando'}</span></td>
-                                        <td className="n">{brl(mensalidade(r) / ((Array.isArray(r.alunos) && r.alunos.length) || 1))}</td>
-                                    </tr>))}</tbody></table></div>
-                        ) : <p className="cm-vazio">Nenhum cadastro neste mês.</p>}
-                    </section>
+                        <section className="cm-sec cm-dir">
+                            <h3>Alunos cadastrados <small>· {totalAlunos} {totalAlunos === 1 ? 'aluno' : 'alunos'}</small></h3>
+                            {a.alunos.length ? (
+                                <div className="cm-rolagem"><table className="est-tab"><thead><tr><th>Aluno</th><th>Data</th><th>Modalidade</th><th>Situação</th><th className="n">Mensalidade</th></tr></thead>
+                                    <tbody>{a.alunos.map(({ al, r }, i) => (
+                                        <tr key={r.id + i}>
+                                            <td><span className="cm-al">{al.fotoUrl ? <img src={al.fotoUrl} alt="" loading="lazy" /> : <i>{String(al.nome || '?').trim().charAt(0).toUpperCase()}</i>}{al.nome || 'Aluno'}</span></td>
+                                            <td>{dataDe(r.createdAt)?.toLocaleDateString('pt-BR') || '—'}</td>
+                                            <td>{modalidade(r)}</td>
+                                            <td><span className={`cm-st ${String(r.contractStatus || '').toLowerCase()}`}>{STATUS[String(r.contractStatus || '').toLowerCase()] || 'Aguardando'}</span></td>
+                                            <td className="n">{brl(mensalidade(r) / ((Array.isArray(r.alunos) && r.alunos.length) || 1))}</td>
+                                        </tr>))}</tbody></table></div>
+                            ) : <p className="cm-vazio">Nenhum cadastro neste mês.</p>}
+                        </section>
+                    </div>
                 </div>
             </div>
         </div>,

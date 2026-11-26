@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import { sponsorWhatsappLink } from '../data/sponsors';
 import { useSponsors } from '../hooks/useSponsors';
@@ -13,13 +14,23 @@ export default function SponsorsCarousel({
     title = 'Nossos Patrocinadores'
 }: SponsorsCarouselProps) {
     const { itens: sponsors, mostrar, pronto } = useSponsors();
+    const vp = useRef<HTMLDivElement>(null);
+    const [rola, setRola] = useState(false); // só anima (e repete) quando as logos não cabem na largura
+    useEffect(() => {
+        const mede = () => {
+            const v = vp.current; const item = v?.querySelector<HTMLElement>('.sponsors-carousel__item'); if (!v || !item) return;
+            const gap = parseFloat(getComputedStyle(v.firstElementChild as Element).columnGap) || 0;
+            setRola(sponsors.length * (item.offsetWidth + gap) - gap > v.clientWidth);
+        };
+        mede(); window.addEventListener('resize', mede); return () => window.removeEventListener('resize', mede);
+    }, [sponsors.length, pronto, mostrar]);
     // Desligado em Patrocinadores, ou sem nenhum ativo: não mostra nada (nem o título).
     if (!pronto || !mostrar || sponsors.length === 0) return null;
 
     // A faixa roda duas cópias da lista e desliza -50%: quando a primeira
     // cópia sai, a segunda está exatamente na posição inicial, então o loop
     // não tem emenda visível.
-    const loop = [...sponsors, ...sponsors];
+    const loop = rola ? [...sponsors, ...sponsors] : sponsors;
 
     // Ritmo constante (~3.2s por logo) para a faixa não acelerar quando
     // a lista de patrocinadores crescer.
@@ -74,6 +85,8 @@ export default function SponsorsCarousel({
                         gap: 18px;
                         animation: sponsors-scroll linear infinite;
                     }
+                    .sponsors-carousel__viewport--fixo { -webkit-mask-image: none; mask-image: none; }
+                    .sponsors-carousel__viewport--fixo .sponsors-carousel__track { animation: none; width: auto; justify-content: center; flex-wrap: wrap; }
 
                     .sponsors-carousel__viewport:hover .sponsors-carousel__track {
                         animation-play-state: paused;
@@ -168,7 +181,7 @@ export default function SponsorsCarousel({
 
             <p className="sponsors-carousel__label">{title}</p>
 
-            <div className="sponsors-carousel__viewport">
+            <div className={`sponsors-carousel__viewport${rola ? '' : ' sponsors-carousel__viewport--fixo'}`} ref={vp}>
                 <div
                     className="sponsors-carousel__track"
                     style={{ animationDuration: `${duration}s` }}
