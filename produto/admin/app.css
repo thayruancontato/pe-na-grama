@@ -271,3 +271,7 @@ tr.lin-click{cursor:pointer}
 .nu-rod{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid #e8edf3}
 .nu-rod small{font-size:12.5px;color:#64748b;line-height:1.45}.nu-rod .pg-btn{flex:none;min-height:44px;padding:0 22px}
 @media(max-width:720px){.nu-grade{grid-template-columns:1fr}.nu-rod{flex-direction:column;align-items:stretch}.nu-rod .pg-btn{width:100%}}
+/* Controle total · Plano e cobrança */
+.ct-situ{display:grid;gap:12px;padding:16px 18px;border:1px solid #dbe3ec;border-radius:12px;background:#fff}
+.ct-situ-txt{display:grid;gap:2px}.ct-situ-txt span{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b}.ct-situ-txt b{font-size:18px;color:#10213f}
+.ct-situ-acoes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ct-situ-acoes .pg-select{min-width:220px;flex:1 1 220px;min-height:42px}

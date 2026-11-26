@@ -686,7 +686,7 @@ async function rotaAdmin(req, env, url, caminho) {
       return J({ email, senha, url: c.url_sistema + '/admin/login' });
     }
     // ---- Dono master: controle total da escola (opções, usuários, dados, sessões, entrar como a escola) ----
-    if (id && ['controle', 'usuarios', 'usuario', 'sessoes', 'dados', 'limpar-dados', 'auditoria', 'exportar', 'entrar', 'popular'].includes(acao)) {
+    if (id && ['controle', 'usuarios', 'usuario', 'sessoes', 'dados', 'limpar-dados', 'auditoria', 'exportar', 'entrar', 'popular', 'situacao'].includes(acao)) {
       const c0 = await env.DB.prepare('SELECT escola,url_sistema FROM clientes WHERE id=?').bind(id).first();
       if (!c0 || !c0.url_sistema) return erro('Cliente sem endereço do sistema.', 404);
       const t = new URL(c0.url_sistema).host, q = (sql, ...a) => env.DB.prepare(sql).bind(...a);
@@ -739,6 +739,29 @@ async function rotaAdmin(req, env, url, caminho) {
       }
       if (acao === 'sessoes' && m === 'POST') { const r = await q('SELECT email FROM sys_users WHERE tenant=?', t).all(); for (const u of r.results || []) await revogar(env, t, u.email); await log(env, 'sistema', 'Todas as sessões de ' + c0.escola + ' encerradas'); return J({ ok: true, usuarios: (r.results || []).length }); }
       if (acao === 'dados' && m === 'GET') { const r = await q('SELECT col, COUNT(*) n, COALESCE(SUM(LENGTH(data)),0) b FROM sys_docs WHERE tenant=? GROUP BY col ORDER BY b DESC', t).all(); return J({ colecoes: (r.results || []).map((x) => ({ col: x.col, n: x.n, kb: Math.round(x.b / 1024) })) }); }
+      if (acao === 'situacao' && m === 'POST') { // marca a escola como paga e ativa, ou de volta ao período de teste
+        const b = await body(), cfgA = await asaasCfg(env);
+        const l = await q('SELECT v FROM settings WHERE k=?', 'assin:' + id).first(), ass = l ? JSON.parse(l.v) : null;
+        if (ass && ass.status === 'pendente') { try { await cancelarAssinatura(env, cfgA, id, ass); } catch { /* sem Asaas ou já cancelada */ } } // evita cobrança em duplicidade
+        const salvo = (await doc('controle')) || {}, valores = { ...(salvo.valores || {}) };
+        if (b.acao === 'ativar') {
+          const pl = b.plano ? await q('SELECT nome,mensal FROM planos WHERE nome=?', String(b.plano).slice(0, 60)).first() : null;
+          if (pl) await q("UPDATE clientes SET status='ativo', plano_nome=?, mensal=? WHERE id=?", pl.nome, pl.mensal, id).run(); else await q("UPDATE clientes SET status='ativo' WHERE id=?", id).run();
+          valores.teste_ativo = false; valores.banner_ativo = false;
+          await salvarDoc('controle', { valores, interno: salvo.interno || {} }); esquecerControle(t);
+          await q('DELETE FROM settings WHERE k=?', 'teste:' + id).run();
+          await log(env, 'cliente', c0.escola + ' marcada como paga e ativa' + (pl ? ' (plano ' + pl.nome + ')' : '')); return J({ ok: true, status: 'ativo' });
+        }
+        if (b.acao === 'teste') {
+          const fim = somaDias(tz(), Math.min(Math.max(int(b.dias, 14), 1), 90));
+          await q("UPDATE clientes SET status='teste', plano_nome='Teste grátis', mensal=0 WHERE id=?", id).run();
+          valores.teste_ativo = true; valores.teste_ate = fim;
+          await salvarDoc('controle', { valores, interno: salvo.interno || {} }); esquecerControle(t);
+          await setSet(env, 'teste:' + id, fim);
+          await log(env, 'cliente', c0.escola + ' voltou para o período de teste (até ' + dataBr(fim) + ')'); return J({ ok: true, status: 'teste', ate: fim });
+        }
+        return erro('Ação inválida.');
+      }
       if (acao === 'popular' && m === 'POST') { // injeta na escola os dados de teste (cópia da escola de demonstração); os registros de teste são atualizados
         const molde = await q("SELECT url_sistema FROM clientes WHERE escola LIKE '%Bosque%' AND url_sistema<>'' ORDER BY id LIMIT 1").first();
         if (!molde) return erro('A escola de demonstração (Bosque das Araucárias) não foi encontrada.', 404);
