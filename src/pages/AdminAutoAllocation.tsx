@@ -16,7 +16,7 @@ interface Turma {
     modalidade: string;
 }
 
-export default function AdminAutoAllocation() {
+export default function AdminAutoAllocation({ embutido = false, onFechar }: { embutido?: boolean; onFechar?: () => void } = {}) {
     const navigate = useNavigate();
     const { showAlert } = useDialog();
     const { setLoading: setShowLoading } = useLoading();
@@ -336,14 +336,15 @@ export default function AdminAutoAllocation() {
 
     void renderModalitySection;
 
+    const Raiz: any = embutido ? 'div' : PageContainer; // dentro do modal não precisa do contêiner da página
     return (
-        <PageContainer>
+        <Raiz>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
                 <button
-                    onClick={() => navigate(-1)}
+                    onClick={() => (embutido && onFechar ? onFechar() : navigate(-1))}
                     style={{ background: '#f5f5f5', border: 'none', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: '#555' }}
                 >
-                    <ArrowLeft size={18} /> Voltar
+                    <ArrowLeft size={18} /> {embutido ? 'Fechar' : 'Voltar'}
                 </button>
                 <h1 style={{ margin: 0, fontSize: '1.2rem', color: '#00a63a', fontWeight: '900' }}>ALOCAÇÃO AUTOMÁTICA</h1>
                 <button
@@ -374,6 +375,6 @@ export default function AdminAutoAllocation() {
                 .spin { animation: spin 1s linear infinite; }
                 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
             `}</style>
-        </PageContainer>
+        </Raiz>
     );
 }

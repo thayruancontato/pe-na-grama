@@ -1,16 +1,17 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, orderBy, addDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useDialog } from '../context/CustomDialogContext';
-import { Users, Plus, RefreshCw } from 'lucide-react';
+import { Users, Plus, Settings } from 'lucide-react';
 import PageTitle from '../components/PageTitle';
 import PageContainer from '../components/PageContainer';
 import { normalizeModality } from '../utils/turmasConstants';
 
 
 import Tabs from '../components/Tabs';
+const AdminAutoAllocation = lazy(() => import('./AdminAutoAllocation'));
 interface Student {
     id: string;
     registrationId: string; // Firestore document ID
@@ -181,6 +182,9 @@ export default function AdminTurmas() {
         }));
     };
 
+    const [showAuto, setShowAuto] = useState(false);
+    useEffect(() => { if (!showAuto) return; const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowAuto(false); }; document.addEventListener('keydown', esc); return () => document.removeEventListener('keydown', esc); }, [showAuto]);
+
     return (
         <PageContainer>
             <PageTitle title="GESTÃO DE TURMAS">
@@ -193,44 +197,26 @@ export default function AdminTurmas() {
                 >
                     <Plus size={18} /> Nova Turma
                 </button>
+                <button type="button" onClick={() => setShowAuto(true)} title="Alocação automática" aria-label="Configurar alocação automática"
+                    style={{ width: '44px', height: '44px', display: 'grid', placeItems: 'center', background: '#fff', color: '#00a63a', border: '1px solid #cfd8e3', borderRadius: '8px', cursor: 'pointer' }}>
+                    <Settings size={20} />
+                </button>
             </PageTitle>
+
+            {showAuto && (
+                <div onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAuto(false); }} style={{ position: 'fixed', inset: 0, zIndex: 9500, background: 'rgba(10,22,40,.55)', display: 'grid', placeItems: 'center', padding: '16px' }}>
+                    <div role="dialog" aria-modal="true" aria-label="Alocação automática" style={{ position: 'relative', width: 'min(920px, 100%)', maxHeight: '92vh', overflowY: 'auto', background: '#f6f8fa', borderRadius: '12px', padding: '18px 20px', boxShadow: '0 30px 70px rgba(0,0,0,.4)' }}>
+                        <Suspense fallback={<p style={{ padding: '30px', textAlign: 'center', color: '#666' }}>Carregando…</p>}>
+                            <AdminAutoAllocation embutido onFechar={() => setShowAuto(false)} />
+                        </Suspense>
+                    </div>
+                </div>
+            )}
 
             {/* Content for classes list */}
             <div>
                 <Tabs items={MODALIDADES.map((m) => ({ id: m, label: m }))} active={activeModality} onChange={setActiveModality} />
 
-                {normalizeModality(activeModality) === 'Futebol' && (
-                    <button
-                        onClick={() => navigate('/admin/turmas/auto-allocation')}
-                        style={{
-                            width: '100%',
-                            padding: '15px',
-                            background: '#fff',
-                            border: '2px dashed #00a63a',
-                            borderRadius: '12px',
-                            color: '#00a63a',
-                            fontWeight: 'bold',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '10px',
-                            marginBottom: '20px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                            fontSize: '1rem'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#eef8ff';
-                            e.currentTarget.style.transform = 'scale(1.01)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#fff';
-                            e.currentTarget.style.transform = 'scale(1)';
-                        }}
-                    >
-                        <RefreshCw size={20} /> Configurar Alocação Automática
-                    </button>
-                )}
 
                 {loading ? <p>Carregando...</p> : (
                     <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
