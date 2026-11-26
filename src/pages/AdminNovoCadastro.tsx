@@ -295,7 +295,7 @@ const AdminNovoCadastro: React.FC = () => {
     };
 
     return (
-        <div className="admin-page page-enter" style={{ maxWidth: '100vw', padding: '20px', boxSizing: 'border-box', overflowX: 'hidden', paddingBottom: '100px' }}>
+        <div className="admin-page nc page-enter" style={{ maxWidth: '100vw', padding: '20px', boxSizing: 'border-box', overflowX: 'hidden', paddingBottom: '100px' }}>
             <header style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h1 style={{ fontSize: '1.8rem', color: '#00a63a', fontWeight: '800', margin: 0 }}>NOVO CADASTRO</h1>
@@ -534,6 +534,27 @@ const AdminNovoCadastro: React.FC = () => {
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 .animate-fade-in { animation: fadeIn 0.4s ease-out; }
 
+                /* compacto no computador: campos menores para o cadastro inteiro caber numa tela */
+                @media (min-width: 900px) {
+                    .nc { padding: 10px 16px 16px !important; }
+                    .nc header { margin-bottom: 10px !important; }
+                    .nc header h1 { font-size: 1.3rem !important; }
+                    .nc header p { margin: 0 !important; font-size: .8rem; }
+                    .nc .btn-save-admin { padding: 8px 16px !important; font-size: .8rem; }
+                    .nc .admin-grid-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; gap: 12px !important; align-items: start; }
+                    .nc .admin-grid-form > div { gap: 12px !important; }
+                    .nc .admin-card { border-radius: 8px; }
+                    .nc .admin-card-header { padding: 7px 14px !important; font-size: .78rem; }
+                    .nc .admin-card-body { padding: 10px 14px 4px !important; max-height: none !important; }
+                    .nc .admin-form-group { margin-bottom: 8px !important; }
+                    .nc .admin-form-group label, .nc .admin-schedule-picker label { font-size: .64rem !important; margin-bottom: 2px !important; }
+                    .nc .admin-form-group input, .nc .admin-form-group select, .nc .admin-form-group textarea { height: 30px !important; min-height: 0 !important; padding: 4px 9px !important; font-size: .82rem !important; border-radius: 6px !important; }
+                    .nc .admin-form-grid-2, .nc .admin-form-grid-3 { gap: 10px !important; }
+                    .nc .admin-student-item { padding: 8px 10px !important; margin-bottom: 8px !important; }
+                    .nc .admin-student-item h3, .nc .admin-student-item h4 { margin: 0 0 6px !important; font-size: .85rem !important; }
+                    .nc .admin-student-item [style*="dashed"] { width: 44px !important; height: 44px !important; }
+                    .nc .admin-toggle-btn { padding: 5px !important; font-size: .78rem; }
+                }
                 @media (max-width: 600px) {
                     .admin-grid-form { grid-template-columns: 1fr; }
                     .admin-card-body { padding: 15px; }
