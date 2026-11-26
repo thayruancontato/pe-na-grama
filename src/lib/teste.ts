@@ -105,6 +105,34 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .pm-doc .err{padding:10px 12px;border-radius:8px;background:#fdecec;color:#8a1c1c;font-size:13.5px}
 @media(max-width:760px){.pm-pag{grid-template-columns:1fr;padding:16px 16px 4px}.pm-pag .val{font-size:38px}.pm-rodape{margin:12px 16px 20px;gap:12px}.pm-doc{padding:20px 16px 24px}}
 @media(max-width:760px){.pm-logo{height:60px;min-width:84px}.pm-logo img{height:44px;max-width:120px}.pm-foto{width:100%;opacity:.55;background-position:70% 30%}.pm-topo::before{background:linear-gradient(180deg,color-mix(in srgb,var(--e) 92%,transparent),color-mix(in srgb,var(--e) 62%,transparent))}.pm-topo-in{padding:22px 18px}.pm-topo h2{font-size:23px}.pm-tira{margin:14px 16px 0}.pm-direita{padding:16px 16px 20px}.pm-garantia{grid-template-columns:1fr;gap:6px}.pm-garantia span+span{border-left:0}}
+/* ===== comportamento: animações, carregando, transições ===== */
+.pm-fundo.saindo{animation:pm-out .18s ease forwards}.pm-fundo.saindo .pm{animation:pm-down .18s ease forwards}
+@keyframes pm-out{to{opacity:0}}@keyframes pm-down{to{opacity:0;transform:translateY(14px) scale(.98)}}
+.pm-corpo.pm-anim>*{animation:pm-troca .32s cubic-bezier(.2,.8,.2,1) both}
+@keyframes pm-troca{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.pm-lista .pm-card{animation:pm-card .4s cubic-bezier(.2,.8,.2,1) both}.pm-lista .pm-card:nth-child(2){animation-delay:.06s}.pm-lista .pm-card:nth-child(3){animation-delay:.12s}
+@keyframes pm-card{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.pm-sk{min-height:238px;border-radius:14px;border:1px solid #e1e6ec;background:linear-gradient(100deg,#f1f4f8 30%,#fff 45%,#f1f4f8 60%) 0 0/220% 100%;animation:pm-brilho 1.2s linear infinite}
+@keyframes pm-brilho{to{background-position:-120% 0}}
+.pm-carga{display:grid;justify-items:center;gap:14px;padding:44px 24px 40px;text-align:center}
+.pm-carga .anel{width:58px;height:58px;border-radius:50%;border:5px solid color-mix(in srgb,var(--p) 18%,#fff);border-top-color:var(--p);animation:pm-giro .8s linear infinite}
+@keyframes pm-giro{to{transform:rotate(360deg)}}
+.pm-carga h3{margin:0;font-size:20px;color:var(--e)}.pm-carga p{margin:0;max-width:380px;font-size:14px;color:#4b5764}
+.pm-passos{list-style:none;margin:2px 0 0;padding:0;display:grid;gap:8px;text-align:left}
+.pm-passos li{position:relative;padding-left:28px;font-size:14px;color:#8a95a3;transition:color .25s}
+.pm-passos li::before{content:"";position:absolute;left:0;top:2px;width:16px;height:16px;border-radius:50%;border:2px solid #c3ccd6}
+.pm-passos li.agora{color:var(--e);font-weight:700}.pm-passos li.agora::before{border-color:var(--p);border-top-color:transparent;animation:pm-giro .8s linear infinite}
+.pm-passos li.ok{color:var(--e)}.pm-passos li.ok::before{content:"✓";display:grid;place-items:center;background:var(--p);border-color:var(--p);color:#fff;font-size:10px;font-weight:800}
+.pm-qr img{animation:pm-qr .5s ease both}@keyframes pm-qr{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.pm-copia.ok{animation:pm-pop .3s ease}@keyframes pm-pop{40%{transform:scale(1.03)}}
+.pm-aguarda.conf::after{content:"conferindo…";margin-left:2px;font-size:12px;font-weight:600;opacity:.7}
+.pm-ok .anel-ok{display:inline-grid;place-items:center;width:68px;height:68px;border-radius:50%;background:var(--p);color:#fff;font-size:32px;font-style:normal;animation:pm-ok .55s cubic-bezier(.2,1.4,.4,1) both,pm-halo 1.6s ease-out .5s 2}
+@keyframes pm-ok{from{opacity:0;transform:scale(.3)}to{opacity:1;transform:none}}@keyframes pm-halo{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--p) 45%,transparent)}100%{box-shadow:0 0 0 22px transparent}}
+.pm-barra{width:min(280px,80%);height:6px;margin:8px auto 0;border-radius:999px;background:#e3e8ee;overflow:hidden}.pm-barra i{display:block;height:100%;width:0;background:var(--p);border-radius:inherit;animation:pm-enche 2.6s linear forwards}
+@keyframes pm-enche{to{width:100%}}
+.pm-card button:active,.pm-copia:active,.pm-doc .go:active{transform:scale(.98)}
+.pm-card.escolhendo{pointer-events:none;opacity:.55}
+@media(prefers-reduced-motion:reduce){.pm-corpo.pm-anim>*,.pm-lista .pm-card,.pm-qr img,.pm-ok .anel-ok,.pm-sk,.pm-fundo.saindo,.pm-fundo.saindo .pm{animation:none!important}.pm-carga .anel{animation-duration:2.4s}.pm-barra i{animation-duration:.01s}}
 @media(max-width:760px){
 .pm-fundo{padding:8px}.pm{max-height:95vh;border-radius:18px}
 .pm-topo{min-height:0}.pm-topo-in{gap:8px;padding:16px 16px 14px}.pm-topo p{display:none}.pm-topo h2{font-size:20px;line-height:1.15}
@@ -182,9 +210,10 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
         const [titulo, sub] = RECURSOS[item || ''] || PADRAO;
         fundo.innerHTML = `<div class="pm" role="dialog" aria-modal="true" aria-label="Escolha o seu plano"><button class="pm-x" type="button" aria-label="Fechar">✕</button><div class="pm-topo"><div class="pm-foto" role="img" aria-label="Treinador comemorando com um aluno"></div><div class="pm-topo-in"><div class="pm-id"><div class="pm-logo"><img class="pm-logo-img" alt="Logo da escola"></div><div><div class="pm-nome"></div><span class="pm-pill">Seu teste grátis · ${dias}</span></div></div><h2>${titulo}</h2><p>${sub}</p></div></div><div class="pm-tira"><h3>ESCOLHA SEU PLANO</h3></div><div class="pm-corpo"><p class="pm-rod">Carregando…</p></div></div>`;
         document.body.appendChild(fundo);
+        const rolagem = document.body.style.overflow; document.body.style.overflow = 'hidden'; // a página de trás não rola com o modal aberto
         prepararLogo().then((l) => { const im = fundo.querySelector('.pm-logo-img') as HTMLImageElement | null; if (im) im.src = l.src; });
         let timer = 0, temDoc = false, escola = '', whats = '';
-        const fecha = () => { clearInterval(timer); fundo.remove(); document.removeEventListener('keydown', esc2); };
+        const fecha = () => { clearInterval(timer); document.removeEventListener('keydown', esc2); document.body.style.overflow = rolagem; fundo.classList.add('saindo'); setTimeout(() => fundo.remove(), 180); };
         const esc2 = (e: KeyboardEvent) => { if (e.key === 'Escape') fecha(); };
         document.addEventListener('keydown', esc2);
         fundo.addEventListener('click', (e) => { if (e.target === fundo) fecha(); });
@@ -195,13 +224,19 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
             $t('.pm-topo h2').innerHTML = t; $t('.pm-topo p').textContent = s2; if (pill) $t('.pm-pill').textContent = pill;
             $t('.pm-tira').style.display = tira ? '' : 'none';
         };
-        const msg = (h: string) => { corpo.style.display = ''; corpo.innerHTML = h; };
+        const msg = (h: string) => { corpo.style.display = ''; corpo.innerHTML = h; corpo.classList.remove('pm-anim'); void corpo.offsetWidth; corpo.classList.add('pm-anim'); };
+        const carga = (titulo: string, texto: string, passos?: string[]) => {
+            msg(`<div class="pm-carga" role="status" aria-live="polite"><i class="anel"></i><h3>${titulo}</h3><p>${texto}</p>${passos ? `<ul class="pm-passos">${passos.map((t) => `<li>${t}</li>`).join('')}</ul>` : ''}</div>`);
+            if (!passos) return;
+            const lis = [...corpo.querySelectorAll('.pm-passos li')] as HTMLElement[]; let i = 0; lis[0].className = 'agora';
+            const id = window.setInterval(() => { if (!document.body.contains(corpo) || !lis[i]) { clearInterval(id); return; } if (i < lis.length - 1) { lis[i].className = 'ok'; i++; lis[i].className = 'agora'; } else clearInterval(id); }, 1300);
+        };
 
         // ---- planos
         const telaPlanos = () => {
             clearInterval(timer);
             topo(titulo, sub, 'Seu teste grátis · ' + dias, true);
-            msg('<p class="pm-rod">Carregando planos…</p>');
+            msg('<div class="pm-direita"><div class="pm-lista" aria-busy="true"><div class="pm-sk"></div><div class="pm-sk"></div><div class="pm-sk"></div></div></div>');
             fetch('/sys/public/planos', { cache: 'no-store' }).then((r) => r.json()).then(({ planos, whats: w, escola: e }) => {
                 whats = w || whats; escola = e || escola;
                 const nm = $t('.pm-nome'); if (nm && escola) nm.textContent = escola;
@@ -218,6 +253,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
         // ---- escolha: pede CPF/CNPJ (uma vez) e cria a assinatura
         const criar = async (nome: string, doc: string, erroEl?: HTMLElement, btn?: HTMLButtonElement) => {
             if (btn) btn.disabled = true;
+            carga('Gerando o seu Pix…', 'Estamos criando a assinatura do plano ' + seguro(nome) + '. Leva só alguns segundos.', ['Criando a sua assinatura', 'Gerando a primeira fatura', 'Preparando o QR code']);
             try {
                 const r = await fetch('/sys/assinatura', { method: 'POST', headers: auth(), body: JSON.stringify({ plano: nome, doc }) });
                 const j = await r.json().catch(() => ({}));
@@ -231,12 +267,14 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
                 if (!r.ok || !j.ok) throw new Error(j.erro || 'Não foi possível gerar o Pix agora.');
                 temDoc = true; telaPagamento(j.assinatura);
             } catch (x) {
-                if (erroEl) { erroEl.textContent = (x as Error).message; erroEl.hidden = false; } else alert((x as Error).message);
-                if (btn) btn.disabled = false;
+                const m = (x as Error).message;
+                if (!temDoc) { escolher(nome); const er = corpo.querySelector('.err') as HTMLElement | null; const inp = corpo.querySelector('#pm-doc') as HTMLInputElement | null; if (inp) inp.value = mascaraDoc(doc); if (er) { er.textContent = m; er.hidden = false; } }
+                else { telaPlanos(); setTimeout(() => alert(m), 60); }
+                void erroEl; void btn;
             }
         };
         const escolher = (nome: string) => {
-            if (temDoc) { msg('<p class="pm-rod" style="padding:30px">Gerando o seu Pix…</p>'); criar(nome, '').then(() => undefined); return; }
+            if (temDoc) { criar(nome, '').then(() => undefined); return; }
             topo('Quase lá! Falta só um dado', 'Para gerar o Pix da primeira fatura do plano ' + seguro(nome) + '.', 'Plano ' + seguro(nome), false);
             msg(`<div class="pm-doc"><h3>CPF ou CNPJ de quem vai pagar</h3><p>É exigido para emitir a cobrança Pix. Usamos só para isso.</p><input id="pm-doc" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="18"><div class="err" hidden></div><button class="go" type="button">Gerar Pix da primeira fatura</button><button class="voltar" type="button">← Voltar aos planos</button></div>`);
             const inp = corpo.querySelector('#pm-doc') as HTMLInputElement, er = corpo.querySelector('.err') as HTMLElement, go = corpo.querySelector('.go') as HTMLButtonElement;
@@ -249,7 +287,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
         const telaPago = () => {
             clearInterval(timer);
             topo('Pagamento confirmado!', 'Tudo liberado na sua escola.', 'Plano ativo', false);
-            msg('<div class="pm-ok"><i>✓</i><h3>Tudo liberado!</h3><p>Recebemos o seu pagamento. Estamos atualizando o seu sistema…</p></div>');
+            msg('<div class="pm-ok"><i class="anel-ok">✓</i><h3>Tudo liberado!</h3><p>Recebemos o seu pagamento. Estamos atualizando o seu sistema…</p><div class="pm-barra"><i></i></div></div>');
             setTimeout(() => location.reload(), 2600);
         };
         const telaPagamento = (a: any) => {
@@ -266,10 +304,11 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
             });
             corpo.querySelector('.pm-trocar')?.addEventListener('click', async () => {
                 if (!confirm('Trocar de plano cancela esta cobrança e cria outra. Continuar?')) return;
-                msg('<p class="pm-rod" style="padding:30px">Cancelando a cobrança…</p>');
+                carga('Cancelando a cobrança…', 'Só um instante. Já voltamos para a escolha de planos.');
                 await fetch('/sys/assinatura/trocar', { method: 'POST', headers: auth(), body: '{}' }).catch(() => undefined); telaPlanos();
             });
             timer = window.setInterval(async () => {
+                const ag = corpo.querySelector('.pm-aguarda'); ag?.classList.add('conf');
                 try {
                     if (prox) { const d = await (await fetch('/sys/assinatura/proxima', { headers: auth(), cache: 'no-store' })).json(); if (!d.proxima || d.proxima.pid !== a.pid) telaPago(); return; }
                     const d = await (await fetch('/sys/assinatura', { headers: auth(), cache: 'no-store' })).json();
@@ -277,6 +316,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
                     else if (!d.assinatura) telaPlanos();
                     else if (d.assinatura.codigo && !a.codigo) telaPagamento(d.assinatura);
                 } catch { /* tenta de novo no próximo ciclo */ }
+                setTimeout(() => ag?.classList.remove('conf'), 700);
             }, 6000);
         };
 

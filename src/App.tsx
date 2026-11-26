@@ -26,6 +26,7 @@ import AdminRelatorioFinanceiro from './pages/AdminRelatorioFinanceiro';
 import AdminPaymentDetails from './pages/AdminPaymentDetails';
 import AdminPaymentProviderSettings from './pages/AdminPaymentProviderSettings';
 import AdminPatrocinadores from './pages/AdminPatrocinadores';
+import AdminMeuPlano from './pages/AdminMeuPlano';
 import AdminWhatsappServidor from './pages/AdminWhatsappServidor';
 import AdminEscolaControle from './pages/AdminEscolaControle';
 import AdminDadosEscola from './pages/AdminDadosEscola';
@@ -191,6 +192,7 @@ function App() {
               <Route path="alugueis" element={<AdminRentals />} />
               <Route path="payment-test" element={<AdminPaymentProviderSettings />} />
 
+              <Route path="meu-plano" element={<AdminMeuPlano />} />
               <Route path="patrocinadores" element={<AdminPatrocinadores />} />
               <Route path="whatsapp-servidor" element={<AdminWhatsappServidor />} />
               <Route path="escola-controle" element={<AdminEscolaControle />} />

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, FileText, Lock, MessageCircle } from 'lucide-react';
 import { db } from '../firebase';
+import { useSponsors } from '../hooks/useSponsors';
 import { planService } from '../utils/planService';
 import { expenseService } from '../utils/expenseService';
 import { generateOverduePDF } from './AdminDashboard/utils/pdfGenerator';
@@ -24,6 +25,7 @@ const valorPlano = (p: any) => (p?.valores?.mensalidade?.ateVencimento || p?.val
 type Reg = any;
 
 export default function AdminStats() {
+    const spons = useSponsors();
     const workerUrl = import.meta.env.VITE_WORKER_URL || '';
     const hoje = new Date();
     const [mes, setMes] = useState({ ano: hoje.getFullYear(), m: hoje.getMonth() });
@@ -113,10 +115,13 @@ export default function AdminStats() {
         return Object.entries(f);
     }, [ativos]); // eslint-disable-line react-hooks/exhaustive-deps
     const crescimento = useMemo(() => {
-        const out: { rotulo: string; n: number }[] = [];
+        const out: { rotulo: string; n: number; alunos: { nome: string; foto: string }[] }[] = [];
         for (let i = 11; i >= 0; i--) {
             const d = new Date(mes.ano, mes.m - i, 1);
-            out.push({ rotulo: MESES[d.getMonth()].slice(0, 3) + '/' + String(d.getFullYear()).slice(2), n: regs.filter((r) => { const c = dataDe(r.createdAt); return c && c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth() && String(r.contractStatus || '').toLowerCase() !== 'desativado'; }).length });
+            const lista = regs
+                .filter((r) => { const c = dataDe(r.createdAt); return c && c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth() && String(r.contractStatus || '').toLowerCase() !== 'desativado'; })
+                .sort((x, y) => (dataDe(y.createdAt)?.getTime() || 0) - (dataDe(x.createdAt)?.getTime() || 0)); // mais recentes primeiro
+            out.push({ rotulo: MESES[d.getMonth()].slice(0, 3) + '/' + String(d.getFullYear()).slice(2), n: lista.length, alunos: lista.flatMap((r) => (Array.isArray(r.alunos) ? r.alunos : []).map((al: any) => ({ nome: String(al?.nome || 'Aluno'), foto: al?.fotoUrl || '' }))) });
         }
         return out;
     }, [regs, mes]);
@@ -162,7 +167,7 @@ export default function AdminStats() {
             <div className="est-kpis">
                 <Kpi cor="verde" rotulo={periodo === 'tudo' ? 'Receita total' : 'Receita do mês'} valor={brl(receita)} nota={`${recebidos.length} pagamento(s)`} />
                 <Kpi cor="vermelho" rotulo={periodo === 'tudo' ? 'Despesas totais' : 'Despesas do mês'} valor={brl(despesa)} nota={`${gastosMes.length} lançamento(s)`} />
-                <Kpi cor={lucro >= 0 ? 'azul' : 'vermelho'} rotulo="Lucro líquido" valor={brl(lucro)} nota={`Já descontadas as tarifas (${brl(tarifas)})`} />
+                <Kpi cor={lucro >= 0 ? 'azul' : 'vermelho'} rotulo="Lucro líquido" valor={brl(lucro)} nota={`Já descontadas as tarifas (${brl(tarifas)} · ${receita > 0 ? ((tarifas / receita) * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) : '0'}% da receita)`} />
                 <Kpi cor="azul" rotulo="Receita mensal prevista" valor={brl(mrr)} nota="Mensalidades dos planos ativos" />
                 <Kpi cor="cinza" rotulo="Alunos ativos" valor={String(totalAlunos)} nota={`${ativos.length} cadastro(s) · ${novosNoMes} novo(s) ${periodo === 'tudo' ? 'no total' : 'no mês'}`} />
                 <Kpi cor="amarelo" rotulo="A receber" valor={brl(valorAReceber)} nota={`${aReceber.length} cadastro(s)`} />
@@ -180,6 +185,16 @@ export default function AdminStats() {
                 <Link to="/admin/dashboard" className="est-btn est-btn-forte">Ver todos <ChevronRight size={14} /></Link>
             </section>
 
+            {spons.pronto && spons.mostrar && spons.itens.length > 0 && (
+                <section className="est-painel est-alunos est-spons" aria-label="Patrocinadores">
+                    <div className="est-alunos-tit"><h2>Patrocinadores</h2><small>{spons.itens.length} {spons.itens.length === 1 ? 'parceiro' : 'parceiros'}</small></div>
+                    <div className="est-logos">
+                        {spons.itens.map((sp, i) => <span key={i} title={sp.name}>{sp.logo ? <img src={sp.logo} alt={sp.name} loading="lazy" /> : sp.name}</span>)}
+                    </div>
+                    <Link to="/admin/patrocinadores" className="est-btn est-btn-forte">Ver todos <ChevronRight size={14} /></Link>
+                </section>
+            )}
+
             <div className="est-grade">
                 <Painel titulo="Modalidades" nota="Alunos ativos, previsão mensal e recebido no mês">
                     <table className="est-tab"><thead><tr><th>Modalidade</th><th className="n">Alunos</th><th className="n">Previsto</th><th className="n">Recebido</th></tr></thead>
@@ -190,18 +205,31 @@ export default function AdminStats() {
                     <div className="est-barras">{faixas.map(([k, n]) => <div key={k} className="est-barra"><span>{k}</span><div><i style={{ width: (n / maxFaixa) * 100 + '%' }} /></div><b>{n}</b></div>)}</div>
                 </Painel>
 
-                <Painel titulo="Cadastros nos últimos 12 meses" nota="Novos cadastros por mês" largo>
-                    <div className="est-colunas">{crescimento.map((c) => <div key={c.rotulo} className="est-coluna"><b>{c.n || ''}</b><div><i style={{ height: (c.n / maxCresc) * 100 + '%' }} /></div><span>{c.rotulo}</span></div>)}</div>
+                <Painel titulo="Cadastros nos últimos 12 meses" nota="Novos cadastros por mês · passe o mouse sobre um mês para ver os alunos" largo livre>
+                    <div className="est-colunas">{crescimento.map((c) => (
+                        <div key={c.rotulo} className="est-coluna" tabIndex={c.n ? 0 : -1}>
+                            <b>{c.n || ''}</b><div><i style={{ height: (c.n / maxCresc) * 100 + '%' }} /></div><span>{c.rotulo}</span>
+                            {c.n > 0 && (
+                                <div className="est-tip" role="tooltip">
+                                    <strong>{c.rotulo} · {c.n} {c.n === 1 ? 'cadastro' : 'cadastros'}</strong>
+                                    <ul>{c.alunos.slice(0, 6).map((al, i) => (
+                                        <li key={i}>{al.foto ? <img src={al.foto} alt="" loading="lazy" /> : <span className="av">{al.nome.trim().charAt(0).toUpperCase()}</span>}<span>{al.nome}</span></li>
+                                    ))}</ul>
+                                    {c.alunos.length > 6 && <small>+ {c.alunos.length - 6} {c.alunos.length - 6 === 1 ? 'aluno' : 'alunos'}</small>}
+                                </div>
+                            )}
+                        </div>
+                    ))}</div>
                 </Painel>
 
                 <Painel titulo={`Inadimplentes (${emAtraso.length})`} total={brl(valorAtraso)} tom="neg" nota="Do mais antigo para o mais recente" acao={emAtraso.length ? <button className="est-btn" onClick={() => generateOverduePDF(emAtraso, true)}><FileText size={14} /> PDF</button> : undefined}>
-                    <table className="est-tab"><thead><tr><th>Aluno</th><th className="n">Dias</th><th className="n">Valor</th></tr></thead>
-                        <tbody>{emAtraso.length ? emAtraso.map((r) => <tr key={r.id}><td>{r.alunos?.[0]?.nome || r.responsavel?.nome}</td><td className="n">{r.daysOverdue}</td><td className="n neg">{brl(r.financialPendingAmount)}</td></tr>) : <tr><td colSpan={3} className="est-vazio">Ninguém em atraso.</td></tr>}</tbody></table>
+                    <table className="est-tab"><thead><tr><th>Aluno</th><th className="n">Dias</th><th className="n">Valor</th><th className="n">Fatura</th><th className="n" data-sem-ordem>Cobrar</th></tr></thead>
+                        <tbody>{emAtraso.length ? emAtraso.map((r) => <tr key={r.id}><td>{r.alunos?.[0]?.nome || r.responsavel?.nome}</td><td className="n">{r.daysOverdue}</td><td className="n neg">{brl(r.financialPendingAmount)}</td><td className="n">{r.financialInvoiceUrl ? <a href={r.financialInvoiceUrl} target="_blank" rel="noreferrer">Fatura</a> : ''}</td><td className="n"><Cobrar r={r} atraso dias={r.daysOverdue} /></td></tr>) : <tr><td colSpan={5} className="est-vazio">Ninguém em atraso.</td></tr>}</tbody></table>
                 </Painel>
 
                 <Painel titulo={`A receber (${aReceber.length})`} total={brl(valorAReceber)} nota="Cobranças em aberto">
-                    <table className="est-tab"><thead><tr><th>Aluno</th><th className="n">Valor</th><th></th></tr></thead>
-                        <tbody>{aReceber.length ? aReceber.map((r) => <tr key={r.id}><td>{r.alunos?.[0]?.nome || r.responsavel?.nome}</td><td className="n">{brl(r.financialPendingAmount)}</td><td className="n">{r.financialInvoiceUrl ? <a href={r.financialInvoiceUrl} target="_blank" rel="noreferrer">Fatura</a> : ''}</td></tr>) : <tr><td colSpan={3} className="est-vazio">Nada a receber.</td></tr>}</tbody></table>
+                    <table className="est-tab"><thead><tr><th>Aluno</th><th className="n">Valor</th><th className="n" data-sem-ordem>Fatura</th><th className="n" data-sem-ordem>Cobrar</th></tr></thead>
+                        <tbody>{aReceber.length ? aReceber.map((r) => <tr key={r.id}><td>{r.alunos?.[0]?.nome || r.responsavel?.nome}</td><td className="n">{brl(r.financialPendingAmount)}</td><td className="n">{r.financialInvoiceUrl ? <a href={r.financialInvoiceUrl} target="_blank" rel="noreferrer">Fatura</a> : ''}</td><td className="n"><Cobrar r={r} /></td></tr>) : <tr><td colSpan={4} className="est-vazio">Nada a receber.</td></tr>}</tbody></table>
                 </Painel>
 
                 <Painel titulo={`Pagamentos ${periodo === 'tudo' ? 'de todo o período' : 'de ' + MESES[mes.m].toLowerCase()} (${recebidos.length})`} total={brl(receita)} tom="pos" nota="Toque em uma linha para ver o recibo" largo>
@@ -224,11 +252,40 @@ function Kpi({ cor, rotulo, valor, nota }: { cor: string; rotulo: string; valor:
     return <div className={`est-kpi ${cor}`}><span>{rotulo}</span><strong>{valor}</strong><small>{nota}</small></div>;
 }
 
-function Painel({ titulo, total, tom, nota, acao, largo, children }: { titulo: string; total?: string; tom?: 'neg' | 'pos'; nota?: string; acao?: React.ReactNode; largo?: boolean; children: React.ReactNode }) {
+function Painel({ titulo, total, tom, nota, acao, largo, livre, children }: { titulo: string; total?: string; tom?: 'neg' | 'pos'; nota?: string; acao?: React.ReactNode; largo?: boolean; livre?: boolean; children: React.ReactNode }) {
     return (
         <section className={`est-painel${largo ? ' largo' : ''}`}>
             <header><div><h2>{titulo}{total && <b className={`est-total${tom ? ' ' + tom : ''}`}>{total}</b>}</h2>{nota && <small>{nota}</small>}</div>{acao}</header>
-            <div className="est-corpo">{children}</div>
+            <div className={`est-corpo${livre ? ' livre' : ''}`}>{children}</div>
         </section>
+    );
+}
+
+// Botão "Cobrar": menu com WhatsApp (abre a conversa com a mensagem pronta) e SMS (em breve).
+function Cobrar({ r, atraso, dias }: { r: any; atraso?: boolean; dias?: number }) {
+    const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+    useEffect(() => {
+        if (!pos) return;
+        const fecha = () => setPos(null);
+        window.addEventListener('click', fecha); window.addEventListener('scroll', fecha, true); window.addEventListener('resize', fecha);
+        return () => { window.removeEventListener('click', fecha); window.removeEventListener('scroll', fecha, true); window.removeEventListener('resize', fecha); };
+    }, [pos]);
+    const tel = String(r.responsavel?.telefonePrincipal || '').replace(/\D/g, '');
+    const escola = (window as any).__MARCA__?.nome || 'a escola';
+    const aluno = r.alunos?.[0]?.nome || 'o aluno', resp = String(r.responsavel?.nome || '').trim().split(/\s+/)[0], valor = brl(r.financialPendingAmount);
+    const texto = `Olá${resp ? ', ' + resp : ''}! Aqui é da ${escola}. ${atraso ? `A mensalidade de ${aluno} (${valor}) está em atraso${dias ? ` há ${dias} dias` : ''}.` : `A mensalidade de ${aluno} (${valor}) está em aberto.`}${r.financialInvoiceUrl ? ` Você pode pagar por este link: ${r.financialInvoiceUrl}` : ''} Qualquer dúvida, é só responder esta mensagem.`;
+    const wa = tel.length >= 10 ? `https://wa.me/${tel.startsWith('55') && tel.length >= 12 ? tel : '55' + tel}?text=${encodeURIComponent(texto)}` : '';
+    return (
+        <>
+            <button type="button" className="est-btn est-cobrar" aria-haspopup="menu" aria-expanded={Boolean(pos)} onClick={(e) => { e.stopPropagation(); const b = e.currentTarget.getBoundingClientRect(); setPos(pos ? null : { x: Math.max(8, Math.min(b.right - 224, window.innerWidth - 232)), y: b.bottom + 6 }); }}>Cobrar <ChevronDown size={13} /></button>
+            {pos && (
+                <div className="est-menu" style={{ left: pos.x, top: pos.y }} role="menu" onClick={(e) => e.stopPropagation()}>
+                    {wa
+                        ? <a role="menuitem" href={wa} target="_blank" rel="noreferrer" onClick={() => setPos(null)}><MessageCircle size={16} /><span>WhatsApp<small>Abre a conversa com a mensagem pronta</small></span></a>
+                        : <span role="menuitem" aria-disabled="true" className="off"><MessageCircle size={16} /><span>WhatsApp<small>Sem telefone cadastrado</small></span></span>}
+                    <span role="menuitem" aria-disabled="true" className="off"><Lock size={16} /><span>SMS<small>Envio por SMS</small></span><em>EM BREVE</em></span>
+                </div>
+            )}
+        </>
     );
 }

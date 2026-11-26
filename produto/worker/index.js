@@ -289,6 +289,19 @@ async function rotaAssinatura(req, env, host) {
     try { const r = await asaas(cfg, 'GET', '/payments/' + p.pid + '/pixQrCode'); q = { imagem: r.encodedImage ? 'data:image/png;base64,' + r.encodedImage : '', codigo: r.payload || '' }; } catch { /* mostra sem QR */ }
     return J({ proxima: { ...p, ...q, plano: a.plano } });
   }
+  if (m === 'GET' && caminho.endsWith('/faturas')) try { // histórico de cobranças da assinatura + uso do plano, para a página "Meu plano"
+    let itens = [];
+    if (a && a.subId && ok) {
+      try {
+        const l = await asaas(cfg, 'GET', '/subscriptions/' + a.subId + '/payments?limit=24');
+        itens = (l.data || []).sort((x, y) => (x.dueDate < y.dueDate ? 1 : -1)).map((x) => ({ vencimento: x.dueDate, valor: Math.round(x.value * 100), status: ['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(x.status) ? 'pago' : x.status === 'OVERDUE' ? 'vencida' : x.status === 'PENDING' ? 'aberta' : 'outro', pagoEm: x.paymentDate || x.clientPaymentDate || '', url: x.invoiceUrl || '' }));
+      } catch { /* devolve vazio */ }
+    }
+    const t = host, cont = async (col, sql) => { try { return (await env.DB.prepare(sql).bind(t, col).first()).n || 0; } catch { return 0; } };
+    const lim = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_owner' AND id='limites'").bind(t).first();
+    const uso = { alunos: await cont('rumo_ao_esporte_2026_registrations', "SELECT COUNT(*) n FROM sys_docs WHERE tenant=? AND col=?"), turmas: await cont('turmas', "SELECT COUNT(*) n FROM sys_docs WHERE tenant=? AND col=?"), professores: await cont('teachers', "SELECT COUNT(*) n FROM sys_docs WHERE tenant=? AND col=?"), limiteAlunos: lim && lim.data ? JSON.parse(lim.data).maxMatriculas || 0 : 0 };
+    return J({ itens, uso, ciclo: 'Mensal via Pix' });
+  } catch (e) { return erro('faturas: ' + (e && e.message), 500); }
   if (m === 'GET') {
     const x = await atualiza();
     const prox = await proximaDoAsaas();

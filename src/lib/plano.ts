@@ -7,7 +7,6 @@
 type Info = { situacao?: { status: string; plano?: string; mensal?: number }; proxima?: { vencimento: string; valor: number; dias: number; atrasada?: boolean } | null };
 type Valores = Record<string, any>;
 
-const brl = (c: number) => ((c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 const dataBr = (iso: string) => iso.split('-').reverse().join('/');
 
 export function instalarPlano(v: Valores) {
@@ -52,11 +51,11 @@ export function instalarPlano(v: Valores) {
         if (s.status !== 'ativo') return null;
         const nome = s.plano && s.plano !== 'Teste grátis' ? s.plano.replace(/^Plano\s+/i, '') : 'Ativo';
         const p = info?.proxima, perto = p && p.dias <= 7;
-        const linha = [s.mensal ? brl(s.mensal) + '/mês' : '', p ? (p.atrasada || p.dias < 0 ? 'venceu ' : 'vence ') + dataBr(p.vencimento).slice(0, 5) : ''].filter(Boolean).join(' · ');
+        const linha = p ? (p.atrasada || p.dias < 0 ? 'venceu ' : 'vence ') + dataBr(p.vencimento).slice(0, 5) : '';
         return {
             cls: perto ? (p!.atrasada || p!.dias < 0 ? 'atraso' : 'alerta') : '',
-            html: `<div class="pl-txt"><b>Plano ${nome.replace(/[<>&]/g, '')}</b>${linha ? `<small>${linha}</small>` : ''}</div>${perto ? `<button type="button" title="Pagar a próxima fatura">Pagar fatura</button>` : ''}`,
-            acao: perto ? () => (window as any).__pgModal?.proxima() : undefined,
+            html: `<div class="pl-txt"><b>Plano ${nome.replace(/[<>&]/g, '')}</b>${linha ? `<small>${linha}</small>` : ''}</div><button type="button">Ver meu plano</button>`,
+            acao: () => { history.pushState({}, '', '/admin/meu-plano'); window.dispatchEvent(new PopStateEvent('popstate')); },
         };
     }
 
