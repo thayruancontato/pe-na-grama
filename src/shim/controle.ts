@@ -98,9 +98,17 @@ function aplicar() {
         // valores que o próprio shim já produziu: não pintar de novo (o deslocamento de matiz não é idempotente e alternava as cores sem parar)
         const feitos = new Set<string>();
         const repinta = (t: string) => { if (feitos.has(t)) return t; const y = pinta(t); feitos.add(y); return y; };
+        // folhas de estilo do sistema (inclusive as das telas carregadas depois, que vêm em arquivos próprios): baixa o texto, troca as cores e usa a cópia
+        const recolorirLink = (l: Element) => {
+            const href = (l as HTMLLinkElement).href;
+            if (!href || !href.startsWith(location.origin) || (l as HTMLElement).dataset.pgCor) return;
+            (l as HTMLElement).dataset.pgCor = '1';
+            fetch(href).then((r) => r.text()).then((t) => { const s = document.createElement('style'); s.dataset.pgCor = '1'; s.textContent = pinta(t); l.after(s); l.remove(); }).catch(() => {});
+        };
         const visita = (n: Node) => {
             if (n.nodeType !== 1) return;
             const el = n as Element;
+            if (el.tagName === 'LINK' && el.getAttribute('rel') === 'stylesheet') recolorirLink(el);
             if (el.tagName === 'STYLE') { const t = el.textContent || '', y = repinta(t); if (y !== t) el.textContent = y; } // páginas com <style> próprio (ex.: tela inicial)
             for (const a of ATTRS) { const x = el.getAttribute(a); if (x) { const y = repinta(x); if (y !== x) el.setAttribute(a, y); } }
             el.childNodes.forEach(visita);
@@ -108,12 +116,7 @@ function aplicar() {
         const obs = new MutationObserver((ms) => { for (const m of ms) { if (m.type === 'attributes') visita(m.target); else m.addedNodes.forEach(visita); } });
         const iniciar = () => { visita(document.head); visita(document.body); obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ATTRS }); };
         document.body ? iniciar() : document.addEventListener('DOMContentLoaded', iniciar);
-        // folhas de estilo do sistema: baixa o texto, troca as cores e usa a cópia
-        document.querySelectorAll('link[rel="stylesheet"]').forEach((l) => {
-            const href = (l as HTMLLinkElement).href;
-            if (!href.startsWith(location.origin)) return;
-            fetch(href).then((r) => r.text()).then((t) => { const s = document.createElement('style'); s.textContent = pinta(t); l.after(s); l.remove(); }).catch(() => {});
-        });
+        document.querySelectorAll('link[rel="stylesheet"]').forEach(recolorirLink);
     }
 
     // ---- título da aba ----
