@@ -209,30 +209,28 @@ export default function AdminDetails() {
                             allRegistrations={allRegistrations}
                             onRemoveModality={handleRemoveModality}
                             onBirthDateSet={handleBirthDateAutoAssign}
+                            resumoMensalidade={(() => { const pl = plans.find((x: any) => x.id === data.planId); const v = pl ? (pl.valores?.mensalidade?.ateVencimento || pl.valor || 0) / 100 : 0; return v ? v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : undefined; })()}
+                            esquerdaExtra={index === 0 && data.responsavel?.cpf ? (
+                                <FinancialHistorySection
+                                    id={data.id}
+                                    cpf={data.responsavel.cpf}
+                                    workerUrl={workerUrl}
+                                    plans={plans}
+                                    currentPlanId={data.planId}
+                                    contractStatus={data.contractStatus}
+                                    onAddModality={() => setShowAddModalityModal(true)}
+                                    allRegistrations={allRegistrations}
+                                    canEdit={canEdit}
+                                    filterModality={data.modalidade}
+                                />
+                            ) : undefined}
+                            direitaExtra={index === 0 ? <ResponsibleDetailsSection data={data} setData={setData} isEditing={safeIsEditing} /> : undefined}
                         />
                     ))
                 }
 
                 {activeTab === 'overview' && (
                     <>
-                        <ResponsibleDetailsSection data={data} setData={setData} isEditing={safeIsEditing} />
-
-                        {/* Main Financial Section for CURRENT modality */}
-                        {data.responsavel?.cpf && (
-                            <FinancialHistorySection
-                                id={data.id}
-                                cpf={data.responsavel.cpf}
-                                workerUrl={workerUrl}
-                                plans={plans}
-                                currentPlanId={data.planId}
-                                contractStatus={data.contractStatus}
-                                onAddModality={() => setShowAddModalityModal(true)}
-                                allRegistrations={allRegistrations}
-                                canEdit={canEdit}
-                                filterModality={data.modalidade} // Strict filtering for this block
-                            />
-                        )}
-
                         {/* Sibling Registrations (Other Modalities) */}
                         {allRegistrations.filter(r => r.id !== data.id).map(reg => (
                             <div key={reg.id} style={{

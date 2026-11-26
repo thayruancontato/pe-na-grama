@@ -46,3 +46,16 @@
 @media(max-width:1000px){.sd-grade{grid-template-columns:1fr}}
 @media(max-width:700px){.sd-perfil{gap:14px;padding:14px 16px}.sd-foto{width:84px;height:84px;border-radius:12px}.sd-id h3{font-size:1.25rem}.sd-mod{grid-template-columns:1fr auto;gap:8px 12px}.sd-mod-turma{grid-column:1/-1;order:3}.sd-mod-acoes{grid-column:1/-1;order:4;justify-content:flex-start}.sd-dados>div{padding:10px 14px}}
 .spin{animation:spin 1s linear infinite}@keyframes spin{100%{transform:rotate(360deg)}}
+/* topo com abas, resumo e carteirinha com Frente/Verso */
+.sd{display:grid;gap:14px}
+.sd-topo{padding:0}.sd-topo .sd-perfil{padding:18px 20px 6px}
+.sd-topo .sd-abas{margin:0;padding:0 14px;border-bottom:0}
+.sd-id h3{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.sd-id h3 .sd-tag{font-size:12px;font-weight:700}
+.sd-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.sd-tile{display:flex;align-items:center;gap:14px;padding:14px 18px;background:#f1f8f3;border:1px solid #d6e8dc;border-radius:12px;color:#17428f}
+.sd-tile small{display:block;font-size:12px;color:#5b6772}.sd-tile b{display:block;font-size:16px;color:#10213f;line-height:1.25}
+.sd-lados{display:flex;justify-content:center;gap:0;margin:0 auto 14px;padding:3px;width:fit-content;border-radius:999px;background:#eef1f5;border:1px solid #dfe4ea}
+.sd-lados button{border:0;background:none;padding:7px 22px;border-radius:999px;font:inherit;font-size:13px;font-weight:700;color:#5b6772;cursor:pointer}
+.sd-lados button.on{background:#17428f;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.2)}
+@media(max-width:800px){.sd-tiles{grid-template-columns:1fr}.sd-topo .sd-perfil{padding:14px 14px 4px}}

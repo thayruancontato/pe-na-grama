@@ -11,11 +11,13 @@ interface StudentCardProps {
     width?: string | number;
     /** Força um modelo (usado na pré-visualização); sem isso vale o modelo escolhido pela escola. */
     modelo?: string;
+    /** 'frente' ou 'verso' mostra só um lado; sem isso mostra os dois, um embaixo do outro. */
+    lado?: 'frente' | 'verso';
 }
 
 // Carteirinha do aluno na tela: a frente e, logo abaixo, o verso, os dois do mesmo tamanho.
 // Os dois lados são desenhados pelo mesmo código do PDF (src/artes/carteirinha.ts).
-const StudentCard: React.FC<StudentCardProps> = ({ student, responsavel, numeroCota, modalidade, width = '100%', modelo }) => {
+const StudentCard: React.FC<StudentCardProps> = ({ student, responsavel, numeroCota, modalidade, width = '100%', modelo, lado: soUm }) => {
     const escolhido = useArtes().carteirinha, m = modelo || escolhido;
     const dados: DadosCarteirinha = { ...student, responsavel, numeroCota, modalidade };
     const chave = [m, student.nome, student.cpf, student.dataNascimento, student.fotoUrl, numeroCota, String(modalidade), responsavel?.nome, responsavel?.email].join('|');
@@ -23,8 +25,8 @@ const StudentCard: React.FC<StudentCardProps> = ({ student, responsavel, numeroC
 
     return (
         <div style={{ width, maxWidth: '100%', display: 'grid', gap: 10 }}>
-            {lado('frente')}
-            {lado('verso')}
+            {soUm !== 'verso' && lado('frente')}
+            {soUm !== 'frente' && lado('verso')}
         </div>
     );
 };

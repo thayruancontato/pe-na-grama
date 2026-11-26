@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import StudentCard from '../components/StudentCard';
 import { User, FileText, AlertTriangle, IdCard, Download, Camera, Loader, X, RefreshCw } from 'lucide-react';
 import { compressImage } from '../utils/imageUtils';
@@ -23,6 +23,11 @@ interface StudentDetailsProps {
     activeTab: 'overview' | 'galerie';
     setActiveTab: (tab: 'overview' | 'galerie') => void;
     onBirthDateSet?: (alunoIndex: number, birthDate: string) => void;
+    /** valor da mensalidade já formatado (ex.: R$ 135,00), mostrado no resumo do topo */
+    resumoMensalidade?: string;
+    /** seções extras que entram nas colunas da ficha (pagamentos à esquerda, responsável à direita) */
+    esquerdaExtra?: React.ReactNode;
+    direitaExtra?: React.ReactNode;
 }
 
 export default function StudentDetailsSection({
@@ -40,11 +45,15 @@ export default function StudentDetailsSection({
     canEdit = true,
     activeTab,
     setActiveTab,
-    onBirthDateSet
+    onBirthDateSet,
+    resumoMensalidade,
+    esquerdaExtra,
+    direitaExtra
 }: StudentDetailsProps) {
     const { showAlert, showConfirm } = useDialog();
     const [uploading, setUploading] = useState(false);
     const [uploadingDoc, setUploadingDoc] = useState(false);
+    const [ladoCart, setLadoCart] = useState<'frente' | 'verso'>('frente');
 
     const handlePhotoUpload = async (e: any) => {
         if (!canEdit) return;
@@ -217,41 +226,50 @@ export default function StudentDetailsSection({
         return t ? `${t.horario} · ${t.nome}` : 'Sem turma definida';
     };
 
+    const statusFicha = data.contractStatus === 'desativado' ? ['Desativado', 'warn'] : data.contractStatus === 'aprovado' ? ['Ativo', 'ok'] : ['Pendente', 'warn'];
+
     return (
         <div className="sd">
-            <div className="sd-abas" role="tablist">
-                <button role="tab" aria-selected={activeTab === 'overview'} className={activeTab === 'overview' ? 'on' : ''} onClick={() => setActiveTab('overview')}><User size={16} /> Visão geral</button>
-                <button role="tab" aria-selected={activeTab === 'galerie'} className={activeTab === 'galerie' ? 'on' : ''} onClick={() => setActiveTab('galerie')}><Camera size={16} /> Galeria de mídias</button>
-            </div>
+            {/* TOPO: perfil + abas */}
+            <section className="sd-painel sd-topo">
+                <div className="sd-perfil">
+                    <div className="sd-foto">
+                        <input type="file" id={`photo-upload-${index}`} style={{ display: 'none' }} accept="image/*" onChange={handlePhotoUpload} disabled={!canEdit} />
+                        <label htmlFor={`photo-upload-${index}`} className={canEdit ? 'pode' : ''}>
+                            {aluno.fotoUrl ? <img src={aluno.fotoUrl} alt={aluno.nome} /> : <span className="vazio"><User size={34} /><small>Sem foto</small></span>}
+                            {canEdit && <span className="sd-foto-ov">{uploading ? <Loader className="spin" size={20} /> : <Camera size={20} />}<small>{uploading ? 'Enviando…' : 'Alterar foto'}</small></span>}
+                        </label>
+                        {canEdit && aluno.fotoUrl && (
+                            <button type="button" className="sd-foto-x" title="Remover foto" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRemovePhoto(); }}><X size={13} /></button>
+                        )}
+                    </div>
+                    <div className="sd-id">
+                        {_isEditing
+                            ? inputAluno((v) => ({ nome: v }), aluno.nome || '', { placeholder: 'Nome completo do aluno', 'aria-label': 'Nome do aluno', style: { fontSize: '1.15rem', fontWeight: 700 } })
+                            : <h3>{aluno.nome}<span className={`sd-tag ${statusFicha[1]}`}>{statusFicha[0]}</span></h3>}
+                        <div className="sd-badges">
+                            {aluno.sexo && <span className="sd-tag">{aluno.sexo === 'M' ? 'Masculino' : 'Feminino'}</span>}
+                            <span className="sd-tag">{getAge(aluno.dataNascimento)}</span>
+                            {regs.map((r: any, i: number) => <span key={r.id || i} className="sd-tag azul">{r.modalidade || 'Sem modalidade'}</span>)}
+                        </div>
+                    </div>
+                </div>
+                <div className="sd-abas" role="tablist">
+                    <button role="tab" aria-selected={activeTab === 'overview'} className={activeTab === 'overview' ? 'on' : ''} onClick={() => setActiveTab('overview')}><User size={16} /> Visão geral</button>
+                    <button role="tab" aria-selected={activeTab === 'galerie'} className={activeTab === 'galerie' ? 'on' : ''} onClick={() => setActiveTab('galerie')}><Camera size={16} /> Galeria de mídias</button>
+                </div>
+            </section>
 
-            {activeTab === 'overview' && (
+            {activeTab === 'overview' && (<>
+                {/* RESUMO */}
+                <div className="sd-tiles">
+                    <div className="sd-tile"><IdCard size={20} /><div><small>Turma</small><b>{turmaDe(regs[0])}</b></div></div>
+                    <div className="sd-tile"><FileText size={20} /><div><small>Mensalidade</small><b>{resumoMensalidade || '—'}</b></div></div>
+                    <div className="sd-tile"><User size={20} /><div><small>Matrícula</small><b>{regs.length} {regs.length === 1 ? 'modalidade ativa' : 'modalidades ativas'}</b></div></div>
+                </div>
+
                 <div className="sd-grade">
                     <div className="sd-col">
-                        {/* PERFIL */}
-                        <section className="sd-painel sd-perfil">
-                            <div className="sd-foto">
-                                <input type="file" id={`photo-upload-${index}`} style={{ display: 'none' }} accept="image/*" onChange={handlePhotoUpload} disabled={!canEdit} />
-                                <label htmlFor={`photo-upload-${index}`} className={canEdit ? 'pode' : ''}>
-                                    {aluno.fotoUrl ? <img src={aluno.fotoUrl} alt={aluno.nome} /> : <span className="vazio"><User size={34} /><small>Sem foto</small></span>}
-                                    {canEdit && <span className="sd-foto-ov">{uploading ? <Loader className="spin" size={20} /> : <Camera size={20} />}<small>{uploading ? 'Enviando…' : 'Alterar foto'}</small></span>}
-                                </label>
-                                {canEdit && aluno.fotoUrl && (
-                                    <button type="button" className="sd-foto-x" title="Remover foto" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRemovePhoto(); }}><X size={13} /></button>
-                                )}
-                            </div>
-                            <div className="sd-id">
-                                {_isEditing
-                                    ? inputAluno((v) => ({ nome: v }), aluno.nome || '', { placeholder: 'Nome completo do aluno', 'aria-label': 'Nome do aluno', style: { fontSize: '1.15rem', fontWeight: 700 } })
-                                    : <h3>{aluno.nome}</h3>}
-                                <div className="sd-badges">
-                                    {data.contractStatus === 'desativado' && <span className="sd-tag warn">Desativado</span>}
-                                    {aluno.sexo && <span className="sd-tag">{aluno.sexo === 'M' ? 'Masculino' : 'Feminino'}</span>}
-                                    <span className="sd-tag">{getAge(aluno.dataNascimento)}</span>
-                                    {regs.map((r: any, i: number) => <span key={r.id || i} className="sd-tag azul">{r.modalidade || 'Sem modalidade'}</span>)}
-                                </div>
-                            </div>
-                        </section>
-
                         {/* DADOS */}
                         <section className="sd-painel">
                             <header><h4>Dados do aluno</h4></header>
@@ -329,17 +347,24 @@ export default function StudentDetailsSection({
                                 ) : <span className="sd-vazio">Nenhum documento enviado.</span>}
                             </div>
                         </section>
+
+                        {esquerdaExtra}
                     </div>
 
-                    {/* CARTEIRINHA */}
                     <div className="sd-col sd-lado">
+                        {/* CARTEIRINHA */}
                         <section className="sd-painel">
-                            <header><h4><IdCard size={15} /> Carteirinha</h4><button type="button" className="sd-btn" onClick={() => generateStudentCardPDF(aluno)}><Download size={14} /> Baixar</button></header>
-                            <div className="sd-cart"><StudentCard student={aluno} responsavel={data.responsavel} numeroCota={data.numeroCota} modalidade={data.modalidade} /></div>
+                            <header><h4><IdCard size={15} /> Carteirinha do aluno</h4><button type="button" className="sd-btn" onClick={() => generateStudentCardPDF(aluno)}><Download size={14} /> Baixar</button></header>
+                            <div className="sd-cart"><StudentCard student={aluno} responsavel={data.responsavel} numeroCota={data.numeroCota} modalidade={data.modalidade} lado={ladoCart} /></div>
+                            <div className="sd-lados" role="group" aria-label="Lado da carteirinha">
+                                <button type="button" className={ladoCart === 'frente' ? 'on' : ''} aria-pressed={ladoCart === 'frente'} onClick={() => setLadoCart('frente')}>Frente</button>
+                                <button type="button" className={ladoCart === 'verso' ? 'on' : ''} aria-pressed={ladoCart === 'verso'} onClick={() => setLadoCart('verso')}>Verso</button>
+                            </div>
                         </section>
+                        {direitaExtra}
                     </div>
                 </div>
-            )}
+            </>)}
 
             {activeTab === 'galerie' && <div style={{ paddingTop: '8px' }}><StudentGalleryTab alunoId={`${data.id}_${index}`} /></div>}
         </div>
