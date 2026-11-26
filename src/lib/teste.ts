@@ -70,6 +70,21 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .pm-card .dia{font-size:12px;color:#66727f}
 .pm-card p{margin:0;font-size:13.5px;color:#3f4a56;line-height:1.45;flex:1}
 .pm-card button{margin-top:8px;border:2px solid var(--p);border-radius:10px;padding:12px 8px;background:#fff;color:var(--p);font:inherit;font-size:14.5px;font-weight:800;cursor:pointer;transition:background .15s,color .15s}
+/* cartões de plano: mesma altura, botão sempre na base, recomendado elevado */
+.pm-lista{align-items:stretch;gap:18px;padding-top:16px}
+.pm-card{height:100%;padding:20px 18px 18px;border-radius:16px;gap:6px;box-shadow:0 1px 3px rgba(15,33,63,.06)}
+.pm-card .cab{display:flex;align-items:center;gap:11px;margin-bottom:4px}.pm-card .cab h3{font-size:21px;line-height:1.1}
+.pm-card .med{flex:none;width:34px;height:auto;filter:drop-shadow(0 2px 3px rgba(0,0,0,.22))}
+.pm-card .lim{display:inline-block;margin-top:5px;padding:2px 10px;border-radius:999px;background:color-mix(in srgb,var(--p) 10%,#fff);color:var(--e);font-size:12px;font-weight:800}
+.pm-card .pr{margin-top:8px;font-size:38px;letter-spacing:-.02em}
+.pm-card.top{transform:translateY(-8px);border:2px solid var(--p);background:linear-gradient(180deg,color-mix(in srgb,var(--p) 9%,#fff),#fff 55%);box-shadow:0 18px 40px color-mix(in srgb,var(--p) 28%,transparent)}
+.pm-card.top:hover{transform:translateY(-11px)}
+.pm-card .sel{top:-14px;padding:6px 16px;font-size:12.5px;box-shadow:0 4px 10px color-mix(in srgb,var(--p) 40%,transparent)}
+.pm-det{flex:1}
+.pm-card button[data-p]{margin-top:auto;min-height:46px;border-radius:12px;font-size:15px}
+.pm-det summary{font-weight:800}
+.pm-det li{padding-left:26px}
+@media(max-width:760px){.pm-card.top{transform:none}.pm-card.top:hover{transform:none}.pm-card .pr{font-size:28px}.pm-card .cab h3{font-size:18px}.pm-card .med{width:26px}}
 .pm-det{margin-top:8px;border-top:1px dashed #d9dee5;padding-top:6px}
 .pm-det summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 2px;font-size:13px;font-weight:700;color:var(--e);cursor:pointer;list-style:none}
 .pm-det summary::-webkit-details-marker{display:none}
@@ -299,7 +314,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
                 const itens = (d: string) => (d || '').replace(/^[^:]*:\s*/, '').replace(/\.$/, '').split(/,\s*|\s+e\s+(?=[a-zà-ú])/i).map((x) => x.trim()).filter(Boolean).map((x) => x.replace(/^./, (c) => c.toUpperCase()));
                 const detalhe = (d: string, i: number) => `<details class="pm-det"><summary>Ver tudo o que está incluso</summary><ul>${i > 0 ? `<li class="herda">Tudo do plano ${seguro(String(planos[i - 1].nome))}</li>` : ''}${itens(d).map((x) => `<li>${seguro(x)}</li>`).join('')}<li>Painel do administrador e suporte</li></ul></details>`;
                 const zapLink = whats ? `<a class="pm-zap" href="https://wa.me/${whats}?text=${encodeURIComponent('Olá! Estou testando o sistema e quero tirar uma dúvida sobre os planos.')}" target="_blank" rel="noreferrer">Prefere conversar antes? Chame no WhatsApp →</a>` : '';
-                msg(`<div class="pm-direita"><div class="pm-lista">${planos.map((p: any, i: number) => `<div class="pm-card${i === meio ? ' top' : ''}">${i === meio ? '<span class="sel">★ Plano recomendado</span>' : ''}<h3>${seguro(p.nome)}</h3><span class="lim">${lim(p.descricao)}</span><div class="pr">${brl(p.mensal)}<small> /mês</small></div><span class="dia">≈ R$ ${(p.mensal / 100 / 30).toFixed(2).replace('.', ',')} por dia</span>${detalhe(p.descricao, i)}<button type="button" data-p="${seguro(p.nome)}">${i === meio ? 'Quero o ' + seguro(p.nome) : 'Escolher ' + seguro(p.nome)}</button></div>`).join('')}</div>${zapLink}</div>`);
+                msg(`<div class="pm-direita"><div class="pm-lista">${planos.map((p: any, i: number) => `<div class="pm-card${i === meio ? ' top' : ''}">${i === meio ? '<span class="sel">★ Mais escolhido</span>' : ''}<div class="cab"><img class="med" src="/plano/selo-${['bronze', 'prata', 'ouro'][Math.min(i, 2)]}.png" alt="" width="34" height="52"><div><h3>${seguro(p.nome)}</h3><span class="lim">${lim(p.descricao)}</span></div></div><div class="pr">${brl(p.mensal)}<small> /mês</small></div><span class="dia">≈ R$ ${(p.mensal / 100 / 30).toFixed(2).replace('.', ',')} por dia</span>${detalhe(p.descricao, i).replace('<details', matchMedia('(min-width:761px)').matches ? '<details open' : '<details')}<button type="button" data-p="${seguro(p.nome)}">${i === meio ? 'Quero o ' + seguro(p.nome) : 'Escolher ' + seguro(p.nome)}</button></div>`).join('')}</div>${zapLink}</div>`);
                 corpo.querySelectorAll('button[data-p]').forEach((bt) => bt.addEventListener('click', () => escolher((bt as HTMLElement).dataset.p!)));
             }).catch(() => msg('<p class="pm-rod" style="padding:30px">Não consegui carregar os planos agora. Tente de novo em instantes.</p>'));
         };
