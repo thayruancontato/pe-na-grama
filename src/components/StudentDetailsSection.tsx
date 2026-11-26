@@ -332,12 +332,12 @@ export default function StudentDetailsSection({
                     </div>
 
                     {/* CARTEIRINHA */}
-                    <aside className="sd-col sd-lado">
+                    <div className="sd-col sd-lado">
                         <section className="sd-painel">
                             <header><h4><IdCard size={15} /> Carteirinha</h4><button type="button" className="sd-btn" onClick={() => generateStudentCardPDF(aluno)}><Download size={14} /> Baixar</button></header>
                             <div className="sd-cart"><StudentCard student={aluno} responsavel={data.responsavel} numeroCota={data.numeroCota} modalidade={data.modalidade} /></div>
                         </section>
-                    </aside>
+                    </div>
                 </div>
             )}
 

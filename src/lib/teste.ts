@@ -18,7 +18,6 @@ export function instalarTeste(v: Valores) {
     const fim = /^\d{4}-\d{2}-\d{2}$/.test(String(v.teste_ate || '')) ? new Date(v.teste_ate + 'T23:59:59') : null;
     const meiaNoite = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const restam = fim ? Math.max(0, Math.round((meiaNoite(fim) - meiaNoite(new Date())) / 864e5)) : DIAS_TESTE;
-    const usados = Math.min(DIAS_TESTE, Math.max(0, DIAS_TESTE - restam));
 
     new Image().src = '/teste-foto.webp'; // já carrega a foto do modal, para ele abrir completo
     const css = document.createElement('style');
@@ -28,12 +27,15 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
 .tb-sel{flex:none;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);font-size:11px;font-weight:800;letter-spacing:.08em}
 .tb-txt{flex:1 1 300px;font-size:14px;line-height:1.35}.tb-txt b{font-weight:800}.tb-txt small{display:block;font-size:12px;opacity:.85}
 .tb-dir{flex:none;display:flex;align-items:center;gap:18px;margin-left:auto}
-.tb-prog{display:grid;gap:5px;min-width:190px}.tb-prog span{font-size:11.5px;font-weight:700;letter-spacing:.03em;opacity:.92;display:flex;justify-content:space-between}
-.tb-barra{height:8px;border-radius:999px;background:rgba(255,255,255,.22);overflow:hidden}.tb-barra i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#fff,#e9ffd0)}
+.tb-cont{display:flex;align-items:stretch;gap:6px}
+.tb-cont>div{display:grid;justify-items:center;align-content:center;min-width:46px;padding:5px 8px;border-radius:9px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)}
+.tb-cont b{font-size:19px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.tb-cont span{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.85}
+.tb-cont>div:first-child{background:#fff;color:var(--e);border-color:#fff}.tb-cont>div:first-child span{opacity:.75}
 .tb-btn{flex:none;display:inline-flex;align-items:center;gap:9px;border:0;border-radius:999px;padding:10px 12px 10px 20px;background:#fff;color:var(--e);font:inherit;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.25);transition:transform .15s,box-shadow .15s}
 .tb-btn i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--p);color:#fff;font-style:normal;font-size:13px}
 .tb-btn:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(0,0,0,.3)}.tb-btn:hover i{transform:translateX(2px)}.tb-btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
-@media(max-width:760px){.tb{flex-wrap:nowrap;padding:8px 12px;gap:10px}.tb-sel,.tb-prog,.tb-txt small{display:none}.tb-txt{flex:1 1 auto;min-width:0;font-size:13px}.tb-dir{margin-left:auto}.tb-btn{padding:8px 8px 8px 14px;font-size:13px}}
+@media(max-width:760px){.tb{flex-wrap:nowrap;padding:8px 12px;gap:10px}.tb-sel,.tb-cont,.tb-txt small{display:none}.tb-txt{flex:1 1 auto;min-width:0;font-size:13px}.tb-dir{margin-left:auto}.tb-btn{padding:8px 8px 8px 14px;font-size:13px}}
 .sb-bloq{opacity:.72}.sb-bloq .sb-cad{display:inline-flex;margin-left:auto;opacity:.9}
 .sb-bloq:hover{opacity:1}
 .pm-fundo{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:14px;background:rgba(5,20,16,.66);backdrop-filter:blur(5px);animation:pm-in .22s ease}
@@ -122,9 +124,15 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
     // ---- barra de aviso ----
     const bar = document.createElement('div');
     bar.className = 'tb'; bar.setAttribute('role', 'status');
-    const dia = Math.min(DIAS_TESTE, usados + 1);
-    bar.innerHTML = `<span class="tb-sel">TESTE GRÁTIS</span><div class="tb-txt"><b>${restam === 0 ? 'Seu teste termina hoje' : restam === 1 ? 'Falta 1 dia' : 'Faltam ' + restam + ' dias'}</b> para o fim do teste${fim ? ' (' + fim.toLocaleDateString('pt-BR') + ')' : ''}<small>Alunos, turmas e professores já estão liberados. Escolha um plano para liberar o restante.</small></div><div class="tb-dir"><div class="tb-prog" aria-hidden="true"><span><em style="font-style:normal">Dia ${dia} de ${DIAS_TESTE}</em><em style="font-style:normal">${restam}d restantes</em></span><div class="tb-barra"><i style="width:${(dia / DIAS_TESTE) * 100}%"></i></div></div><button type="button" class="tb-btn">Escolher plano <i>→</i></button></div>`;
+    bar.innerHTML = `<span class="tb-sel">TESTE GRÁTIS</span><div class="tb-txt"><b>${restam === 0 ? 'Seu teste termina hoje' : restam === 1 ? 'Falta 1 dia' : 'Faltam ' + restam + ' dias'}</b> para o fim do teste${fim ? ' (' + fim.toLocaleDateString('pt-BR') + ')' : ''}<small>Alunos, turmas e professores já estão liberados. Escolha um plano para liberar o restante.</small></div><div class="tb-dir"><div class="tb-cont" role="timer" aria-label="Tempo restante do teste"><div><b data-d>--</b><span>dias</span></div><div><b data-h>--</b><span>horas</span></div><div><b data-m>--</b><span>min</span></div><div><b data-s>--</b><span>seg</span></div></div><button type="button" class="tb-btn">Escolher plano <i>→</i></button></div>`;
     bar.querySelector('.tb-btn')!.addEventListener('click', () => abrirPlanos());
+    const tique = () => {
+        if (!fim) return;
+        const ms = Math.max(0, fim.getTime() - Date.now()), z = (n: number) => String(n).padStart(2, '0');
+        const set = (k: string, v: string) => { const el = bar.querySelector(`[data-${k}]`); if (el) el.textContent = v; };
+        set('d', String(Math.floor(ms / 864e5))); set('h', z(Math.floor(ms / 36e5) % 24)); set('m', z(Math.floor(ms / 6e4) % 60)); set('s', z(Math.floor(ms / 1e3) % 60));
+    };
+    tique(); setInterval(tique, 1000);
     const medeBarra = () => document.documentElement.style.setProperty('--tb-h', bar.offsetHeight + 'px');
     new ResizeObserver(medeBarra).observe(bar);
     const raiz = document.getElementById('root');

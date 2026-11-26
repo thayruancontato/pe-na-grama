@@ -223,8 +223,8 @@ aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip:
 .al-lado form { gap: 20px !important; }
 .al-lado label { text-align: left !important; }
 .al-lado .form-group > label { margin-bottom: 8px !important; color: #334155 !important; font-size: .86rem !important; font-weight: 700 !important; letter-spacing: .01em; }
-.al-lado input:not([type="checkbox"]) { box-sizing: border-box; padding: 15px 16px !important; border: 1.5px solid #cfd8e3 !important; border-radius: 12px !important; background: #fff !important; font-size: 1rem !important; transition: border-color .15s, box-shadow .15s !important; }
-.al-lado input:not([type="checkbox"]):focus { border-color: #17428f !important; box-shadow: 0 0 0 4px rgba(23, 66, 143, .14); }
+.al-lado.al-lado input:not([type="checkbox"]) { box-sizing: border-box; padding: 15px 16px !important; border: 1.5px solid #cfd8e3 !important; border-radius: 12px !important; background: #fff !important; font-size: 1rem !important; transition: border-color .15s, box-shadow .15s !important; }
+.al-lado.al-lado input:not([type="checkbox"]):focus { border-color: #17428f !important; box-shadow: 0 0 0 4px rgba(23, 66, 143, .14); }
 .al-lado button[type="submit"] { padding: 16px !important; border-radius: 12px !important; font-size: .95rem !important; letter-spacing: .06em; }
 .al-lado form label[for$="keep-signed-in"] { padding: 14px 16px !important; gap: 14px !important; border-radius: 12px !important; }
 
@@ -233,3 +233,43 @@ aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip:
 .al-lado .al-nota { padding: 14px 16px !important; gap: 10px !important; border-radius: 12px !important; background: #f4f6fb !important; border: 1px solid #dde4ef !important; }
 .al-lado .al-nota span { font-size: .86rem !important; line-height: 1.5 !important; color: #475569 !important; }
 .al-lado form > div:last-of-type { margin-top: 2px; }
+
+/* ===== login redesenhado (ideia do ChatGPT): foto à esquerda, campos com ícone, hierarquia clara ===== */
+.al-brand { background-color: #17428f !important; background-image: linear-gradient(180deg, color-mix(in srgb, #09245c 0%, transparent) 0%, color-mix(in srgb, #09245c 18%, transparent) 50%, color-mix(in srgb, #09245c 88%, transparent) 100%), url(/login-foto.webp) !important; background-blend-mode: normal, luminosity !important; background-size: cover, cover !important; background-position: center, center 20% !important; background-repeat: no-repeat !important; align-items: flex-start !important; justify-content: space-between !important; text-align: left !important; padding: clamp(24px, 4vw, 40px) !important; min-height: 420px; }
+.al-brand .al-logo { width: auto !important; max-width: 190px !important; margin: 0 !important; padding: 10px 14px !important; border-radius: 14px !important; background: #fff !important; box-shadow: 0 10px 30px rgba(0, 0, 0, .35) !important; }
+.al-brand .al-logo img { max-height: 74px !important; width: auto !important; max-width: 100% !important; background: none !important; padding: 0 !important; border-radius: 0 !important; }
+.al-brand h1 { margin: auto 0 8px !important; font-size: clamp(1.7rem, 3vw, 2.3rem) !important; font-weight: 800 !important; text-transform: none !important; letter-spacing: -.01em !important; line-height: 1.1; text-shadow: 0 2px 14px rgba(0, 0, 0, .45); }
+.al-brand p { max-width: 380px !important; margin: 0 !important; font-size: 1.05rem !important; opacity: .95 !important; text-shadow: 0 2px 10px rgba(0, 0, 0, .45); }
+.al-lado.al-lado input[name="username"]:not([type="checkbox"]), .al-lado.al-lado input[name="password"]:not([type="checkbox"]) { padding-left: 48px !important; background-repeat: no-repeat !important; background-position: 16px center !important; background-size: 20px !important; }
+.al-lado.al-lado input[name="username"]:not([type="checkbox"]) { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'/><circle cx='12' cy='7' r='4'/></svg>") !important; }
+.al-lado.al-lado input[name="password"]:not([type="checkbox"]) { background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/></svg>") !important; }
+.al-lado { background: #fff !important; }
+.al-lado h2 { font-size: clamp(1.9rem, 3vw, 2.4rem) !important; letter-spacing: -.02em !important; }
+.al-lado .form-group > label { font-size: .95rem !important; color: #10213f !important; }
+.al-lado form label[for$="keep-signed-in"] { padding: 4px 0 !important; border: 0 !important; background: none !important; gap: 12px !important; }
+.al-lado .al-nota { background: #eaf4ec !important; border: 0 !important; padding: 16px 18px !important; }
+.al-lado .al-nota span { font-size: .93rem !important; color: #27423a !important; }
+.al-lado .al-nota span::before { content: "i"; display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 10px; border: 2px solid #1c7c3a; border-radius: 50%; color: #1c7c3a; font-size: 13px; font-weight: 800; font-style: italic; vertical-align: -5px; }
+.al-lado button[type="submit"] { background: #10301f !important; box-shadow: 0 12px 26px rgba(16, 48, 31, .28) !important; font-size: 1.05rem !important; letter-spacing: .02em !important; text-transform: none !important; }
+@media (max-width: 800px) { .al-brand { min-height: 220px; flex: 1 1 100% !important; } .al-brand h1 { font-size: 1.5rem !important; } }
+.al-lado small, .al-lado .form-group > p { text-align: left !important; font-size: .82rem !important; }
+.al-lado.al-lado input:not([type="checkbox"]) { min-height: 52px; color: #10213f; }
+.al-lado input::placeholder { color: #94a3b8; }
+.al-lado.al-lado input:not([type="checkbox"]):hover { border-color: #9fb0c5 !important; }
+/* login: textos auxiliares alinhados e versão compacta para celular */
+.al-lado .form-group span, .al-lado .al-nota span { text-align: left !important; }
+.al-lado .al-nota { align-items: flex-start !important; }
+@media (max-width: 800px) {
+  .al-lado { padding: 22px 18px 26px !important; }
+  .al-lado h2 { font-size: 1.55rem !important; margin-bottom: 4px !important; }
+  .al-lado > p { margin: 0 0 16px !important; font-size: .92rem !important; line-height: 1.4; }
+  .al-lado form { gap: 14px !important; }
+  .al-lado .form-group > label { margin-bottom: 6px !important; font-size: .78rem !important; }
+  .al-lado.al-lado input:not([type="checkbox"]) { min-height: 46px !important; padding-top: 10px !important; padding-bottom: 10px !important; font-size: .95rem !important; }
+  .al-lado form label[for$="keep-signed-in"] { padding: 0 !important; gap: 10px !important; }
+  .al-lado form label[for$="keep-signed-in"] small { font-size: .74rem !important; }
+  .al-lado .al-nota { padding: 11px 13px !important; }
+  .al-lado .al-nota span { font-size: .84rem !important; line-height: 1.45 !important; }
+  .al-lado button[type="submit"] { padding: 13px !important; margin-top: 2px !important; font-size: .95rem !important; }
+  .al-lado form + div { margin-top: 14px !important; }
+}

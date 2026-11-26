@@ -206,7 +206,7 @@ export default function AdminLogin() {
                 boxShadow: '0 30px 80px rgba(6, 26, 64, 0.32)'
             }}>
                 {/* Left Side: Brand (Visible on desktop, top on mobile) */}
-                <div style={{
+                <div className="al-brand" style={{
                     flex: '1 1 300px',
                     background: 'radial-gradient(circle at 20% 12%, rgba(244, 194, 13, 0.32), transparent 30%), radial-gradient(circle at 82% 20%, rgba(0, 166, 58, 0.24), transparent 28%), linear-gradient(135deg, #17428f 0%, #09245c 100%)',
                     padding: '40px',
@@ -219,7 +219,7 @@ export default function AdminLogin() {
                     position: 'relative',
                     overflow: 'hidden'
                 }}>
-                    <div style={{
+                    <div className="al-logo" style={{
                         width: 'min(280px, 82%)',
                         marginBottom: '24px',
                         display: 'flex',

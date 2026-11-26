@@ -38,6 +38,7 @@ function botao(el: HTMLElement) {
 }
 
 function campo(el: HTMLElement) {
+    if (el.closest('.al-lado')) return nada(el); // telas de login têm estilo próprio (consistencia.css)
     const r = el.getBoundingClientRect(); if (!r.width || !r.height) return;
     const cs = getComputedStyle(el);
     // sem borda = campo embutido em outro desenho (busca com ícone, célula editável): não mexe
