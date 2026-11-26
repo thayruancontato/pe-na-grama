@@ -672,6 +672,21 @@ async function rotaAdmin(req, env, url, caminho) {
   if (rec === 'clientes') {
     if (m === 'POST' && !id) return postTeste(req, env, true);
     const hoje = tz();
+    if (id && !acao && m === 'DELETE') { // excluir a escola por completo: só com o nome digitado de volta como confirmação
+      const c = await env.DB.prepare('SELECT id,escola,url_sistema,lead_id FROM clientes WHERE id=?').bind(id).first(); if (!c) return erro('Escola não encontrada.', 404);
+      const b = await body(); if (String(b.confirmar || '').trim() !== String(c.escola).trim()) return erro('Para excluir, digite o nome da escola exatamente como aparece.');
+      const l = await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind('assin:' + id).first(), ass = l ? JSON.parse(l.v) : null;
+      if (ass && ass.subId) { try { await cancelarAssinatura(env, await asaasCfg(env), id, ass); } catch { /* sem Asaas ou já cancelada */ } } // não deixa cobrança rodando
+      const t = c.url_sistema ? new URL(c.url_sistema).host : '';
+      if (t) { for (const tb of ['sys_docs', 'sys_users', 'backups']) await env.DB.prepare('DELETE FROM ' + tb + ' WHERE tenant=?').bind(t).run(); esquecerControle(t); }
+      await env.DB.prepare("DELETE FROM settings WHERE k IN (?,?,?,?)").bind('assin:' + id, 'doc:' + id, 'teste:' + id, 'asaas:c:' + id).run();
+      if (ass && ass.subId) await env.DB.prepare('DELETE FROM settings WHERE k=?').bind('assin_sub:' + ass.subId).run();
+      await env.DB.prepare('DELETE FROM faturas WHERE cliente_id=?').bind(id).run();
+      if (c.lead_id) { await env.DB.prepare('DELETE FROM contratos WHERE lead_id=?').bind(c.lead_id).run(); await env.DB.prepare("DELETE FROM leads WHERE id=? AND status='auto'").bind(c.lead_id).run(); await env.DB.prepare("UPDATE leads SET status='perdido' WHERE id=? AND status<>'auto'").bind(c.lead_id).run(); }
+      await env.DB.prepare('DELETE FROM clientes WHERE id=?').bind(id).run();
+      await log(env, 'cliente', 'Escola excluída: ' + c.escola + (t ? ' (' + t + ')' : ''));
+      return J({ ok: true });
+    }
     if (!id && m === 'GET') {
       const { results } = await env.DB.prepare(`SELECT c.*, (SELECT COUNT(*) FROM faturas f WHERE f.cliente_id=c.id AND f.status IN ('aberta','informada') AND f.vencimento<?) atrasadas,
         (SELECT COALESCE(SUM(valor),0) FROM faturas f WHERE f.cliente_id=c.id AND f.status IN ('aberta','informada') AND f.vencimento<?) valor_atrasado,

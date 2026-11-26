@@ -275,3 +275,5 @@ tr.lin-click{cursor:pointer}
 .ct-situ{display:grid;gap:12px;padding:16px 18px;border:1px solid #dbe3ec;border-radius:12px;background:#fff}
 .ct-situ-txt{display:grid;gap:2px}.ct-situ-txt span{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b}.ct-situ-txt b{font-size:18px;color:#10213f}
 .ct-situ-acoes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.ct-situ-acoes .pg-select{min-width:220px;flex:1 1 220px;min-height:42px}
+
+.pg-btn.danger-txt{color:#b83227;border-color:#e6b8b2}.pg-btn.danger-txt:hover{background:#fdecea;border-color:#b83227}

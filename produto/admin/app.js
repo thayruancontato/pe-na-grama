@@ -245,7 +245,7 @@
           <div class="cl-st">${badge(ST_CLI, c.status)}${c.atrasadas ? `<span class="pg-badge bad">Em atraso · ${brl(c.valor_atrasado)}</span>` : ''}</div></div>
         <dl class="cl-meta"><div><dt>Plano</dt><dd>${E(c.plano_nome)}</dd></div><div><dt>Mensalidade</dt><dd>${brl(c.mensal)}</dd></div><div><dt>Próxima cobrança</dt><dd>${c.proximo ? dt(c.proximo) : '—'}</dd></div></dl>
         <button class="cl-prog" data-imp="${c.id}" title="Abrir o roteiro de implantação"><div class="pg-track"><i style="width:${pc}%"></i></div><small>${feitos === CHECK.length ? 'Implantada' : 'Implantação · ' + feitos + ' de ' + CHECK.length + ' — continuar'}</small></button>
-        <div class="cl-ac">${btnPainel(c.url_sistema, true).replace('Abrir painel da escola', 'Abrir painel')}${c.url_sistema ? `<button class="pg-btn detail" data-ctl="${c.id}">${I('settings')} Controle</button>` : ''}<button class="pg-btn detail" data-det="${c.id}">Detalhes</button></div></article>`; };
+        <div class="cl-ac">${btnPainel(c.url_sistema, true).replace('Abrir painel da escola', 'Abrir painel')}${c.url_sistema ? `<button class="pg-btn detail" data-ctl="${c.id}">${I('settings')} Controle</button>` : ''}<button class="pg-btn detail danger-txt" data-del="${c.id}" title="Excluir a escola e todos os dados dela">${I('trash')} Excluir</button><button class="pg-btn detail" data-det="${c.id}">Detalhes</button></div></article>`; };
     pg.innerHTML = cabeca('Clientes', 'Escolas que assinaram o contrato e o andamento de cada uma.') +
       (lista.length ? `<div class="ct-find"><input class="pg-input" id="cb" type="search" placeholder="Buscar escola ou contato…" aria-label="Buscar cliente" value="${E(buscaCli)}"><select class="pg-select" id="cs" aria-label="Filtrar por situação"><option value="">Todas as situações</option>${Object.entries(ST_CLI).map(([k, v]) => `<option value="${k}" ${stCli === k ? 'selected' : ''}>${v[0]}</option>`).join('')}<option value="atraso" ${stCli === 'atraso' ? 'selected' : ''}>Com fatura em atraso</option></select><span class="n" id="cn" aria-live="polite"></span></div>` : '') +
       `<div class="cl-grid" id="cl"></div>${lista.length ? '' : vazio('Nenhum cliente ainda', 'Quando uma escola assinar o contrato, ela aparece aqui já com a primeira fatura.')}<div id="cv"></div>`;
@@ -256,6 +256,12 @@
       $('#cv', pg).innerHTML = lista.length && !v.length ? vazio('Nenhuma escola encontrada', 'Mude a busca ou o filtro de situação.') : '';
       pg.querySelectorAll('[data-imp]').forEach(b => b.onclick = e => { e.stopPropagation(); implantar(+b.dataset.imp).catch(falha); });
       pg.querySelectorAll('[data-det]').forEach(b => b.onclick = e => { e.stopPropagation(); detalheCliente(+b.dataset.det); });
+      pg.querySelectorAll('[data-del]').forEach(b => b.onclick = async e => {
+        e.stopPropagation(); const c = lista.find(x => x.id === +b.dataset.del); if (!c) return;
+        const v = await confirma('Excluir ' + c.escola + '?', 'Isso apaga a escola, o sistema dela, os alunos, usuários, faturas e cobranças. Não dá para desfazer. Para confirmar, digite o nome da escola.', 'Excluir para sempre', true, '<input class="pg-input" style="margin-top:6px" placeholder="' + E(c.escola) + '" aria-label="Nome da escola para confirmar" autocomplete="off">');
+        if (!v) return; if (String(v).trim() !== String(c.escola).trim()) { toast('O nome digitado não confere. Nada foi excluído.', 'err'); return; }
+        b.disabled = true; try { await api('clientes/' + c.id, { m: 'DELETE', b: { confirmar: String(v).trim() } }); toast('Escola excluída.'); lista.splice(lista.indexOf(c), 1); desenha(); } catch (x) { falha(x); b.disabled = false; }
+      });
       pg.querySelectorAll('[data-ctl]').forEach(b => b.onclick = async e => { e.stopPropagation(); const c = lista.find(x => x.id === +b.dataset.ctl); b.disabled = true; try { await controleEscola(c); } finally { b.disabled = false; } });
       pg.querySelectorAll('.cl-card').forEach(tr => { const abre = e => { if (e.target.closest('a,button')) return; detalheCliente(+tr.dataset.id); }; tr.onclick = abre; tr.onkeydown = e => { if (e.key === 'Enter' && e.target === tr) detalheCliente(+tr.dataset.id); }; });
     };
