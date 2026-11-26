@@ -72,6 +72,8 @@ export interface Convocacao {
     rivalLogo?: string;
     casaNome?: string;
     casaLogo?: string;
+    logo?: string; // logo da convocação (opcional); sem ela vale a da escola
+    whatsappGrupo?: { jid: string; nome: string; convite?: string; foto?: string };
     showPhotos?: boolean;
     showNumbers?: boolean;
     showDataJogo?: boolean;

@@ -28,7 +28,6 @@ const AdminPaymentDetails = lazy(() => import('./pages/AdminPaymentDetails'));
 const AdminPaymentProviderSettings = lazy(() => import('./pages/AdminPaymentProviderSettings'));
 const AdminPatrocinadores = lazy(() => import('./pages/AdminPatrocinadores'));
 const AdminMeuPlano = lazy(() => import('./pages/AdminMeuPlano'));
-const AdminWhatsappServidor = lazy(() => import('./pages/AdminWhatsappServidor'));
 const AdminEscolaControle = lazy(() => import('./pages/AdminEscolaControle'));
 const AdminDadosEscola = lazy(() => import('./pages/AdminDadosEscola'));
 const AdminGastos = lazy(() => import('./pages/AdminGastos'));
@@ -196,7 +195,6 @@ function App() {
 
               <Route path="meu-plano" element={<AdminMeuPlano />} />
               <Route path="patrocinadores" element={<AdminPatrocinadores />} />
-              <Route path="whatsapp-servidor" element={<AdminWhatsappServidor />} />
               <Route path="escola-controle" element={<AdminEscolaControle />} />
               <Route path="dados-escola" element={<AdminDadosEscola />} />
               <Route path="settings" element={<AdminSettings />} />

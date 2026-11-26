@@ -3,6 +3,7 @@ import { collection, query, getDocs, addDoc, orderBy } from 'firebase/firestore'
 import { db } from '../firebase';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Plus, Users, Search, X, Trophy, Calendar, ChevronRight, Image as ImageIcon, FileSignature } from 'lucide-react';
+import { criarGrupoWhatsApp, normalizaTelefone } from '../utils/whatsappGrupo';
 import { useLoading } from '../components/LoadingService';
 import { useDialog } from '../context/CustomDialogContext';
 import { useDashboardData } from './AdminDashboard/hooks/useDashboardData';
@@ -41,6 +42,9 @@ export default function AdminConvocacaoList() {
     const [useTecnico, setUseTecnico] = useState(false);
     const [useCasaInfo, setUseCasaInfo] = useState(false);
     const [useRivalInfo, setUseRivalInfo] = useState(false);
+    const [useLogoConv, setUseLogoConv] = useState(false);
+    const [logoConv, setLogoConv] = useState('');
+    const [useGrupoWa, setUseGrupoWa] = useState(false);
     const [selectedJogadores, setSelectedJogadores] = useState<ConvocacaoJogador[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [searchModalidade, setSearchModalidade] = useState('futebol');
@@ -122,6 +126,7 @@ export default function AdminConvocacaoList() {
     };
 
     const closeModal = () => {
+        setUseLogoConv(false); setLogoConv(''); setUseGrupoWa(false);
         setIsModalOpen(false);
     };
 
@@ -183,6 +188,14 @@ export default function AdminConvocacaoList() {
         });
     };
 
+    const handleLogoConvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (event) => { setLogoConv(await resizeImage(event.target?.result as string, 512, 512)); };
+        reader.readAsDataURL(file);
+    };
+
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -209,6 +222,17 @@ export default function AdminConvocacaoList() {
         reader.readAsDataURL(file);
     };
 
+    // telefones dos responsáveis dos atletas escolhidos (sem repetir)
+    const numerosGrupo = () => {
+        const set = new Set<string>();
+        selectedJogadores.forEach((j) => {
+            const al = allStudents.find((s: any) => s.uniqueId === j.id);
+            const n = normalizaTelefone(al?.responsavel?.telefonePrincipal || al?.responsavel?.celular);
+            if (n) set.add(n);
+        });
+        return [...set];
+    };
+
     const handleSaveConvocacao = async () => {
         if (!jogoName.trim()) {
             showAlert('Informe o nome do jogo.', 'warning');
@@ -225,15 +249,28 @@ export default function AdminConvocacaoList() {
                 rivalLogo: useRivalInfo ? (rivalLogo || '') : '',
                 casaNome: useCasaInfo ? casaNome.trim() : 'Rumo ao Esporte',
                 casaLogo: useCasaInfo ? (casaLogo || '') : '',
+                ...(useLogoConv && logoConv ? { logo: logoConv } : {}),
                 showNumbers,
                 showDataJogo: useDataJogo,
                 dataUnix: useDataJogo && dataJogo ? new Date(dataJogo).getTime() : Date.now(),
                 jogadores: selectedJogadores
             };
 
+            let grupoMsg = '';
+            if (useGrupoWa) {
+                try {
+                    setLoading(true, 'Criando o grupo no WhatsApp…');
+                    const nome = [jogoName.trim(), useCategoria ? categoria.trim() : ''].filter(Boolean).join(' · ');
+                    const g = await criarGrupoWhatsApp({ nome, descricao: `Convocação: ${jogoName.trim()}`, numeros: numerosGrupo(), logo: useLogoConv ? logoConv : '' });
+                    (novaConvocacao as any).whatsappGrupo = { jid: g.jid, nome, convite: g.convite, foto: g.foto };
+                    grupoMsg = ` Grupo do WhatsApp criado com ${g.participantes} ${g.participantes === 1 ? 'participante' : 'participantes'}${g.foto === 'ok' ? ', com a logo como foto' : g.foto === 'falhou' ? ' (a foto não pôde ser definida)' : ''}.`;
+                } catch (e) {
+                    grupoMsg = ` O grupo de WhatsApp NÃO foi criado: ${e instanceof Error ? e.message : 'erro desconhecido'}`;
+                }
+            }
             await addDoc(collection(db, 'rumo_ao_esporte_2026_convocacoes'), novaConvocacao);
 
-            showAlert('Convocação criada com sucesso!', 'success');
+            showAlert('Convocação criada com sucesso!' + grupoMsg, grupoMsg.includes('NÃO') ? 'warning' : 'success');
             closeModal();
             fetchConvocacoes(); // Reload list
         } catch (error) {
@@ -373,6 +410,12 @@ export default function AdminConvocacaoList() {
                         onMouseOver={e => { e.currentTarget.style.borderColor = CONV_UI.green; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                         onMouseOut={e => { e.currentTarget.style.borderColor = CONV_UI.border; e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
+                        {conv.whatsappGrupo && (
+                            <a href={conv.whatsappGrupo.convite || undefined} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                                style={{ alignSelf: 'flex-start', padding: '3px 10px', borderRadius: '999px', background: '#e3f4e8', color: '#16692f', fontSize: '0.72rem', fontWeight: 800, textDecoration: 'none' }}>
+                                Grupo no WhatsApp{conv.whatsappGrupo.convite ? ' · abrir' : ''}
+                            </a>
+                        )}
                         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
                             <h3 style={{ margin: 0, color: CONV_UI.navy, fontSize: '1.15rem', fontWeight: 800 }}>{conv.jogo}</h3>
                             {conv.categoria && (
@@ -598,6 +641,36 @@ export default function AdminConvocacaoList() {
                                                 )}
                                             </div>
                                         </div>
+                                    </div>
+                                </ConvocacaoToggle>
+
+                                {/* Logo da convocação (opcional): sem ela vale a da escola, também na foto do grupo */}
+                                <ConvocacaoToggle
+                                    label="LOGO DA CONVOCAÇÃO (Opcional)"
+                                    hint="Desligado, a logo da escola é usada na arte e na foto do grupo de WhatsApp."
+                                    checked={useLogoConv}
+                                    onChange={(v) => { setUseLogoConv(v); if (!v) setLogoConv(''); }}
+                                >
+                                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                        <input type="file" accept="image/*" onChange={handleLogoConvUpload} style={{ flex: 1, fontSize: '0.8rem' }} />
+                                        {logoConv && (
+                                            <div style={{ position: 'relative' }}>
+                                                <img src={logoConv} alt="Logo da convocação" style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '6px', border: `1px solid ${CONV_UI.border}`, background: '#fff' }} />
+                                                <button type="button" onClick={() => setLogoConv('')} aria-label="Remover logo" style={{ position: 'absolute', top: '-6px', right: '-6px', background: CONV_UI.danger, color: '#fff', border: 'none', borderRadius: '50%', padding: '2px', cursor: 'pointer', display: 'flex' }}><X size={10} /></button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </ConvocacaoToggle>
+
+                                {/* Grupo de WhatsApp da convocação */}
+                                <ConvocacaoToggle
+                                    label="CRIAR GRUPO NO WHATSAPP (Opcional)"
+                                    hint="Cria o grupo com os responsáveis dos convocados. A foto do grupo é a logo da convocação ou, sem ela, a da escola."
+                                    checked={useGrupoWa}
+                                    onChange={setUseGrupoWa}
+                                >
+                                    <div style={{ fontSize: '0.82rem', color: '#63708a', lineHeight: 1.45 }}>
+                                        {(() => { const n = numerosGrupo().length; return n ? `${n} ${n === 1 ? 'número' : 'números'} de responsáveis entrarão no grupo.` : 'Adicione atletas: os telefones dos responsáveis deles formam o grupo.'; })()}
                                     </div>
                                 </ConvocacaoToggle>
 

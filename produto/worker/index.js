@@ -1,4 +1,4 @@
-import { rotaSistema, servirSistema, importarSistema, tokenParaDono, revogar, auditar, confereSenha, sessaoDoToken } from './sistema.js';
+import { rotaSistema, servirSistema, importarSistema, tokenParaDono, revogar, auditar, confereSenha, sessaoDoToken, waPlataforma, waSalvarPlataforma, waTestar, provisionarWa, waEstado, waQr, waSair } from './sistema.js';
 import { CATALOGO, INTERNO, limparControle, limparInterno, controleDe, esquecerControle } from './controle.js';
 // Worker do Pé na Grama: recebe os pedidos do formulário, gera proposta e contrato, cobra por Pix e alimenta a Central do dono.
 // Tudo no mesmo domínio: /api/* cai aqui; o resto é servido como arquivo estático.
@@ -452,10 +452,54 @@ async function postTeste(req, env, dono = false) { // dono: criado pela Central 
     .bind(host, 'sys_owner', 'controle', JSON.stringify({ valores: limparControle(valores), interno: {} })).run();
   if (!dono) await setSet(env, 'teste:' + cid, fim);
   const pub = await publicarDominio(env, url);
+  try { await provisionarWa(env, host); } catch { /* servidor da plataforma ainda não configurado: a escola fica pendente e a Central cria depois */ }
   // entra direto no painel: token de sessão do administrador recém-criado (vai no fragmento da URL, que não fica em registros)
   const adm = await env.DB.prepare("SELECT email,uid FROM sys_users WHERE tenant=? AND role='admin' ORDER BY rowid LIMIT 1").bind(host).first();
   const tk = await tokenParaDono(env, host, { email: adm.email, uid: adm.uid, role: 'admin' }, 12);
   return J({ ok: true, url: url + '/__entrar#t=' + tk + '&r=admin', host, ate: fim, publicado: pub.ok });
+}
+// ---- Servidor de WhatsApp instalado com UM comando ----
+// A Central gera um comando com token de uso único (1 h). A máquina chama /api/wa/registrar (o Worker cria o túnel e o DNS no Cloudflare) e, com o servidor no ar,
+// /api/wa/pronto (o Worker guarda endereço e chave e cria o WhatsApp de todas as escolas que ainda não têm). O dono não digita endereço nem chave.
+const cfApi = async (env, m, p, b) => {
+  const r = await fetch('https://api.cloudflare.com/client/v4' + p, { method: m, headers: { authorization: 'Bearer ' + env.CF_API_TOKEN, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined, signal: AbortSignal.timeout(20000) });
+  const j = await r.json().catch(() => ({}));
+  if (!j.success) throw new Error((j.errors && j.errors[0] && j.errors[0].message) || 'Cloudflare respondeu ' + r.status);
+  return j.result;
+};
+async function garantirTunel(env) { // acha ou cria o túnel da plataforma (também prova, já na Central, que o token do Cloudflare pode criar túneis)
+  const acct = env.CF_ACCOUNT_ID, nome = 'pe-na-grama-wa';
+  return (await cfApi(env, 'GET', '/accounts/' + acct + '/cfd_tunnel?name=' + nome + '&is_deleted=false'))[0] || (await cfApi(env, 'POST', '/accounts/' + acct + '/cfd_tunnel', { name: nome, config_src: 'cloudflare' }));
+}
+const msgCf = (e) => (/auth|permission|forbidden|unauthor/i.test(e.message) ? 'O token do Cloudflare usado pela plataforma não tem permissão para criar túneis. Uma vez só: em dash.cloudflare.com/profile/api-tokens edite o token (o mesmo do CF_API_TOKEN) e acrescente "Account → Cloudflare Tunnel → Edit" (e "Zone → DNS → Edit" se ainda não tiver). Depois gere o comando de novo.' : e.message);
+async function waInstalar(req, env, etapa) {
+  const b = await req.json().catch(() => ({})), tk = String(b.token || '');
+  if (!(await limite(env, 'wa-inst:' + ip(req), 20, 3600))) return erro('Muitas tentativas.', 429);
+  const l = await env.DB.prepare("SELECT v FROM settings WHERE k='wa_instalacao'").first(), st = l ? JSON.parse(l.v) : null;
+  if (!tk || !st || st.exp < Date.now() || st.h !== (await sha256(tk))) return erro('Comando de instalação inválido ou vencido. Gere um novo na Central.', 403);
+  const dominio = env.DOMINIO_PADRAO || 'penagrama.com.br', hostWa = 'wa.' + dominio, url = 'https://' + hostWa; let passo = '';
+  try {
+    if (etapa === 'registrar') {
+      const acct = env.CF_ACCOUNT_ID, nome = 'pe-na-grama-wa'; passo = 'criar o túnel';
+      const tun = await garantirTunel(env);
+      passo = 'configurar o túnel'; await cfApi(env, 'PUT', '/accounts/' + acct + '/cfd_tunnel/' + tun.id + '/configurations', { config: { ingress: [{ hostname: hostWa, service: 'http://evolution:8080' }, { service: 'http_status:404' }] } });
+      const tunToken = await cfApi(env, 'GET', '/accounts/' + acct + '/cfd_tunnel/' + tun.id + '/token');
+      passo = 'criar o endereço (DNS)'; const z = await cfApi(env, 'GET', '/zones?name=' + dominio + '&account.id=' + acct); if (!z.length) throw new Error('Zona ' + dominio + ' não encontrada nesta conta.');
+      const reg = { type: 'CNAME', name: 'wa', content: tun.id + '.cfargotunnel.com', proxied: true }, ex = await cfApi(env, 'GET', '/zones/' + z[0].id + '/dns_records?name=' + hostWa);
+      if (ex.length) await cfApi(env, 'PUT', '/zones/' + z[0].id + '/dns_records/' + ex[0].id, reg); else await cfApi(env, 'POST', '/zones/' + z[0].id + '/dns_records', reg);
+      await log(env, 'sistema', 'Servidor de WhatsApp: túnel e endereço ' + hostWa + ' criados');
+      return J({ ok: true, url, tunnelToken: tunToken });
+    }
+    // etapa 'pronto': o servidor já responde; guarda e liga as escolas
+    const apikey = String(b.apikey || ''); if (apikey.length < 24) return erro('Chave inválida.');
+    await waSalvarPlataforma(env, url, apikey);
+    let testado = false; for (let i = 0; i < 6 && !testado; i++) { try { await waTestar(env); testado = true; } catch { await new Promise((r) => setTimeout(r, 4000)); } }
+    const { results } = await env.DB.prepare("SELECT escola,url_sistema FROM clientes WHERE url_sistema<>'' AND status<>'cancelado' ORDER BY id").all(); const criadas = [], falhas = [];
+    if (testado) for (const c of (results || []).slice(0, 60)) { const h = new URL(c.url_sistema).host; if (await env.DB.prepare("SELECT 1 x FROM sys_docs WHERE tenant=? AND col='system_settings' AND id='whatsapp_evolution'").bind(h).first()) continue; try { await provisionarWa(env, h); criadas.push(c.escola); } catch (e) { falhas.push(c.escola); } }
+    await env.DB.prepare("DELETE FROM settings WHERE k='wa_instalacao'").run();
+    await log(env, 'sistema', 'Servidor de WhatsApp instalado (' + criadas.length + ' escola(s) ligadas' + (testado ? '' : '; teste de conexão falhou') + ')');
+    return J({ ok: true, testado, criadas: criadas.length, falhas: falhas.length });
+  } catch (e) { return erro((passo ? 'Falhou ao ' + passo + ': ' : '') + msgCf(e), 502); }
 }
 // Encerra os testes vencidos: o endereço passa a mostrar "teste encerrado" e a escola vira "Teste encerrado" na Central.
 async function expirarTestes(env) {
@@ -611,6 +655,48 @@ async function rotaAdmin(req, env, url, caminho) {
   if (rec === 'contagens' && m === 'GET') { // números do menu: o que está esperando o dono
     const [l, f] = await Promise.all([env.DB.prepare("SELECT COUNT(*) n FROM leads WHERE status='novo'").first(), env.DB.prepare("SELECT COUNT(*) n FROM faturas WHERE status='informada' OR (status='aberta' AND vencimento<?)").bind(tz()).first()]);
     return J({ pedidos: l.n, faturas: f.n });
+  }
+  if (rec === 'whatsapp-plataforma') { // servidor Evolution compartilhado: endereço + chave mestra (uma vez) e criação em massa das instâncias pendentes
+    if (m === 'GET') { const pl = await waPlataforma(env); return J({ url: pl ? pl.url : '', chaveDefinida: Boolean(pl && pl.apikey_enc) }); }
+    if (m === 'PUT') { const b = await body(); try { await waSalvarPlataforma(env, b.url, b.apikey); await log(env, 'sistema', 'Servidor de WhatsApp da plataforma configurado'); return J({ ok: true }); } catch (e) { return erro(e.message); } }
+    if (m === 'POST') {
+      const b = await body();
+      try {
+        if (b.acao === 'testar') return J({ ok: true, ...(await waTestar(env)) });
+        if (b.acao === 'token-instalacao') { // comando de uso único (1 h) para instalar o servidor numa máquina Linux
+          try { await garantirTunel(env); } catch (e) { return erro(msgCf(e), 502); } // avisa já aqui se falta permissão no Cloudflare
+          const tk = token(24); await env.DB.prepare("INSERT INTO settings(k,v) VALUES('wa_instalacao',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify({ h: await sha256(tk), exp: Date.now() + 3600e3 })).run();
+          return J({ ok: true, comando: 'curl -fsSL ' + url.origin + '/evolution/instalar.sh | sudo TOKEN=' + tk + ' CENTRAL=' + url.origin + ' bash' });
+        }
+        if (b.acao === 'criar-pendentes') {
+          const { results } = await env.DB.prepare("SELECT escola,url_sistema FROM clientes WHERE url_sistema<>'' AND status<>'cancelado' ORDER BY id").all();
+          const criadas = [], falhas = []; let jaTinham = 0, restantes = 0;
+          for (const c of results || []) {
+            const host = new URL(c.url_sistema).host, tem = await env.DB.prepare("SELECT 1 x FROM sys_docs WHERE tenant=? AND col='system_settings' AND id='whatsapp_evolution'").bind(host).first();
+            if (tem) { jaTinham++; continue; }
+            if (criadas.length + falhas.length >= 20) { restantes++; continue; } // lotes de 20: cada criação fala com o servidor
+            try { await provisionarWa(env, host); criadas.push(c.escola); } catch (e) { falhas.push({ escola: c.escola, erro: e.message }); }
+          }
+          await log(env, 'sistema', 'Servidores de WhatsApp criados em lote: ' + criadas.length + ' (falhas: ' + falhas.length + ')');
+          return J({ ok: true, criadas, falhas, jaTinham, restantes });
+        }
+      } catch (e) { return erro(e.message, 502); }
+    }
+    return erro('Pedido inválido.');
+  }
+  if (rec === 'clientes' && id && acao === 'whatsapp') { // estado e ações do WhatsApp de uma escola
+    const c = await env.DB.prepare('SELECT escola,url_sistema FROM clientes WHERE id=?').bind(id).first(); if (!c || !c.url_sistema) return erro('Escola sem endereço do sistema.', 404);
+    const host = new URL(c.url_sistema).host;
+    try {
+      if (m === 'GET') return J(await waEstado(env, host));
+      if (m === 'POST') {
+        const b = await body();
+        if (b.acao === 'criar') { const x = await provisionarWa(env, host); await log(env, 'cliente', 'Servidor de WhatsApp ' + (x.criado ? 'criado' : 'já existia') + ' para ' + c.escola); return J({ ok: true, ...x }); }
+        if (b.acao === 'qr') return J(await waQr(env, host));
+        if (b.acao === 'sair') { await waSair(env, host); await log(env, 'cliente', 'WhatsApp desconectado em ' + c.escola); return J({ ok: true }); }
+      }
+    } catch (e) { return erro(e.message, 502); }
+    return erro('Pedido inválido.');
   }
   if (rec === 'sys-import' && m === 'POST') { try { return J(await importarSistema(env, await body())); } catch (e) { return erro(e.message); } }
 
@@ -1064,6 +1150,7 @@ export default {
       // públicas
       if (p === '/api/leads' && m === 'POST') r = await postLead(req, env);
       else if (p === '/api/teste' && m === 'POST') r = await postTeste(req, env);
+      else if ((p === '/api/wa/registrar' || p === '/api/wa/pronto') && m === 'POST') r = await waInstalar(req, env, p.endsWith('registrar') ? 'registrar' : 'pronto');
       // Planos ativos, para a página de vendas mostrar o preço (desative um plano na Central e ele some do site).
       else if (p === '/api/planos' && m === 'GET') r = J((await env.DB.prepare('SELECT nome,mensal,implantacao,descricao FROM planos WHERE ativo=1 ORDER BY mensal').all()).results, 200, { 'cache-control': 'public, max-age=300' });
       else if (p === '/api/asaas/webhook' && m === 'POST') r = await webhookAsaas(req, env);

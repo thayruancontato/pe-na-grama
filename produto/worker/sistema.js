@@ -131,8 +131,11 @@ async function evo(env, cfg, method, path, body) {
 }
 async function rotaWa(req, env, tenant, partes, corpo) {
   const m = req.method, acao = partes[1], cfg = await lerWa(env, tenant);
-  if (acao === 'config' && m === 'GET') return J({ url: cfg ? cfg.url : '', instance: cfg ? cfg.instance : tenant.split('.')[0].slice(0, 40), apikeySet: Boolean(cfg && cfg.apikey_enc), configurado: Boolean(cfg && cfg.url && cfg.apikey_enc) });
+  // O servidor de WhatsApp é do dono: só a Central cria, troca de número ou desconecta. A escola apenas usa (enviar, grupos, estado).
+  if (['criar', 'qr', 'desconectar'].includes(acao) || (acao === 'config' && m !== 'GET')) return erro('O servidor de WhatsApp é gerenciado pela Central da plataforma.', 403);
+  if (acao === 'config' && m === 'GET') return J({ configurado: Boolean(cfg && cfg.url && cfg.apikey_enc) });
   if (acao === 'config' && m === 'PUT') {
+    if (cfg && cfg.gerenciado) return erro('O servidor de WhatsApp desta escola é gerenciado pela Central. Para trocar de número, use a leitura do QR.', 403);
     const url = String(corpo.url || '').trim(), instance = String(corpo.instance || '').trim() || tenant.split('.')[0];
     if (!urlWaOk(url)) return erro('Informe o endereço https do servidor Evolution API desta escola (não pode ser endereço local).');
     if (!/^[A-Za-z0-9_-]{2,60}$/.test(instance)) return erro('Nome da instância: 2 a 60 letras, números, - ou _.');
@@ -147,6 +150,22 @@ async function rotaWa(req, env, tenant, partes, corpo) {
     if (acao === 'status') return J(await evo(env, cfg, 'GET', '/instance/connectionState/' + encodeURIComponent(cfg.instance)));
     if (acao === 'qr') return J(await evo(env, cfg, 'GET', '/instance/connect/' + encodeURIComponent(cfg.instance)));
     if (acao === 'criar' && m === 'POST') return J(await evo(env, cfg, 'POST', '/instance/create', { instanceName: cfg.instance, qrcode: true, integration: 'WHATSAPP-BAILEYS' }));
+    if (acao === 'grupo' && m === 'POST') { // grupo da convocação: cria com os responsáveis, põe a foto (logo enviada ou a da escola) e devolve o link de convite
+      const nome = String(corpo.nome || '').trim().slice(0, 100), desc = String(corpo.descricao || '').slice(0, 500), inst = encodeURIComponent(cfg.instance);
+      const nums = [...new Set((Array.isArray(corpo.numeros) ? corpo.numeros : []).map((n) => String(n).replace(/\D/g, '')).filter((n) => /^\d{10,15}$/.test(n)))].slice(0, 250);
+      if (nome.length < 2) return erro('Dê um nome ao grupo.');
+      if (!nums.length) return erro('Nenhum responsável dos convocados tem telefone válido para entrar no grupo.');
+      const criado = await evo(env, cfg, 'POST', '/group/create/' + inst, { subject: nome, description: desc, participants: nums });
+      const jid = String((criado && (criado.id || criado.groupJid || criado.jid || (criado.group && criado.group.id))) || '');
+      if (!jid) return erro('O WhatsApp não devolveu o grupo criado. Confira se a instância está conectada.', 502);
+      let logo = String(corpo.logo || '');
+      if (!/^data:image\/(?:png|jpeg|webp);base64,/.test(logo)) { const mk = await marcaDaEscola(env, tenant); logo = mk && mk.logo ? mk.logo : ''; } // sem logo da convocação: a da escola
+      const mm = /^data:image\/(?:png|jpeg|webp);base64,(.+)$/.exec(logo);
+      let foto = 'sem-logo';
+      if (mm && mm[1].length < 1500000) { try { await evo(env, cfg, 'POST', '/group/updateGroupPicture/' + inst + '?groupJid=' + encodeURIComponent(jid), { image: mm[1] }); foto = 'ok'; } catch { foto = 'falhou'; } }
+      let convite = ''; try { const c = await evo(env, cfg, 'GET', '/group/inviteCode/' + inst + '?groupJid=' + encodeURIComponent(jid)); convite = (c && (c.inviteUrl || (c.code ? 'https://chat.whatsapp.com/' + c.code : ''))) || ''; } catch { /* sem link de convite */ }
+      return J({ ok: true, jid, foto, convite, participantes: nums.length });
+    }
     if (acao === 'desconectar' && m === 'POST') return J(await evo(env, cfg, 'DELETE', '/instance/logout/' + encodeURIComponent(cfg.instance)));
     if (acao === 'enviar' && m === 'POST') {
       const numero = String(corpo.numero || '').replace(/\D/g, ''), texto = String(corpo.texto || '').slice(0, 1000);
@@ -158,6 +177,58 @@ async function rotaWa(req, env, tenant, partes, corpo) {
   } catch (e) { return erro(e.message, 502); }
   return erro('Não encontrado.', 404);
 }
+
+// ---- WhatsApp gerenciado pela Central ----
+// Um servidor Evolution API compartilhado (o dono configura o endereço e a chave mestra uma vez) e uma INSTÂNCIA isolada por escola:
+// cada escola tem o próprio número (QR), a própria chave de instância e as próprias conversas. Barato (um servidor para todas) e fácil de escalar.
+export async function waPlataforma(env) { const l = await env.DB.prepare("SELECT v FROM settings WHERE k='wa_plataforma'").first(); return l ? JSON.parse(l.v) : null; }
+export async function waSalvarPlataforma(env, url, apikey) {
+  url = String(url || '').trim().replace(/\/+$/, ''); apikey = String(apikey || '').trim();
+  if (!urlWaOk(url)) throw new Error('Informe o endereço https do servidor Evolution da plataforma (não pode ser endereço local).');
+  const atual = await waPlataforma(env);
+  if (!apikey && !(atual && atual.apikey_enc)) throw new Error('Informe a chave mestra (AUTHENTICATION_API_KEY) do servidor.');
+  await env.DB.prepare("INSERT INTO settings(k,v) VALUES('wa_plataforma',?) ON CONFLICT(k) DO UPDATE SET v=excluded.v").bind(JSON.stringify({ url, apikey_enc: apikey ? await cifrar(env, apikey) : atual.apikey_enc })).run();
+}
+export async function waTestar(env) {
+  const pl = await waPlataforma(env); if (!pl || !pl.url) throw new Error('Servidor da plataforma ainda não configurado.');
+  const l = await evo(env, pl, 'GET', '/instance/fetchInstances'); // exige a chave mestra: prova que endereço e chave estão certos
+  return { instancias: Array.isArray(l) ? l.length : 0 };
+}
+const instanciaDe = (tenant) => String(tenant).split('.')[0].replace(/[^A-Za-z0-9_-]/g, '-').slice(0, 40);
+export async function provisionarWa(env, tenant) {
+  const pl = await waPlataforma(env);
+  if (!pl || !pl.url || !pl.apikey_enc) throw new Error('Configure primeiro o servidor Evolution da plataforma (Configurações → WhatsApp).');
+  const atual = await lerWa(env, tenant);
+  if (atual && atual.url && atual.apikey_enc) return { criado: false, instance: atual.instance };
+  const instance = instanciaDe(tenant); let token = b64u(crypto.getRandomValues(new Uint8Array(24)));
+  try { await evo(env, pl, 'POST', '/instance/create', { instanceName: instance, token, qrcode: false, integration: 'WHATSAPP-BAILEYS' }); }
+  catch (e) { // a instância pode já existir (criada antes): reaproveita a chave dela
+    const l = await evo(env, pl, 'GET', '/instance/fetchInstances?instanceName=' + encodeURIComponent(instance)).catch(() => null), it = Array.isArray(l) ? l[0] : l;
+    const achado = it && (it.token || it.apikey || (it.instance && (it.instance.token || it.instance.apikey)));
+    if (!achado) throw e; token = achado;
+  }
+  await env.DB.prepare("INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data")
+    .bind(tenant, 'system_settings', 'whatsapp_evolution', JSON.stringify({ url: pl.url, instance, apikey_enc: await cifrar(env, token), gerenciado: true })).run();
+  return { criado: true, instance };
+}
+export async function waEstado(env, tenant) {
+  const pl = await waPlataforma(env), cfg = await lerWa(env, tenant);
+  const r = { plataforma: Boolean(pl && pl.url && pl.apikey_enc), servidor: Boolean(cfg && cfg.url && cfg.apikey_enc), gerenciado: Boolean(cfg && cfg.gerenciado), instance: cfg ? cfg.instance : '', estado: 'sem', numero: '' };
+  if (!r.servidor) return r;
+  try { const j = await evo(env, cfg, 'GET', '/instance/connectionState/' + encodeURIComponent(cfg.instance)); r.estado = (j.instance && j.instance.state) || j.state || 'desconhecido'; }
+  catch (e) { r.estado = 'erro'; r.erro = e.message; }
+  if (r.estado === 'open' && r.plataforma) {
+    try { const l = await evo(env, pl, 'GET', '/instance/fetchInstances?instanceName=' + encodeURIComponent(cfg.instance)), it = Array.isArray(l) ? l[0] : l; r.numero = String((it && (it.ownerJid || it.owner || (it.instance && it.instance.owner))) || '').replace(/@.*/, '').replace(/\D/g, ''); } catch { /* número é só informativo */ }
+  }
+  return r;
+}
+export async function waQr(env, tenant) {
+  const cfg = await lerWa(env, tenant); if (!cfg || !cfg.url) throw new Error('Esta escola ainda não tem servidor de WhatsApp.');
+  const j = await evo(env, cfg, 'GET', '/instance/connect/' + encodeURIComponent(cfg.instance));
+  const img = j.base64 || (j.qrcode && j.qrcode.base64) || '';
+  return { imagem: img && !String(img).startsWith('data:') ? 'data:image/png;base64,' + img : img, codigo: j.pairingCode || '', conectado: j.instance && j.instance.state === 'open' };
+}
+export async function waSair(env, tenant) { const cfg = await lerWa(env, tenant); if (!cfg || !cfg.url) throw new Error('Esta escola ainda não tem servidor de WhatsApp.'); await evo(env, cfg, 'DELETE', '/instance/logout/' + encodeURIComponent(cfg.instance)); }
 
 function senhaFraca(cfg, pw) {
   const s = String(pw || ''), min = Math.max(8, cfg.senha_minima || 8);
@@ -500,9 +571,9 @@ export async function rotaSistema(req, env, tenant, p) {
     const s = await lerToken(req, env, tenant);
     if (!s) return erro('Faça login.', 401);
     if (s.role !== 'admin') return erro('Sem permissão.', 403);
-    if (cfg.bloq_wa && partes[1] === 'enviar') return erro('O envio de WhatsApp foi desligado pela Central.', 403);
+    if (cfg.bloq_wa && (partes[1] === 'enviar' || partes[1] === 'grupo')) return erro('O envio de WhatsApp foi desligado pela Central.', 403);
     if (cfg.adm_whatsapp_config === false && partes[1] === 'config' && m === 'PUT') return erro('A Central desligou: configurar o servidor de WhatsApp.', 403);
-    if (cfg.lim_wa_dia && partes[1] === 'enviar') {
+    if (cfg.lim_wa_dia && (partes[1] === 'enviar' || partes[1] === 'grupo')) {
       const ch = 'wa:' + tenant, dia = Date.now() - 86400e3, n = await env.DB.prepare('SELECT COUNT(*) n FROM tentativas WHERE chave=? AND quando>?').bind(ch, dia).first();
       if (n.n >= cfg.lim_wa_dia) return erro('Limite diário de mensagens de WhatsApp atingido (' + cfg.lim_wa_dia + ').', 429);
       await env.DB.prepare('INSERT INTO tentativas(chave,quando) VALUES(?,?)').bind(ch, Date.now()).run();

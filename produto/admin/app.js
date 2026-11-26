@@ -467,10 +467,10 @@
       'Limites do plano': ['chart', 'Máximos de cadastros, usuários, armazenamento e envios. Em todos os limites, 0 significa sem limite.'],
       'Segurança e senhas': ['check', 'Regras de acesso: tentativas, duração da sessão, tamanho de senha e primeiro acesso.'],
       'Permissões do administrador da escola': ['settings', 'Tire poderes específicos do administrador da escola. Você continua podendo tudo pela Central.'],
-      usuarios: ['users', 'Crie, bloqueie, troque o papel ou gere nova senha.'], dados: ['file', 'O que há guardado e o registro de ações.'],
+      usuarios: ['users', 'Crie, bloqueie, troque o papel ou gere nova senha.'], dados: ['file', 'O que há guardado e o registro de ações.'], whatsapp: ['whats', 'Servidor, instância e número de WhatsApp desta escola.'],
       ficha: ['pencil', 'Anotações só suas. Nada daqui aparece para a escola.'], acoes: ['send', 'Entrar como a escola, mudar o estado e encerrar sessões.']
     };
-    const tabs = [...grupos.map((g, i) => ['g' + i, CURTO[g] || g, ctl.catalogo.filter(o => o.g === g).length, META[g][0], g]), ['usuarios', 'Usuários', 0, META.usuarios[0], 'usuarios'], ['dados', 'Dados e registro', 0, META.dados[0], 'dados'], ['ficha', 'Ficha interna', 0, META.ficha[0], 'ficha'], ['acoes', 'Ações', 0, META.acoes[0], 'acoes']];
+    const tabs = [...grupos.map((g, i) => ['g' + i, CURTO[g] || g, ctl.catalogo.filter(o => o.g === g).length, META[g][0], g]), ['usuarios', 'Usuários', 0, META.usuarios[0], 'usuarios'], ['dados', 'Dados e registro', 0, META.dados[0], 'dados'], ['whatsapp', 'WhatsApp', 0, META.whatsapp[0], 'whatsapp'], ['ficha', 'Ficha interna', 0, META.ficha[0], 'ficha'], ['acoes', 'Ações', 0, META.acoes[0], 'acoes']];
     const grupoDe = Object.fromEntries(ctl.catalogo.map(o => [o.k, 'g' + grupos.indexOf(o.g)]));
     const soBool = g => ctl.catalogo.filter(o => o.g === g).every(o => o.t === 'bool');
     let aberta = 'g0';
@@ -494,6 +494,7 @@
         opcoes: () => `<div class="ct-find" style="margin-bottom:12px"><input class="pg-input" id="busca" type="search" placeholder="Buscar em todas as ${ctl.catalogo.length} opções (ex.: senha, WhatsApp, turmas)…" aria-label="Buscar opção"><label class="ct-sw" style="font-weight:600;font-size:14px"><input type="checkbox" id="soMud"><span>Só personalizadas</span></label></div><div id="ops" class="solo">${caixaLogo()}${grupos.map((g, gi) => `<details class="ct-grp" data-gi="g${gi}" open><summary>${E(g)} <span class="c">${ctl.catalogo.filter(o => o.g === g).length} opções</span> <span class="c alt" style="color:#92400e"></span></summary><div class="gb">${ctl.catalogo.filter(o => o.g === g).map(opcao).join('')}</div></details>`).join('')}</div><div class="ct-none" id="nenhuma" hidden>Nenhuma opção encontrada. Tente outra palavra.</div>${rodape('Salvar opções')}`,
         usuarios: () => '<div id="usu"><div class="pg-empty">Carregando…</div></div>',
         dados: () => '<div id="dad"><div class="pg-empty">Carregando…</div></div>',
+        whatsapp: () => '<div id="wa"><div class="pg-empty">Carregando…</div></div>',
         ficha: () => `<p class="pg-sub" style="margin:0 0 14px">Anotações só suas. Nada daqui aparece para a escola.</p><div class="ct-two">${ctl.interno_campos.map(([k, r]) => `<div class="pg-field"><label class="pg-label" for="i_${E(k)}">${E(r)}</label><input class="pg-input" id="i_${E(k)}" data-i="${E(k)}" value="${E(internoMud[k] != null ? internoMud[k] : (ctl.interno[k] || ''))}" maxlength="300"></div>`).join('')}</div>${rodape('Salvar ficha')}`,
         acoes: () => {
           const v = ctl.valores, est = [['suspensa', 'Suspensa', 'bad'], ['manutencao', 'Em manutenção', 'warn'], ['somente_leitura', 'Somente leitura', 'warn']].filter(([k]) => v[k]);
@@ -548,6 +549,7 @@
         if (ds) ds.onclick = () => { if (aberta === 'ficha') for (const k in internoMud) delete internoMud[k]; else for (const k in mudou) delete mudou[k]; mostra(aberta); };
         const usu = $('#usu', corpo); if (usu) listaUsuarios(usu);
         const dad = $('#dad', corpo); if (dad) painelDados(dad);
+        const wa = $('#wa', corpo); if (wa) painelWa(wa);
         const ent = $('#entrarEsc', corpo);
         if (ent) {
           ent.onclick = async () => { const w = window.open('', '_blank'); ent.disabled = true; try { const r = await api(base + 'entrar', { m: 'POST', b: {} }); if (w) w.location = r.url; else toast('Libere pop-ups para abrir a escola.', 'err'); } catch (e) { if (w) w.close(); falha(e); } ent.disabled = false; };
@@ -569,6 +571,37 @@
       el.querySelectorAll('[data-aba]').forEach(b => { b.onclick = () => mostra(b.dataset.aba); b.onkeydown = e => { const i = tabs.findIndex(t => t[0] === b.dataset.aba), d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { const n = tabs[(i + d + tabs.length) % tabs.length][0]; mostra(n); el.querySelector('[data-aba="' + n + '"]').focus(); } }; });
       mostra('g0');
     }, { wide: true, guarda: () => nMud() > 0 });
+
+    // ---------- WhatsApp da escola: servidor (instância própria no Evolution compartilhado) + número ----------
+    async function painelWa(box) {
+      const ROT = { open: ['Conectado', 'ok'], close: ['Desconectado — leia o QR', 'warn'], connecting: ['Conectando…', 'warn'], sem: ['Sem servidor', 'bad'], erro: ['Servidor não respondeu', 'bad'] };
+      const desenha = async () => {
+        let x; try { x = await api(base + 'whatsapp'); } catch (e) { box.innerHTML = `<div class="pg-alert bad">${E(e.message)}</div>`; return; }
+        const [rot, cls] = ROT[x.estado] || [x.estado, 'warn'];
+        box.innerHTML = `<div class="pg-stack">
+          <div class="ct-situ"><div class="ct-situ-txt"><span>Servidor de WhatsApp</span><b>${x.servidor ? 'Criado' : 'Ainda não criado'}${x.instance ? ' · instância <code>' + E(x.instance) + '</code>' : ''}</b></div>
+            <div class="ct-situ-ac">${x.servidor ? '' : `<button class="pg-btn green" id="waCriar" ${x.plataforma ? '' : 'disabled'}>Criar servidor agora</button>`}</div></div>
+          ${x.plataforma ? '' : '<div class="pg-alert warn">O servidor Evolution da plataforma ainda não foi configurado. Vá em <b>Configurações → Servidor de WhatsApp</b>, informe o endereço e a chave mestra uma vez, e então crie o servidor de cada escola.</div>'}
+          ${x.servidor ? `<div><div class="ct-sec" style="margin-top:0">Número conectado</div>
+            <p><span class="pg-badge ${cls}">${E(rot)}</span>${x.numero ? ' <b style="margin-left:8px">+' + E(x.numero) + '</b>' : ''}</p>${x.erro ? `<p class="pg-hint">${E(x.erro)}</p>` : ''}
+            <div class="ct-quick"><button class="pg-btn" id="waAtual">${I('refresh')} Atualizar estado</button>${x.estado === 'open' ? '<button class="pg-btn dang" id="waSair">Desconectar número</button>' : '<button class="pg-btn green" id="waQr">Mostrar QR code para conectar o número</button>'}</div>
+            <div id="waQrBox" style="margin-top:14px"></div></div>` : ''}
+        </div>`;
+        const criar = $('#waCriar', box); if (criar) criar.onclick = async () => { criar.disabled = true; try { await api(base + 'whatsapp', { m: 'POST', b: { acao: 'criar' } }); toast('Servidor de WhatsApp criado'); await desenha(); } catch (e) { falha(e); criar.disabled = false; } };
+        const atual = $('#waAtual', box); if (atual) atual.onclick = desenha;
+        const sair = $('#waSair', box); if (sair) sair.onclick = async () => { if (!(await confirma('Desconectar o número?', 'O WhatsApp desta escola para de enviar até um novo QR ser lido.', 'Desconectar', true))) return; try { await api(base + 'whatsapp', { m: 'POST', b: { acao: 'sair' } }); toast('Número desconectado'); await desenha(); } catch (e) { falha(e); } };
+        const qr = $('#waQr', box); if (qr) qr.onclick = async () => {
+          qr.disabled = true; const alvo = $('#waQrBox', box); alvo.innerHTML = '<div class="pg-empty">Gerando o QR…</div>';
+          try {
+            const g = await api(base + 'whatsapp', { m: 'POST', b: { acao: 'qr' } });
+            alvo.innerHTML = g.imagem ? `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><img src="${E(g.imagem)}" alt="QR code do WhatsApp" style="width:240px;height:240px;border:1px solid #dfe4ea;border-radius:8px;background:#fff"><div><b>No celular do número da escola:</b><ol style="margin:6px 0 0 18px;padding:0"><li>Abra o WhatsApp</li><li>Aparelhos conectados → Conectar aparelho</li><li>Aponte para este QR (vale por poucos segundos)</li></ol>${g.codigo ? '<p class="pg-hint">Ou use o código: <code>' + E(g.codigo) + '</code></p>' : ''}</div></div>` : '<div class="pg-alert warn">O servidor não devolveu um QR agora. Tente de novo em instantes.</div>';
+            let n = 0; const t = setInterval(async () => { n++; if (!document.body.contains(alvo) || n > 20) { clearInterval(t); return; } try { const e2 = await api(base + 'whatsapp'); if (e2.estado === 'open') { clearInterval(t); toast('Número conectado'); desenha(); } } catch { /* tenta no próximo ciclo */ } }, 6000);
+          } catch (e) { alvo.innerHTML = `<div class="pg-alert bad">${E(e.message)}</div>`; }
+          qr.disabled = false;
+        };
+      };
+      await desenha();
+    }
 
     async function listaUsuarios(box) {
       try {
@@ -693,13 +726,40 @@
   async function config(pg) {
     const c = await api('config');
     const f = (id, rot, v, dica, ph = '') => `<div class="pg-field"><label class="pg-label" for="${id}">${rot}</label><input class="pg-input" id="${id}" value="${E(v)}" placeholder="${E(ph)}">${dica ? `<span class="pg-hint">${dica}</span>` : ''}</div>`;
-    const ABAS = [['empresa', 'Sua empresa', 'users'], ['pix', 'Pix para receber', 'dollar'], ['asaas', 'Recebimento (Asaas)', 'receipt'], ['contrato', 'Texto do contrato', 'file']];
+    const ABAS = [['empresa', 'Sua empresa', 'users'], ['pix', 'Pix para receber', 'dollar'], ['asaas', 'Recebimento (Asaas)', 'receipt'], ['contrato', 'Texto do contrato', 'file'], ['whatsapp', 'Servidor de WhatsApp', 'whats']];
     pg.innerHTML = cabeca('Configurações', 'Seus dados, o Pix que recebe e o texto do contrato.', `<button class="pg-btn green" id="salvar">Salvar tudo</button>`) +
       `<div class="cf-tabs" role="tablist">${ABAS.map(([k, n, ic]) => `<button class="cf-tab ${k === abaCfg ? 'on' : ''}" role="tab" aria-selected="${k === abaCfg}" data-aba="${k}">${I(ic)} ${n}</button>`).join('')}</div>
       <div class="pg-card cf-pane" data-pane="empresa"><div class="ct-two">${f('empresa_nome', 'Nome', c.empresa_nome, 'Aparece no contrato e na fatura.')}${f('empresa_doc', 'CNPJ ou CPF', c.empresa_doc, 'Vai no texto do contrato.', '00.000.000/0000-00')}${f('empresa_email', 'E-mail', c.empresa_email, '')}${f('empresa_whats', 'WhatsApp (com 55 e DDD)', c.empresa_whats, 'Os clientes falam com você por aqui.', '5533999999999')}</div></div>
       <div class="pg-card cf-pane" data-pane="pix"><p class="pg-sub" style="margin-bottom:14px">As faturas geram um Pix "copia e cola" com o valor certo. O dinheiro cai direto na sua conta; depois você marca a fatura como paga.</p><div class="ct-two">${f('pix_chave', 'Chave Pix', c.pix_chave, 'CPF, CNPJ, e-mail, telefone ou chave aleatória.')}${f('pix_nome', 'Nome que aparece no Pix', c.pix_nome, 'Até 25 letras.')}${f('pix_cidade', 'Cidade', c.pix_cidade, 'Até 15 letras.')}${f('dia_venc_padrao', 'Dia de vencimento padrão', c.dia_venc_padrao, 'De 1 a 28.')}</div></div>
       <div class="pg-card cf-pane" data-pane="asaas" id="asaasPane"><div class="pg-empty">Carregando…</div></div>
+      <div class="pg-card cf-pane" data-pane="whatsapp" id="waPane"><div class="pg-empty">Carregando…</div></div>
       <div class="pg-card cf-pane" data-pane="contrato"><p class="pg-sub" style="margin-bottom:12px">Este é um modelo-base. Peça para um advogado revisar antes de usar. Variáveis: <code>{{empresa}}</code> <code>{{doc_empresa}}</code> <code>{{escola}}</code> <code>{{assinante}}</code> <code>{{plano}}</code> <code>{{mensal}}</code> <code>{{implantacao}}</code> <code>{{dia}}</code> <code>{{data}}</code>. Cada contrato guarda o texto como estava na hora do envio.</p><textarea class="pg-textarea" id="contrato_texto" style="min-height:420px;font-size:13px">${E(c.contrato_texto)}</textarea></div>`;
+    api('whatsapp-plataforma').then((w) => {
+      const box = $('#waPane', pg), ok = Boolean(w.url && w.chaveDefinida);
+      box.innerHTML = `<div class="ct-situ"><div class="ct-situ-txt"><span>Servidor de WhatsApp das escolas</span><b>${ok ? 'Ligado · ' + E(w.url.replace(/^https?:\/\//, '')) : 'Ainda não instalado'}</b></div></div>
+        <p class="pg-sub" style="margin:12px 0">Um servidor atende todas as escolas e cada uma ganha o WhatsApp próprio <b>automaticamente</b> ao ser criada. ${ok ? 'Para cada escola, só falta ler o QR do número dela (Clientes → Controle → WhatsApp).' : 'Instale uma vez, com um comando, numa máquina Linux grátis (ex.: Oracle Cloud Always Free). O endereço, a chave e o túnel seguro são criados sozinhos.'}</p>
+        <div class="ct-quick"><button class="pg-btn green" id="waCmd">${ok ? 'Reinstalar / trocar de máquina' : 'Gerar comando de instalação'}</button>${ok ? '<button class="pg-btn" id="waTesta">Testar conexão</button><button class="pg-btn" id="waLote">Ligar escolas que ainda não têm</button>' : ''}</div>
+        <div id="waRes" style="margin-top:14px"></div>
+        <details style="margin-top:14px"><summary class="pg-hint" style="cursor:pointer">Avançado: já tenho um servidor Evolution</summary>
+          <div class="ct-two" style="margin-top:10px"><div class="pg-field"><label class="pg-label" for="waUrl">Endereço (https)</label><input class="pg-input" id="waUrl" value="${E(w.url)}" placeholder="https://wa.seudominio.com.br"></div>
+          <div class="pg-field"><label class="pg-label" for="waKey">Chave mestra</label><input class="pg-input" id="waKey" type="password" autocomplete="off" placeholder="${w.chaveDefinida ? 'já definida — deixe em branco para manter' : 'AUTHENTICATION_API_KEY'}"></div></div>
+          <button class="pg-btn" id="waSalva" style="margin-top:8px">Salvar manualmente</button></details>`;
+      const res = (h, bom = true) => { $('#waRes', box).innerHTML = `<div class="pg-alert ${bom ? 'ok' : 'bad'}">${h}</div>`; };
+      $('#waCmd', box).onclick = async () => {
+        try {
+          const x = await api('whatsapp-plataforma', { m: 'POST', b: { acao: 'token-instalacao' } });
+          $('#waRes', box).innerHTML = `<div class="pg-alert ok"><b>Cole este comando no terminal da máquina (vale por 1 hora, uso único):</b><div class="ct-copy" style="margin-top:8px"><input class="pg-input" readonly value="${E(x.comando)}" aria-label="Comando de instalação"><button class="pg-btn detail" id="waCp">${I('copy')} Copiar</button></div><p class="pg-hint" style="margin-top:8px">Leva uns 3 minutos. No fim, todas as escolas já ficam com o WhatsApp criado; o número de cada uma você liga lendo o QR.</p></div>`;
+          $('#waCp', box).onclick = () => copiar(x.comando);
+        } catch (e) { res(E(e.message), false); }
+      };
+      const t1 = $('#waTesta', box); if (t1) t1.onclick = async () => { try { const x = await api('whatsapp-plataforma', { m: 'POST', b: { acao: 'testar' } }); res('Conexão ok. O servidor tem ' + x.instancias + ' instância(s).'); } catch (e) { res(E(e.message), false); } };
+      const t2 = $('#waLote', box); if (t2) t2.onclick = async () => {
+        t2.disabled = true;
+        try { const x = await api('whatsapp-plataforma', { m: 'POST', b: { acao: 'criar-pendentes' } }); res(`${x.criadas.length} escola(s) ligada(s), ${x.jaTinham} já tinha(m)${x.falhas.length ? '; com erro: ' + x.falhas.map(f => E(f.escola + ' (' + f.erro + ')')).join('; ') : ''}${x.restantes ? '. Restam ' + x.restantes + ': clique de novo.' : '.'}`, !x.falhas.length); } catch (e) { res(E(e.message), false); }
+        t2.disabled = false;
+      };
+      $('#waSalva', box).onclick = async () => { try { await api('whatsapp-plataforma', { m: 'PUT', b: { url: $('#waUrl', box).value, apikey: $('#waKey', box).value } }); toast('Servidor de WhatsApp salvo'); } catch (e) { falha(e); } };
+    }).catch((e) => { $('#waPane', pg).innerHTML = `<div class="pg-alert bad">${E(e.message)}</div>`; });
     api('asaas').then((a) => asaasTela($('#asaasPane', pg), a)).catch((e) => { $('#asaasPane', pg).innerHTML = `<div class="pg-alert bad">${E(e.message)}</div>`; });
     const mostra = () => { pg.querySelectorAll('[data-pane]').forEach(x => x.hidden = x.dataset.pane !== abaCfg); pg.querySelectorAll('[data-aba]').forEach(x => { x.classList.toggle('on', x.dataset.aba === abaCfg); x.setAttribute('aria-selected', x.dataset.aba === abaCfg); }); };
     pg.querySelectorAll('[data-aba]').forEach(x => x.onclick = () => { abaCfg = x.dataset.aba; mostra(); }); mostra();

@@ -88,7 +88,7 @@ export const ADMIN_MENU_ITEMS: MenuItem[] = [
             ...(SEM_FIREBASE ? [{ to: '/admin/dados-escola', label: 'Dados da escola' }] : []),
             { to: '/admin/patrocinadores', label: 'Patrocinadores' },
             ...(SEM_FIREBASE
-                ? [{ to: '/admin/whatsapp-servidor', label: 'WhatsApp da escola' }, { to: '/admin/escola-controle', label: 'Inscrições e backup' }]
+                ? [{ to: '/admin/escola-controle', label: 'Inscrições e backup' }]
                 : [{ to: '/admin/mensagens-evolution', label: 'Mensagens' }]),
             { to: '/admin/settings', label: 'Configurações' }
         ]
