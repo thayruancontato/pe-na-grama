@@ -14,7 +14,9 @@ async function pbkdf2(senha, salt) {
   return b64u(new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64u(salt), iterations: 100000 }, k, 256)));
 }
 /** A senha guardada pelo dono ainda é a do usuário? (o usuário pode ter trocado a dele) */
-export async function confereSenha(senha, u) { return (await pbkdf2(String(senha), u.salt)) === u.hash; }
+// comparação em tempo constante: o tempo de resposta não revela quantos caracteres do hash batem
+function igual(a, b) { a = String(a); b = String(b); let d = a.length ^ b.length; for (let i = 0; i < Math.max(a.length, b.length); i++) d |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0); return d === 0; }
+export async function confereSenha(senha, u) { return igual(await pbkdf2(String(senha), u.salt), u.hash); }
 export async function hashSenha(senha) { const salt = b64u(crypto.getRandomValues(new Uint8Array(16))); return { salt, hash: await pbkdf2(senha, salt) }; }
 
 const hmacKey = (env) => crypto.subtle.importKey('raw', enc.encode(env.SESSION_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
@@ -35,17 +37,18 @@ async function lerToken(req, env, tenant) {
     // "Sair de todos os dispositivos": token emitido (x - 12h) antes da revogação deixa de valer
     const fl = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='sys_flags' AND id=?").bind(tenant, d.e).first();
     if (fl && (JSON.parse(fl.data).bloqueado || JSON.parse(fl.data).revogado > (d.i || d.x - 12 * 3600e3))) return null;
-    return { email: d.e, uid: d.u, role: d.r };
+    return { email: d.e, uid: d.u, role: d.r, emitido: d.i || 0 };
   } catch { return null; }
 }
 
 // ---- valores especiais do Firestore (increment, serverTimestamp, Timestamp) ----
+const PERIGOSA = /^(__proto__|constructor|prototype)$/;
 const resolver = (v, antigo) => {
   if (v && typeof v === 'object' && !Array.isArray(v)) {
     if (v.__op === 'ts') return { __t: [Math.floor(Date.now() / 1000), 0] };
     if (v.__op === 'inc') return (typeof antigo === 'number' ? antigo : 0) + Number(v.n || 0);
     if (v.__op === 'del') return undefined;
-    const o = {}; for (const [k, x] of Object.entries(v)) { const r = resolver(x, antigo && typeof antigo === 'object' ? antigo[k] : undefined); if (r !== undefined) o[k] = r; }
+    const o = {}; for (const [k, x] of Object.entries(v)) { if (PERIGOSA.test(k)) continue; const r = resolver(x, antigo && typeof antigo === 'object' ? antigo[k] : undefined); if (r !== undefined) o[k] = r; }
     return o;
   }
   return Array.isArray(v) ? v.map((x) => resolver(x)) : v;
@@ -53,14 +56,14 @@ const resolver = (v, antigo) => {
 function atualizar(antigo, patch) { // updateDoc: chaves "a.b.c" caminham dentro do objeto
   const r = JSON.parse(JSON.stringify(antigo || {}));
   for (const [k, v] of Object.entries(patch)) {
-    const partes = k.split('.'); let alvo = r;
+    const partes = k.split('.'); if (partes.some((x) => PERIGOSA.test(x))) continue; let alvo = r;
     for (let i = 0; i < partes.length - 1; i++) { if (typeof alvo[partes[i]] !== 'object' || alvo[partes[i]] === null) alvo[partes[i]] = {}; alvo = alvo[partes[i]]; }
     const ultimo = partes[partes.length - 1], novo = resolver(v, alvo[ultimo]);
     if (novo === undefined) delete alvo[ultimo]; else alvo[ultimo] = novo;
   }
   return r;
 }
-const mescla = (a, b) => { const r = { ...a }; for (const [k, v] of Object.entries(b)) r[k] = v && typeof v === 'object' && !Array.isArray(v) && !('__t' in v) && a && typeof a[k] === 'object' && a[k] && !Array.isArray(a[k]) ? mescla(a[k], v) : v; return r; };
+const mescla = (a, b) => { const r = { ...a }; for (const [k, v] of Object.entries(b)) if (!PERIGOSA.test(k)) r[k] = v && typeof v === 'object' && !Array.isArray(v) && !('__t' in v) && a && typeof a[k] === 'object' && a[k] && !Array.isArray(a[k]) ? mescla(a[k], v) : v; return r; };
 
 const colOk = (c) => /^[A-Za-z0-9_-]{1,80}$/.test(c);
 const idOk = (c) => /^[^/\\]{1,200}$/.test(c);
@@ -107,7 +110,7 @@ async function novaInscricao(req, env, tenant, corpo) {
   const nome = d && d.responsavel && String(d.responsavel.nome || '').trim();
   if (!d || !nome || nome.length < 3 || !Array.isArray(d.alunos) || d.alunos.length < 1 || d.alunos.length > Math.max(1, cfgC.lim_alunos_inscricao || 8)) return erro('Dados da inscrição incompletos.');
   const seguro = { ...d, status: 'pendente', contractStatus: 'pendente', origem: 'formulario-publico' };
-  for (const k of ['financialPendingAmount', 'financialReceivedAmount', 'financialInvoiceUrl', 'approvedBy', 'role']) delete seguro[k];
+  for (const k of ['financialPendingAmount', 'financialReceivedAmount', 'financialInvoiceUrl', 'approvedBy', 'role', 'planId', 'paymentDay', 'turmaId', 'approvedAt', 'daysOverdue', 'id', 'uid']) delete seguro[k]; // quem se inscreve não escolhe plano, turma nem aprovação
   await env.DB.prepare('INSERT INTO tentativas(chave,quando) VALUES(?,?)').bind(chave, Date.now()).run();
   const id = idNovo();
   try { await gravar(env, tenant, { op: 'set', col: 'rumo_ao_esporte_2026_registrations', id, data: seguro }); } catch (e) { return erro(e.message); }
@@ -157,9 +160,11 @@ async function rotaWa(req, env, tenant, partes, corpo) {
 }
 
 function senhaFraca(cfg, pw) {
-  const s = String(pw || ''), min = Math.max(6, cfg.senha_minima || 6);
+  const s = String(pw || ''), min = Math.max(8, cfg.senha_minima || 8);
   if (s.length < min) return 'Senha muito curta (mínimo ' + min + ' caracteres).';
-  if (cfg.senha_forte && !(/[A-Za-z]/.test(s) && /\d/.test(s))) return 'A senha precisa ter letras e números.';
+  if (s.length > 200) return 'Senha longa demais.';
+  if (!(/[A-Za-z]/.test(s) && /\d/.test(s))) return 'A senha precisa ter letras e números.';
+  if (/^(.)\1+$/.test(s) || /^(0123456789|1234567890|12345678|123456789|abcdefgh|qwertyui|password|senha123|admin123|11111111)/i.test(s)) return 'Essa senha é fácil demais de adivinhar. Escolha outra.';
   return '';
 }
 /** Quem pode o quê no banco, segundo a Central (vale para o administrador da escola). Devolve a mensagem de recusa ou ''. */
@@ -227,6 +232,18 @@ async function rotaReservas(env, tenant, s, m, col, id, corpo) {
   return null;
 }
 // Acesso do responsável (role 'user'): lê só a própria inscrição (pelo e-mail) e coleções de consulta; edita só dados de contato da própria inscrição.
+const SETTINGS_PORTAL = new Set(['school_profile', 'inscricoes', 'patrocinadores', 'plan_auto_allocation', 'auto_allocation', 'maintenance', 'store', 'rentals', 'artes']);
+const SEGREDO = /(secret|token|senha|password|passwd|api[_-]?key|apikey|chave|private|certificad|client[_-]?id|authorization|webhook)/i;
+const semSegredos = (v) => (Array.isArray(v) ? v.map(semSegredos) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => !SEGREDO.test(k)).map(([k, x]) => [k, semSegredos(x)])) : v);
+async function settingsPortal(env, tenant, id) { // só configurações públicas da escola, sem campos que lembrem chaves ou senhas
+  if (id) {
+    if (!SETTINGS_PORTAL.has(id)) return J({ existe: false });
+    const x = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='system_settings' AND id=?").bind(tenant, id).first();
+    return J(x ? { existe: true, data: semSegredos(JSON.parse(x.data)) } : { existe: false });
+  }
+  const r = await env.DB.prepare("SELECT id,data FROM sys_docs WHERE tenant=? AND col='system_settings'").bind(tenant).all();
+  return J({ docs: (r.results || []).filter((x) => SETTINGS_PORTAL.has(x.id)).map((x) => ({ id: x.id, data: semSegredos(JSON.parse(x.data)) })) });
+}
 const LEITURA_PAIS = new Set(['rumo_ao_esporte_2026_plans', 'turmas', 'rentals_locations', 'patrocinadores']);
 const CAMPO_PROIBIDO = /^(status|financial|contract|approved|role|plan|valor|desconto|discount|origem)/i;
 async function portalPais(env, tenant, s, m, partes, corpo) {
@@ -257,7 +274,8 @@ async function portalPais(env, tenant, s, m, partes, corpo) {
       }).filter(Boolean);
       return J({ docs });
     }
-    if (LEITURA_PAIS.has(col) || (col === 'system_settings' && id !== 'whatsapp_evolution')) return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
+    if (col === 'system_settings') return settingsPortal(env, tenant, id);
+    if (LEITURA_PAIS.has(col)) return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
     return J(id ? { existe: false } : { docs: [] });
   }
   if (m === 'PUT' && col === REG && id && corpo.update) {
@@ -305,7 +323,8 @@ async function portalProfessor(env, tenant, s, m, partes, corpo) {
       if (id) { const x = docs.find((d) => d.id === id); return J(x ? { existe: true, data: x.data } : { existe: false }); }
       return J({ docs });
     }
-    if ((LEITURA_PAIS.has(col) && col !== 'turmas') || col === 'rumo_ao_esporte_2026_convocacoes' || (col === 'system_settings' && id !== 'whatsapp_evolution')) return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
+    if (col === 'system_settings') return settingsPortal(env, tenant, id);
+    if ((LEITURA_PAIS.has(col) && col !== 'turmas') || col === 'rumo_ao_esporte_2026_convocacoes') return id ? publico(env, tenant, col, id) : publico(env, tenant, col);
     return J(id ? { existe: false } : { docs: [] });
   }
   if (m === 'POST' && col === CHAMADAS && !id) {
@@ -322,6 +341,7 @@ async function portalProfessor(env, tenant, s, m, partes, corpo) {
 export async function rotaSistema(req, env, tenant, p) {
   const m = req.method, partes = p.split('/').filter(Boolean).slice(1); // tira "sys"
   let corpo = {}; if (m !== 'GET' && m !== 'DELETE') { try { corpo = await req.json(); } catch { corpo = {}; } }
+  if ((+req.headers.get('content-length') || 0) > 3e6) return erro('Envio grande demais.', 413);
   const cfg = await controleDe(env, tenant), ehLogin = partes[0] === 'auth' && partes[1] === 'login';
   if (cfg.suspensa) return erro(cfg.suspensa_msg || 'Sistema indisponível.', 423);
   if (cfg.somente_leitura && m !== 'GET' && !ehLogin && !(partes[0] === 'auth' && ['logout-all', 'password'].includes(partes[1]))) return erro('A escola está em modo somente leitura. Nada pode ser gravado agora.', 423);
@@ -357,11 +377,12 @@ export async function rotaSistema(req, env, tenant, p) {
   if (partes[0] === 'auth') {
     const email = String(corpo.email || '').trim().toLowerCase();
     if (partes[1] === 'login' && m === 'POST') {
-      const chave = 'sysfalha:' + tenant + ':' + email, desde = Date.now() - (cfg.lim_login_janela_min || 15) * 60000;
+      const limT = Math.min(cfg.lim_login_tentativas || 8, 12), limI = Math.min(cfg.lim_login_ip || 30, 60), janMin = Math.max(cfg.lim_login_janela_min || 15, 10); // a Central pode apertar, nunca afrouxar demais
+      const chave = 'sysfalha:' + tenant + ':' + email, desde = Date.now() - janMin * 60000;
       const chaveIp = 'sysip:' + tenant + ':' + (req.headers.get('cf-connecting-ip') || 'x');
       const f = await env.DB.prepare('SELECT COUNT(*) n FROM tentativas WHERE chave=? AND quando>?').bind(chave, desde).first();
       const fi = await env.DB.prepare('SELECT COUNT(*) n FROM tentativas WHERE chave=? AND quando>?').bind(chaveIp, desde).first();
-      if ((cfg.lim_login_tentativas && f.n >= cfg.lim_login_tentativas) || (cfg.lim_login_ip && fi.n >= cfg.lim_login_ip)) return erro('Muitas tentativas. Espere ' + (cfg.lim_login_janela_min || 15) + ' minutos.', 429);
+      if (f.n >= limT || fi.n >= limI) return erro('Muitas tentativas. Espere ' + janMin + ' minutos.', 429);
       let u = await env.DB.prepare('SELECT * FROM sys_users WHERE tenant=? AND email=?').bind(tenant, email).first();
       if (email) { // professor: o cadastro em "teachers" manda (senha ou CPF digitados batem); a conta nasce ou é realinhada no login
         const t = await env.DB.prepare("SELECT data FROM sys_docs WHERE tenant=? AND col='teachers' AND lower(trim(json_extract(data,'$.email')))=? LIMIT 1").bind(tenant, email).first();
@@ -369,7 +390,7 @@ export async function rotaSistema(req, env, tenant, p) {
         if (td && cfg.primeiro_acesso_prof !== false && (!u || u.role !== 'admin')) {
           if (td.active === false) u = null;
           else if (!u && cfg.lim_usuarios && (await env.DB.prepare('SELECT COUNT(*) n FROM sys_users WHERE tenant=?').bind(tenant).first()).n >= cfg.lim_usuarios) u = null;
-          else if (((senhaT && senhaT === pw) || (cfg.cpf_senha !== false && cpfT.length === 11 && cpfT === pw.replace(/\D/g, ''))) && (!u || u.role !== 'professor' || (await pbkdf2(bruta, u.salt)) !== u.hash)) {
+          else if (((senhaT && senhaT === pw) || (cfg.cpf_senha !== false && cpfT.length === 11 && cpfT === pw.replace(/\D/g, ''))) && (!u || u.role !== 'professor' || !igual(await pbkdf2(bruta, u.salt), u.hash))) {
             const { salt, hash } = await hashSenha(bruta), uid = u ? u.uid : idNovo();
             await env.DB.prepare('INSERT INTO sys_users(tenant,email,salt,hash,uid,role) VALUES(?,?,?,?,?,?) ON CONFLICT(tenant,email) DO UPDATE SET salt=excluded.salt,hash=excluded.hash,role=excluded.role').bind(tenant, email, salt, hash, uid, 'professor').run();
             u = { tenant, email, salt, hash, uid, role: 'professor' };
@@ -385,7 +406,7 @@ export async function rotaSistema(req, env, tenant, p) {
           u = { tenant, email, salt, hash, uid, role: 'user' };
         }
       }
-      if (!u ||(await pbkdf2(String(corpo.password || ''), u.salt)) !== u.hash) {
+      if (!u || !igual(await pbkdf2(String(corpo.password || ''), u.salt), u.hash)) {
         await env.DB.prepare('INSERT INTO tentativas(chave,quando) VALUES(?,?)').bind(chave, Date.now()).run();
         await env.DB.prepare('INSERT INTO tentativas(chave,quando) VALUES(?,?)').bind(chaveIp, Date.now()).run();
         return erro('Credenciais inválidas.', 401);
@@ -430,10 +451,16 @@ export async function rotaSistema(req, env, tenant, p) {
       return J({ ok: true });
     }
     if (partes[1] === 'password' && m === 'POST') {
+      const eu = await env.DB.prepare('SELECT * FROM sys_users WHERE tenant=? AND email=?').bind(tenant, s.email).first();
+      // com a senha atual digitada, ou (como no Firebase) só se o login foi feito há pouco: sessão esquecida aberta não troca a senha
+      const recente = s.emitido && Date.now() - s.emitido < 15 * 60000;
+      if (!eu || !(corpo.atual ? igual(await pbkdf2(String(corpo.atual), eu.salt), eu.hash) : recente)) { await env.DB.prepare('INSERT INTO tentativas(chave,quando) VALUES(?,?)').bind('sysfalha:' + tenant + ':' + s.email, Date.now()).run(); return erro(corpo.atual ? 'A senha atual não confere.' : 'Por segurança, entre de novo para trocar a senha (ou digite a senha atual).', 403); }
       const fraca = senhaFraca(cfg, corpo.password); if (fraca) return erro(fraca);
       const { salt, hash } = await hashSenha(String(corpo.password));
       await env.DB.prepare('UPDATE sys_users SET salt=?,hash=? WHERE tenant=? AND email=?').bind(salt, hash, tenant, s.email).run();
-      return J({ ok: true });
+      await revogar(env, tenant, s.email); // sessões antigas (outros aparelhos) caem; esta recebe um token novo
+      await auditar(env, tenant, s, 'trocou a própria senha');
+      return J({ ok: true, token: await emitirToken(env, tenant, { email: eu.email, uid: eu.uid, role: eu.role }) });
     }
     return erro('Não encontrado.', 404);
   }
@@ -558,9 +585,9 @@ function selo(nome) {
 /** Entrega o sistema (SPA) já compilado em /escola/ para o host da escola, com a marca dela. */
 export async function servirSistema(req, env, p, host) {
   const r = await servirSistemaBase(req, env, p, host), h = new Headers(r.headers);
-  if ((h.get('content-type') || '').includes('text/html')) h.set('content-security-policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; media-src 'self' https: data:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
+  if ((h.get('content-type') || '').includes('text/html')) h.set('content-security-policy', "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; media-src 'self' https: data:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests");
   h.set('x-content-type-options', 'nosniff'); h.set('x-frame-options', 'SAMEORIGIN'); h.set('referrer-policy', 'same-origin');
-  h.set('strict-transport-security', 'max-age=31536000'); h.set('permissions-policy', 'camera=(self), microphone=(), geolocation=()');
+  h.set('strict-transport-security', 'max-age=31536000; includeSubDomains'); h.set('cross-origin-opener-policy', 'same-origin'); h.set('x-permitted-cross-domain-policies', 'none'); h.set('permissions-policy', 'camera=(self), microphone=(), geolocation=()');
   return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h });
 }
 async function servirSistemaBase(req, env, p, host) {

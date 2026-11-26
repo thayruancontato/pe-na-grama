@@ -186,7 +186,7 @@ export async function createUserWithEmailAndPassword(_a: unknown, email: string,
     try { const j = await chamar('POST', '/auth/create', { email, password }); return { user: usuario(j) }; }
     catch (e: any) { if (e.status === 409) e.code = 'auth/email-already-in-use'; else if (e.status === 401 || e.status === 403) e.code = 'auth/operation-not-allowed'; throw e; }
 }
-export async function updatePassword(_u: unknown, password: string) { await chamar('POST', '/auth/password', { password }); }
+export async function updatePassword(_u: unknown, password: string, atual?: string) { const j = await chamar('POST', '/auth/password', { password, atual }); if (j && j.token) guardarToken(j.token); } // o servidor derruba as outras sessões e devolve um token novo
 export async function sendPasswordResetEmail() { const e: any = new Error('Recuperação de senha por e-mail ainda não está disponível. Peça ao administrador para redefinir.'); e.code = 'auth/operation-not-allowed'; throw e; }
 
 export const browserLocalPersistence = { type: 'local' };

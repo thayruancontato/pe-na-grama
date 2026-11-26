@@ -44,8 +44,9 @@ export default function AdminEscolaControle() {
         } catch (e) { showAlert(e instanceof Error ? e.message : String(e), 'error'); }
     };
     const [minhaSenha, setMinhaSenha] = useState('');
+    const [senhaAtual, setSenhaAtual] = useState('');
     const trocarMinha = async () => {
-        try { await api('POST', 'auth/password', { password: minhaSenha }); setMinhaSenha(''); showAlert('Senha trocada.', 'success'); }
+        try { const j = await (await api('POST', 'auth/password', { password: minhaSenha, atual: senhaAtual })).json(); if (j && j.token) localStorage.setItem('pg_sys_token', j.token); setMinhaSenha(''); setSenhaAtual(''); showAlert('Senha trocada.', 'success'); }
         catch (e) { showAlert(e instanceof Error ? e.message : String(e), 'error'); }
     };
     const sairTudo = async () => {
@@ -79,9 +80,10 @@ export default function AdminEscolaControle() {
             <section style={painel}>
                 <h2 style={titulo}>Minha conta</h2>
                 <p style={{ margin: '0 0 12px', color: '#64748b' }}>Troque a senha inicial por uma só sua. "Sair de todos os dispositivos" derruba todas as sessões abertas desta conta.</p>
-                <input value={minhaSenha} onChange={(e) => setMinhaSenha(e.target.value)} placeholder="Nova senha (mínimo 6 caracteres)" style={campo} type="password" autoComplete="new-password" />
+                <input value={senhaAtual} onChange={(e) => setSenhaAtual(e.target.value)} placeholder="Senha atual" style={{ ...campo, marginBottom: 8 }} type="password" autoComplete="current-password" />
+                <input value={minhaSenha} onChange={(e) => setMinhaSenha(e.target.value)} placeholder="Nova senha (mínimo 8, com letras e números)" style={campo} type="password" autoComplete="new-password" />
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
-                    <button type="button" onClick={trocarMinha} disabled={minhaSenha.length < 6} style={botao}>Trocar minha senha</button>
+                    <button type="button" onClick={trocarMinha} disabled={minhaSenha.length < 8 || !senhaAtual} style={botao}>Trocar minha senha</button>
                     <button type="button" onClick={sairTudo} style={{ ...botao, background: '#9a3412' }}>Sair de todos os dispositivos</button>
                 </div>
             </section>

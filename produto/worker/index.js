@@ -1038,8 +1038,10 @@ export default {
       if (p.startsWith('/api/')) return erro('Não encontrado.', 404);
       if (p.startsWith('/ds/')) return env.ASSETS.fetch(req);
       const esc = await env.DB.prepare('SELECT status FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
-      if (esc && p.startsWith('/sys/assinatura') && esc.status !== 'teste_fim') return rotaAssinatura(req, env, host);
-      if (esc && p.startsWith('/sys/') && esc.status !== 'teste_fim') return rotaSistema(req, env, host, p);
+      // respostas da API da escola: nunca em cache, sem adivinhar tipo de conteúdo, sem vazar o endereço de origem
+      const protegida = (r) => { const h = new Headers(r.headers); h.set('cache-control', 'no-store'); h.set('x-content-type-options', 'nosniff'); h.set('referrer-policy', 'same-origin'); h.set('strict-transport-security', 'max-age=31536000; includeSubDomains'); return new Response(r.body, { status: r.status, statusText: r.statusText, headers: h }); };
+      if (esc && p.startsWith('/sys/assinatura') && esc.status !== 'teste_fim') return protegida(await rotaAssinatura(req, env, host));
+      if (esc && p.startsWith('/sys/') && esc.status !== 'teste_fim') return protegida(await rotaSistema(req, env, host, p));
       if (esc && (esc.status === 'ativo' || esc.status === 'teste')) return servirSistema(req, env, p, host); // escola ativa: o sistema de verdade
       return paginaEscola(req, env, host, p);
     }
