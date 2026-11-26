@@ -185,13 +185,14 @@ export default function AdminStats() {
                 <Link to="/admin/dashboard" className="est-btn est-btn-forte">Ver todos <ChevronRight size={14} /></Link>
             </section>
 
-            {spons.pronto && spons.mostrar && spons.itens.length > 0 && (
+            {spons.pronto && (
                 <section className="est-painel est-alunos est-spons" aria-label="Patrocinadores">
-                    <div className="est-alunos-tit"><h2>Patrocinadores</h2><small>{spons.itens.length} {spons.itens.length === 1 ? 'parceiro' : 'parceiros'}</small></div>
+                    <div className="est-alunos-tit"><h2>Patrocinadores</h2><small>{spons.itens.length ? `${spons.itens.length} ${spons.itens.length === 1 ? 'parceiro' : 'parceiros'}` : 'Nenhum ainda'}</small></div>
                     <div className="est-logos">
+                        {!spons.itens.length && <p className="est-vazio">Nenhum patrocinador cadastrado ainda.</p>}
                         {spons.itens.map((sp, i) => <span key={i} title={sp.name}>{sp.logo ? <img src={sp.logo} alt={sp.name} loading="lazy" /> : sp.name}</span>)}
                     </div>
-                    <Link to="/admin/patrocinadores" className="est-btn est-btn-forte">Ver todos <ChevronRight size={14} /></Link>
+                    <Link to="/admin/patrocinadores" className="est-btn est-btn-forte">{spons.itens.length ? 'Ver todos' : 'Cadastrar'} <ChevronRight size={14} /></Link>
                 </section>
             )}
 
