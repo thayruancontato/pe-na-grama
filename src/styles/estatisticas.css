@@ -123,3 +123,9 @@
 .est-tab td a{font-weight:600;font-size:13px}
 .est-tab th{white-space:nowrap}
 .est-tab .n{padding-left:4px}
+
+/* mês com mais cadastros: destaque discreto */
+.est-coluna.top>div:not(.est-tip){background:#eef2ee}
+.est-coluna.top i{box-shadow:inset 0 3px 0 #f4c20d}
+.est-coluna.top b::before{content:"°5";margin-right:3px;color:#d9a800;font-size:10px;vertical-align:1px}
+.est-coluna.top span{color:#1d2733;font-weight:700}

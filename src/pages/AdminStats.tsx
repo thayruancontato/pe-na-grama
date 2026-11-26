@@ -208,7 +208,7 @@ export default function AdminStats() {
 
                 <Painel titulo="Cadastros nos últimos 12 meses" nota="Novos cadastros por mês · passe o mouse sobre um mês para ver os alunos" largo livre>
                     <div className="est-colunas">{crescimento.map((c) => (
-                        <div key={c.rotulo} className="est-coluna" tabIndex={c.n ? 0 : -1}>
+                        <div key={c.rotulo} className={`est-coluna${c.n > 0 && c.n === Math.max(...crescimento.map((x) => x.n)) ? ' top' : ''}`} tabIndex={c.n ? 0 : -1} title={c.n > 0 && c.n === Math.max(...crescimento.map((x) => x.n)) ? 'Mês com mais cadastros' : undefined}>
                             <b>{c.n || ''}</b><div><i style={{ height: (c.n / maxCresc) * 100 + '%' }} /></div><span>{c.rotulo}</span>
                             {c.n > 0 && (
                                 <div className="est-tip" role="tooltip">
