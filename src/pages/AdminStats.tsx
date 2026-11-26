@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, FileText, Lock, MessageCircle } from 'lucide-react';
 import { db } from '../firebase';
 import CadastrosMesModal, { type MesCad } from '../components/CadastrosMesModal';
@@ -27,6 +28,12 @@ type Reg = any;
 
 export default function AdminStats() {
     const spons = useSponsors();
+    const ir = useNavigate();
+    const [cartao, setCartao] = useState<{ x: number; y: number; al: any } | null>(null);
+    const fechaCartao = useRef<number>(0);
+    const abre = (e: React.MouseEvent | React.FocusEvent, al: any) => { window.clearTimeout(fechaCartao.current); const b = (e.currentTarget as HTMLElement).getBoundingClientRect(); setCartao({ x: Math.max(8, Math.min(b.left + b.width / 2 - 140, window.innerWidth - 288)), y: b.bottom + 8, al }); };
+    const agendaFecha = () => { window.clearTimeout(fechaCartao.current); fechaCartao.current = window.setTimeout(() => setCartao(null), 250); };
+    useEffect(() => { if (!cartao) return; const f = () => setCartao(null); window.addEventListener('scroll', f, true); return () => window.removeEventListener('scroll', f, true); }, [cartao]);
     const filtroRef = useRef<HTMLDivElement>(null);
     // seletor de mês fixo logo abaixo do cabeçalho (no celular) e do aviso de teste
     useEffect(() => {
@@ -141,11 +148,20 @@ export default function AdminStats() {
     const maxCresc = Math.max(1, ...crescimento.map((c) => c.n));
     const maxFaixa = Math.max(1, ...faixas.map((f) => f[1]));
     // alunos (com ou sem foto) do cadastro mais recente para o mais antigo
-    const recentes = useMemo(() => regs
-        .filter((r) => String(r.contractStatus || '').toLowerCase() !== 'desativado')
-        .sort((x, y) => (dataDe(y.createdAt)?.getTime() || 0) - (dataDe(x.createdAt)?.getTime() || 0))
-        .flatMap((r) => (Array.isArray(r.alunos) ? r.alunos : []).map((al: any) => ({ nome: String(al?.nome || 'Aluno'), foto: al?.fotoUrl || '' })))
-        .slice(0, 80), [regs]);
+    const recentes = useMemo(() => {
+        const idadeDe = (t: any) => { const x = String(t || ''), iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(x); const [d, m, y] = iso ? [+iso[3], +iso[2], +iso[1]] : x.split('/').map(Number); if (!y || !m) return null; return hoje.getFullYear() - y - (hoje.getMonth() + 1 < m || (hoje.getMonth() + 1 === m && hoje.getDate() < d) ? 1 : 0); };
+        const lista = regs
+            .filter((r) => String(r.contractStatus || '').toLowerCase() !== 'desativado')
+            .sort((x, y) => (dataDe(y.createdAt)?.getTime() || 0) - (dataDe(x.createdAt)?.getTime() || 0))
+            .flatMap((r) => (Array.isArray(r.alunos) ? r.alunos : []).map((al: any) => ({
+                nome: String(al?.nome || 'Aluno'), foto: al?.fotoUrl || '', regId: r.id,
+                pendente: String(r.contractStatus || '').toLowerCase() !== 'aprovado',
+                resp: String(r.responsavel?.nome || ''), tel: String(r.responsavel?.telefonePrincipal || ''), mod: modalidade(r),
+                idade: idadeDe(al?.dataNascimento), quando: dataDe(r.createdAt),
+            })));
+        return [...lista.filter((a) => a.pendente), ...lista.filter((a) => !a.pendente)].slice(0, 80);
+    }, [regs]); // eslint-disable-line react-hooks/exhaustive-deps
+    const nPendentes = recentes.filter((a) => a.pendente).length;
     const totalAlunos = ativos.reduce((t, r) => t + nAlunos(r), 0);
     const novosNoMes = regs.filter((r) => doMes(dataDe(r.createdAt)) && String(r.contractStatus || '').toLowerCase() !== 'desativado').length;
 
@@ -191,14 +207,35 @@ export default function AdminStats() {
             </div>
 
             <section className="est-painel est-alunos" aria-label="Alunos mais recentes">
-                <div className="est-alunos-tit"><h2>Alunos</h2><small>Cadastros mais recentes</small></div>
+                <div className="est-alunos-tit"><h2>Alunos</h2><small>{nPendentes ? <b className="est-pend-n">{nPendentes} aguardando aprovação</b> : 'Cadastros mais recentes'}</small></div>
                 <div className="est-pilha">
-                    {recentes.length ? recentes.map((al, i) => (al.foto
-                        ? <img key={i} src={al.foto} alt={al.nome} title={al.nome} loading="lazy" />
-                        : <span key={i} className="av" title={al.nome}>{al.nome.trim().charAt(0).toUpperCase()}</span>)) : <p className="est-vazio">Nenhum aluno cadastrado ainda.</p>}
+                    {recentes.length ? recentes.map((al, i) => {
+                        const ev = { onMouseEnter: (e: React.MouseEvent) => abre(e, al), onMouseLeave: agendaFecha, onFocus: (e: React.FocusEvent) => abre(e, al), onBlur: agendaFecha, onClick: (e: React.MouseEvent) => abre(e, al) };
+                        return al.foto
+                            ? <img key={i} className={al.pendente ? 'pend' : ''} src={al.foto} alt={al.nome} tabIndex={0} loading="lazy" {...ev} />
+                            : <span key={i} className={`av${al.pendente ? ' pend' : ''}`} tabIndex={0} {...ev}>{al.nome.trim().charAt(0).toUpperCase()}</span>;
+                    }) : <p className="est-vazio">Nenhum aluno cadastrado ainda.</p>}
                 </div>
                 <Link to="/admin/dashboard" className="est-btn est-btn-forte">Ver todos <ChevronRight size={14} /></Link>
             </section>
+
+            {cartao && createPortal(
+                <div className="est-cartao" style={{ left: cartao.x, top: cartao.y }} onMouseEnter={() => window.clearTimeout(fechaCartao.current)} onMouseLeave={agendaFecha} role="dialog" aria-label={`Dados de ${cartao.al.nome}`}>
+                    <div className="est-cartao-top">
+                        {cartao.al.foto ? <img src={cartao.al.foto} alt="" /> : <span className="av">{cartao.al.nome.trim().charAt(0).toUpperCase()}</span>}
+                        <div><b>{cartao.al.nome}</b><small>{cartao.al.idade !== null ? `${cartao.al.idade} anos · ` : ''}{cartao.al.mod}</small></div>
+                        <span className={`est-cartao-st ${cartao.al.pendente ? 'pend' : 'ok'}`}>{cartao.al.pendente ? 'Aguardando aprovação' : 'Ativo'}</span>
+                    </div>
+                    <dl>
+                        <dt>Responsável</dt><dd>{cartao.al.resp || '—'}</dd>
+                        <dt>Telefone</dt><dd>{cartao.al.tel || '—'}</dd>
+                        <dt>Cadastro</dt><dd>{cartao.al.quando ? cartao.al.quando.toLocaleDateString('pt-BR') : '—'}</dd>
+                    </dl>
+                    <div className="est-cartao-acoes">
+                        {cartao.al.pendente && <button type="button" className="est-btn est-btn-forte" onClick={() => ir(`/admin/details/${cartao.al.regId}?aprovar=1`)}>Aprovar cadastro</button>}
+                        <button type="button" className="est-btn" onClick={() => ir(`/admin/details/${cartao.al.regId}`)}>Ver ficha</button>
+                    </div>
+                </div>, document.body)}
 
             {spons.pronto && (
                 <section className="est-painel est-alunos est-spons" aria-label="Patrocinadores">

@@ -800,6 +800,15 @@ async function rotaAdmin(req, env, url, caminho) {
         const origem = new URL(molde.url_sistema).host; if (origem === t) return erro('Esta é a própria escola de demonstração.');
         const cols = ['rumo_ao_esporte_2026_plans', 'turmas', 'teachers', 'rumo_ao_esporte_2026_registrations', 'financial_payments'], n = {};
         for (const col of cols) { const r = await q('INSERT INTO sys_docs(tenant,col,id,data) SELECT ?,col,id,data FROM sys_docs WHERE tenant=? AND col=? ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data', t, origem, col).run(); n[col] = r.meta ? r.meta.changes : 0; }
+        // cadastros pendentes e recentes (aguardando aprovação), para testar o destaque e a aprovação; ids fixos = não duplicam
+        const PEND = [['Enzo Gabriel Rocha', 'Futebol', '2012-03-14', 'Patrícia Rocha', '(33) 99811-2301', 1], ['Laura Beatriz Campos', 'Vôlei', '2011-09-02', 'Marcos Campos', '(33) 99822-4512', 1], ['Davi Lucas Teixeira', 'Futsal', '2012-11-23', 'Renata Teixeira', '(33) 99833-7743', 2], ['Helena Souza Prado', 'Natação', '2013-05-30', 'Cláudia Prado', '(33) 99844-1190', 3], ['Miguel Arthur Lopes', 'Futebol', '2011-01-18', 'Rogério Lopes', '(33) 99855-6624', 4], ['Alice Nunes Ferraz', 'Vôlei', '2012-07-09', 'Simone Ferraz', '(33) 99866-3358', 5]];
+        const fotosT = ['02', '01', '04', '03', '05', '06']; // combina com o gênero dos nomes
+        for (let i = 0; i < PEND.length; i++) {
+          const [nome, mod, nasc, resp, tel, dias] = PEND[i], quando = new Date(Date.now() - dias * 864e5 - i * 36e5).toISOString();
+          const reg = { alunos: [{ nome, dataNascimento: nasc, fotoUrl: '/fotos-teste/' + fotosT[i] + '.webp' }], responsavel: { nome: resp, telefonePrincipal: tel, email: 'teste' + (i + 1) + '@exemplo.com', cpf: '' }, modalidade: mod, status: 'pendente', contractStatus: 'pendente', origem: 'dados-de-teste', createdAt: quando };
+          await q('INSERT INTO sys_docs(tenant,col,id,data) VALUES(?,?,?,?) ON CONFLICT(tenant,col,id) DO UPDATE SET data=excluded.data', t, 'rumo_ao_esporte_2026_registrations', 'teste-pendente-' + (i + 1), JSON.stringify(reg)).run();
+        }
+        n.pendentes_recentes = PEND.length;
         const total = Object.values(n).reduce((x, y) => x + y, 0);
         await log(env, 'sistema', 'Dados de teste injetados em ' + c0.escola + ' (' + total + ' registros)'); return J({ ok: true, total, inseridos: n });
       }

@@ -324,3 +324,10 @@ aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip:
   .landing-content .sponsors-carousel__wa { width: 15px !important; height: 15px !important; }
 }
 @media (max-width: 600px) { .landing-page { background-position: center, 8% center !important; background-attachment: scroll, scroll !important; } }
+
+/* painel do responsável: o menu fica sobre a cor escura da escola, então texto e ícones são sempre claros (cores próximas não somem mais) */
+body[data-pg-aluno] aside nav button, body[data-pg-aluno] aside nav a, body[data-pg-aluno] aside nav button *, body[data-pg-aluno] aside nav a * { color: #fff !important; }
+body[data-pg-aluno] aside nav button, body[data-pg-aluno] aside nav a { background-color: transparent; transition: background-color .15s; }
+body[data-pg-aluno] aside nav button:hover, body[data-pg-aluno] aside nav a:hover { background-color: rgba(255,255,255,.12) !important; }
+body[data-pg-aluno] aside nav button[aria-current], body[data-pg-aluno] aside nav a[aria-current], body[data-pg-aluno] aside nav .on { background-color: rgba(255,255,255,.2) !important; box-shadow: inset 3px 0 0 #fff; }
+body[data-pg-aluno] aside nav svg { stroke: currentColor; opacity: .95; }

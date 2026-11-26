@@ -163,3 +163,19 @@ main:has(.est-filtro){overflow-x:clip!important;overflow-y:visible!important}
 
 .est-sw .sm{display:none}
 @media(max-width:700px){.est-sw .lg{display:none}.est-sw .sm{display:inline}}
+
+/* alunos pendentes de aprovação: anel âmbar e selo; cartão com dados ao passar o mouse */
+.est-pend-n{display:inline-block;padding:1px 8px;border-radius:999px;background:#fff3d6;color:#8a6100;font-size:11.5px;font-weight:800}
+.est-pilha img.pend,.est-pilha .av.pend{border-color:#f4c20d;box-shadow:0 0 0 2px #f4c20d,0 3px 8px rgba(138,97,0,.35);animation:est-pulso 2.4s ease-in-out infinite}
+@keyframes est-pulso{50%{box-shadow:0 0 0 4px rgba(244,194,13,.45),0 3px 8px rgba(138,97,0,.35)}}
+.est-pilha img,.est-pilha .av{cursor:pointer}
+.est-cartao{position:fixed;z-index:9400;width:280px;padding:12px;border-radius:12px;background:#fff;border:1px solid #cfd8e3;box-shadow:0 18px 40px rgba(15,33,63,.28);animation:est-tip .15s ease}
+.est-cartao-top{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center}
+.est-cartao-top img,.est-cartao-top .av{width:46px;height:46px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px #fff,0 0 0 3px #dfe4ea}
+.est-cartao-top .av{display:grid;place-items:center;background:#dce5f2;color:#17428f;font-weight:800;font-size:18px}
+.est-cartao-top b{display:block;font-size:14px;color:#10213f;line-height:1.2}.est-cartao-top small{display:block;font-size:12px;color:#66727f}
+.est-cartao-st{grid-column:1/-1;justify-self:start;padding:2px 10px;border-radius:999px;font-size:11.5px;font-weight:800}
+.est-cartao-st.pend{background:#fff3d6;color:#8a6100}.est-cartao-st.ok{background:#e3f4e8;color:#16692f}
+.est-cartao dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:10px 0;font-size:12.5px}
+.est-cartao dt{color:#7a8693;font-weight:600}.est-cartao dd{margin:0;color:#1d2733;font-weight:600;text-align:right;overflow:hidden;text-overflow:ellipsis}
+.est-cartao-acoes{display:grid;gap:6px}.est-cartao-acoes .est-btn{justify-content:center;min-height:36px}

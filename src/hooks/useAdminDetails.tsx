@@ -300,6 +300,13 @@ export function useAdminDetails() {
         setShowApprovalModal(true);
     };
 
+    // vindo da faixa de alunos (Estatísticas) com ?aprovar=1: já abre a aprovação do cadastro pendente
+    const autoAprovar = useRef(false);
+    useEffect(() => {
+        if (autoAprovar.current || loading || !data) return;
+        if (new URLSearchParams(window.location.search).get('aprovar') === '1' && String(data.contractStatus || '').toLowerCase() !== 'aprovado') { autoAprovar.current = true; handleApprove(); }
+    }, [data, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
     const confirmApprove = async () => {
         if (!approvalConfig.turmaId && !approvalConfig.planId) {
             showAlert('Por favor, selecione uma turma e um plano.', 'error');
