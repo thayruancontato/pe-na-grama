@@ -499,7 +499,7 @@ async function waInstalar(req, env, etapa) {
     await env.DB.prepare("DELETE FROM settings WHERE k='wa_instalacao'").run();
     await log(env, 'sistema', 'Servidor de WhatsApp instalado (' + criadas.length + ' escola(s) ligadas' + (testado ? '' : '; teste de conexão falhou') + ')');
     return J({ ok: true, testado, criadas: criadas.length, falhas: falhas.length });
-  } catch (e) { return erro((passo ? 'Falhou ao ' + passo + ': ' : '') + msgCf(e), 502); }
+  } catch (e) { return erro((passo ? 'Falhou ao ' + passo + ': ' : '') + msgCf(e) + ' [' + e.message + ']', 502); }
 }
 // Encerra os testes vencidos: o endereço passa a mostrar "teste encerrado" e a escola vira "Teste encerrado" na Central.
 async function expirarTestes(env) {
@@ -662,6 +662,18 @@ async function rotaAdmin(req, env, url, caminho) {
     if (m === 'POST') {
       const b = await body();
       try {
+        if (b.acao === 'diagnostico-cf') { // qual token o servidor usa e o que ele consegue fazer (só o dono vê)
+          const out = {}, acct = env.CF_ACCOUNT_ID, tenta = async (nome, fn) => { try { out[nome] = await fn(); } catch (e) { out[nome] = 'ERRO: ' + e.message; } };
+          await tenta('token_usuario', async () => { const v = await cfApi(env, 'GET', '/user/tokens/verify'); return { id: v.id, status: v.status }; });
+          await tenta('token_conta', async () => { const v = await cfApi(env, 'GET', '/accounts/' + acct + '/tokens/verify'); return { id: v.id, status: v.status }; });
+          await tenta('ler_tuneis', async () => (await cfApi(env, 'GET', '/accounts/' + acct + '/cfd_tunnel?is_deleted=false')).length + ' túnel(is)');
+          await tenta('criar_tunel', async () => { const x = await garantirTunel(env); return 'ok ' + x.id; });
+          await tenta('workers_ler_dominios', async () => (await cfApi(env, 'GET', '/accounts/' + acct + '/workers/domains')).length + ' domínio(s)');
+          await tenta('publicar_dominio_existente', async () => { const zz = await cfApi(env, 'GET', '/zones?name=' + (env.DOMINIO_PADRAO || 'penagrama.com.br') + '&account.id=' + acct); await cfApi(env, 'PUT', '/accounts/' + acct + '/workers/domains', { hostname: 'alfabol-manhuacu.' + (env.DOMINIO_PADRAO || 'penagrama.com.br'), service: env.CF_WORKER_NAME || 'esporte-thayruan', environment: 'production', zone_id: zz[0].id }); return 'ok'; });
+          await tenta('dns_criar_e_apagar', async () => { const zz = await cfApi(env, 'GET', '/zones?name=' + (env.DOMINIO_PADRAO || 'penagrama.com.br') + '&account.id=' + acct); const r = await cfApi(env, 'POST', '/zones/' + zz[0].id + '/dns_records', { type: 'TXT', name: '_teste-token', content: 'teste', ttl: 120 }); await cfApi(env, 'DELETE', '/zones/' + zz[0].id + '/dns_records/' + r.id); return 'ok'; });
+          await tenta('zona', async () => (await cfApi(env, 'GET', '/zones?name=' + (env.DOMINIO_PADRAO || 'penagrama.com.br') + '&account.id=' + acct)).map((z) => z.name).join(','));
+          return J({ ok: true, diagnostico: out });
+        }
         if (b.acao === 'testar') return J({ ok: true, ...(await waTestar(env)) });
         if (b.acao === 'token-instalacao') { // comando de uso único (1 h) para instalar o servidor numa máquina Linux
           try { await garantirTunel(env); } catch (e) { return erro(msgCf(e), 502); } // avisa já aqui se falta permissão no Cloudflare
