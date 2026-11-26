@@ -308,3 +308,19 @@ aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip:
 .landing-content .btn-start { padding: 18px 52px !important; min-width: min(320px, 100%); font-size: 1.15rem !important; letter-spacing: .04em; margin-bottom: 0 !important; }
 .landing-content .btn-student-access { margin-top: 26px !important; padding: 10px 22px !important; font-size: .82rem !important; }
 @media (max-width: 480px) { .landing-content .btn-start { width: 100%; padding: 17px 20px !important; } .landing-content .btn-student-access { width: 100%; } }
+
+/* celular: a página inicial cabe numa tela, sem rolagem */
+@media (max-width: 600px) {
+  .landing-page:not(.login-refresh) { padding: 10px !important; min-height: 100dvh; align-items: center; }
+  .landing-page:not(.login-refresh) .landing-content { padding: 16px 16px 14px !important; }
+  .landing-page:not(.login-refresh) .landing-logo { width: auto !important; max-width: 70% !important; max-height: min(104px, 15vh) !important; margin-bottom: .85rem !important; }
+  .landing-page:not(.login-refresh) .landing-title { font-size: 1.2rem !important; line-height: 1.15; margin-bottom: .35rem !important; }
+  .landing-page:not(.login-refresh) .landing-subtitle { font-size: .88rem !important; line-height: 1.35; margin-bottom: 1rem !important; }
+  .landing-content .btn-start { padding: 14px 16px !important; font-size: 1rem !important; }
+  .landing-content .btn-student-access { margin-top: 12px !important; padding: 9px 16px !important; }
+  .landing-content .sponsors-carousel { margin-top: 1rem !important; padding-top: .85rem !important; }
+  .landing-content .sponsors-carousel__label { margin-bottom: .6rem !important; }
+  .landing-content .sponsors-carousel__item { width: 56px !important; height: 56px !important; border-radius: 12px !important; }
+  .landing-content .sponsors-carousel__wa { width: 15px !important; height: 15px !important; }
+}
+@media (max-width: 600px) { .landing-page { background-position: center, 8% center !important; background-attachment: scroll, scroll !important; } }
