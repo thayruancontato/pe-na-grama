@@ -127,9 +127,39 @@
 /* mês com mais cadastros: destaque discreto */
 .est-coluna.top>div:not(.est-tip){background:#eef2ee}
 .est-coluna.top i{box-shadow:inset 0 3px 0 #f4c20d}
-.est-coluna.top b::before{content:"°5";margin-right:3px;color:#d9a800;font-size:10px;vertical-align:1px}
 .est-coluna.top span{color:#1d2733;font-weight:700}
 
 .est-menu button.trava{border:0;background:none;font:inherit;font-size:13.5px;font-weight:700;color:#10213f;cursor:pointer;opacity:.78}
 .est-menu button.trava:hover{background:#fff6dc;opacity:1}
 .est-menu button.trava em{margin-left:auto;padding:2px 7px;border-radius:999px;background:#fff3d6;color:#8a6100;font-size:10px;font-style:normal;font-weight:800;letter-spacing:.04em}
+
+/* seletor de mês fixo sob o cabeçalho */
+.est-filtro.fixo{position:sticky;top:var(--fx-top,0px);z-index:60;box-shadow:0 6px 12px -8px rgba(15,33,63,.35)}
+@media(max-width:700px){.est-filtro.fixo .est-dica{display:none}.est-filtro.fixo{padding-top:8px;padding-bottom:8px;gap:8px}}
+
+.est-coluna{cursor:pointer}
+/* o seletor fica fixo: o <main> não pode virar contêiner de rolagem */
+main:has(.est-filtro){overflow-x:clip!important;overflow-y:visible!important}
+@media(max-width:700px){
+  .est-filtro.fixo{flex-wrap:nowrap;justify-content:space-between;gap:5px;padding:6px 8px}
+  .est-filtro.fixo .est-sw button{padding:5px 9px;font-size:12px}
+  .est-filtro.fixo strong{min-width:0;font-size:12.5px;white-space:nowrap}
+  .est-filtro.fixo .est-btn{padding:6px 9px;flex:none}
+}
+@media(max-width:700px){
+  .est .est-filtro.fixo{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;width:100vw!important;max-width:100vw!important;margin:0 0 12px calc(50% - 50vw)!important;box-sizing:border-box!important;padding:6px 10px!important;gap:6px!important;border-radius:0!important;border-left:0!important;border-right:0!important}
+  .est .est-filtro.fixo .est-dica{display:none!important}
+  .est .est-filtro.fixo .est-sw{flex:none}
+  .est .est-filtro.fixo strong{flex:1 1 auto;min-width:0!important;text-align:center;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .est .est-filtro.fixo .est-btn{flex:none;padding:6px 10px!important;min-width:0}
+}
+@media(max-width:700px){
+  .est .est-filtro.fixo{padding:5px 8px!important;gap:5px!important}
+  .est .est-filtro.fixo .est-sw{padding:2px}
+  .est .est-filtro.fixo .est-sw button{padding:5px 8px;font-size:11.5px}
+  .est .est-filtro.fixo .est-btn{padding:6px 8px!important}
+  .est .est-filtro.fixo strong{font-size:12px;overflow:visible;text-overflow:clip}
+}
+
+.est-sw .sm{display:none}
+@media(max-width:700px){.est-sw .lg{display:none}.est-sw .sm{display:inline}}

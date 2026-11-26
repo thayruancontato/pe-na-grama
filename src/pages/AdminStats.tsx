@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
 import { ChevronDown, ChevronLeft, ChevronRight, FileText, Lock, MessageCircle } from 'lucide-react';
 import { db } from '../firebase';
+import CadastrosMesModal, { type MesCad } from '../components/CadastrosMesModal';
 import { useSponsors } from '../hooks/useSponsors';
 import { planService } from '../utils/planService';
 import { expenseService } from '../utils/expenseService';
@@ -26,6 +27,17 @@ type Reg = any;
 
 export default function AdminStats() {
     const spons = useSponsors();
+    const filtroRef = useRef<HTMLDivElement>(null);
+    // seletor de mês fixo logo abaixo do cabeçalho (no celular) e do aviso de teste
+    useEffect(() => {
+        const ajusta = () => {
+            const h = [...document.querySelectorAll('div')].find((d) => getComputedStyle(d).position === 'sticky' && getComputedStyle(d).zIndex === '90' && d.querySelector('button svg') && d.getBoundingClientRect().height > 0);
+            const tb = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tb-h')) || 0;
+            filtroRef.current?.style.setProperty('--fx-top', (tb + (h ? h.getBoundingClientRect().height : 0)) + 'px');
+        };
+        ajusta(); window.addEventListener('resize', ajusta); const t = setInterval(ajusta, 1500);
+        return () => { window.removeEventListener('resize', ajusta); clearInterval(t); };
+    }, []);
     const workerUrl = import.meta.env.VITE_WORKER_URL || '';
     const hoje = new Date();
     const [mes, setMes] = useState({ ano: hoje.getFullYear(), m: hoje.getMonth() });
@@ -37,6 +49,7 @@ export default function AdminStats() {
     const [planos, setPlanos] = useState<any[]>([]);
     const [gastos, setGastos] = useState<any[]>([]);
     const [recibo, setRecibo] = useState<any | null>(null);
+    const [analise, setAnalise] = useState<number | null>(null);
 
     useEffect(() => {
         (async () => {
@@ -115,13 +128,13 @@ export default function AdminStats() {
         return Object.entries(f);
     }, [ativos]); // eslint-disable-line react-hooks/exhaustive-deps
     const crescimento = useMemo(() => {
-        const out: { rotulo: string; n: number; alunos: { nome: string; foto: string }[] }[] = [];
+        const out: (MesCad & { alunos: { nome: string; foto: string }[] })[] = [];
         for (let i = 11; i >= 0; i--) {
             const d = new Date(mes.ano, mes.m - i, 1);
             const lista = regs
                 .filter((r) => { const c = dataDe(r.createdAt); return c && c.getFullYear() === d.getFullYear() && c.getMonth() === d.getMonth() && String(r.contractStatus || '').toLowerCase() !== 'desativado'; })
                 .sort((x, y) => (dataDe(y.createdAt)?.getTime() || 0) - (dataDe(x.createdAt)?.getTime() || 0)); // mais recentes primeiro
-            out.push({ rotulo: MESES[d.getMonth()].slice(0, 3) + '/' + String(d.getFullYear()).slice(2), n: lista.length, alunos: lista.flatMap((r) => (Array.isArray(r.alunos) ? r.alunos : []).map((al: any) => ({ nome: String(al?.nome || 'Aluno'), foto: al?.fotoUrl || '' }))) });
+            out.push({ rotulo: MESES[d.getMonth()].slice(0, 3) + '/' + String(d.getFullYear()).slice(2), longo: MESES[d.getMonth()] + ' de ' + d.getFullYear(), ano: d.getFullYear(), m: d.getMonth(), regs: lista, n: lista.length, alunos: lista.flatMap((r) => (Array.isArray(r.alunos) ? r.alunos : []).map((al: any) => ({ nome: String(al?.nome || 'Aluno'), foto: al?.fotoUrl || '' }))) });
         }
         return out;
     }, [regs, mes]);
@@ -151,10 +164,12 @@ export default function AdminStats() {
                 </div>
             </div>
 
-            <div className="est-filtro">
+            {analise !== null && <CadastrosMesModal indice={analise} meses={crescimento} pags={pags} mensalidade={mensalidade} modalidade={modalidade} dataDe={dataDe} onIr={setAnalise} onFechar={() => setAnalise(null)} />}
+
+            <div className={`est-filtro${periodo === 'mes' ? ' fixo' : ''}`} ref={filtroRef}>
                 <div className="est-sw" role="group" aria-label="Período">
                     <button type="button" className={periodo === 'mes' ? 'on' : ''} aria-pressed={periodo === 'mes'} onClick={() => setPeriodo('mes')}>Mês</button>
-                    <button type="button" className={periodo === 'tudo' ? 'on' : ''} aria-pressed={periodo === 'tudo'} onClick={() => setPeriodo('tudo')}>Todo o período</button>
+                    <button type="button" className={periodo === 'tudo' ? 'on' : ''} aria-pressed={periodo === 'tudo'} onClick={() => setPeriodo('tudo')}><span className="lg">Todo o período</span><span className="sm">Tudo</span></button>
                 </div>
                 {periodo === 'mes' ? <>
                     <button className="est-btn" onClick={anterior} aria-label="Mês anterior"><ChevronLeft size={14} /></button>
@@ -206,9 +221,9 @@ export default function AdminStats() {
                     <div className="est-barras">{faixas.map(([k, n]) => <div key={k} className="est-barra"><span>{k}</span><div><i style={{ width: (n / maxFaixa) * 100 + '%' }} /></div><b>{n}</b></div>)}</div>
                 </Painel>
 
-                <Painel titulo="Cadastros nos últimos 12 meses" nota="Novos cadastros por mês · passe o mouse sobre um mês para ver os alunos" largo livre>
+                <Painel titulo="Cadastros nos últimos 12 meses" nota="Novos cadastros por mês · passe o mouse para ver os alunos e clique para a análise completa" largo livre>
                     <div className="est-colunas">{crescimento.map((c) => (
-                        <div key={c.rotulo} className={`est-coluna${c.n > 0 && c.n === Math.max(...crescimento.map((x) => x.n)) ? ' top' : ''}`} tabIndex={c.n ? 0 : -1} title={c.n > 0 && c.n === Math.max(...crescimento.map((x) => x.n)) ? 'Mês com mais cadastros' : undefined}>
+                        <div key={c.rotulo} role="button" onClick={() => setAnalise(crescimento.indexOf(c))} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setAnalise(crescimento.indexOf(c)); } }} className={`est-coluna${c.n > 0 && c.n === Math.max(...crescimento.map((x) => x.n)) ? ' top' : ''}`} tabIndex={0} title={c.n > 0 && c.n === Math.max(...crescimento.map((x) => x.n)) ? 'Mês com mais cadastros' : undefined}>
                             <b>{c.n || ''}</b><div><i style={{ height: (c.n / maxCresc) * 100 + '%' }} /></div><span>{c.rotulo}</span>
                             {c.n > 0 && (
                                 <div className="est-tip" role="tooltip">
