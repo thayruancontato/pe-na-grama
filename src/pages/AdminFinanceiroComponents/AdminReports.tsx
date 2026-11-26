@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { FileText, ChevronDown, ChevronUp, Download, Filter, Settings, X, Check, Columns } from 'lucide-react';
+import { FileText, ChevronDown, ChevronUp, Download, Search, Settings, X, Check, Columns } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { tenantProfile } from '../../config/tenantProfile';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { getBase64ImageFromURL } from '../AdminDashboard/utils/pdfUtils';
+import '../../styles/relatorios.css';
 
 interface AdminReportsProps {
     registrations: any[];
@@ -113,7 +114,8 @@ const reportGroups: ReportGroup[] = allReportGroups.filter(group => group.title 
 const CONFIG_DOC_ID = 'report_category_configs';
 
 export default function AdminReports({ registrations, plans, turmas = [] }: AdminReportsProps) {
-    const [expandedGroup, setExpandedGroup] = useState<string | null>(reportGroups[0]?.title || null);
+    const [recolhidos, setRecolhidos] = useState<string[]>([]);
+    const [busca, setBusca] = useState('');
     const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState<'all' | 'aprovado' | 'pendente' | 'desativado'>('all');
 
@@ -187,6 +189,14 @@ export default function AdminReports({ registrations, plans, turmas = [] }: Admi
         return [];
     };
 
+    const contagem = useMemo(() => ({
+        all: registrations.filter(r => r.contractStatus !== 'desativado' && r.status !== 'desativado').length,
+        aprovado: registrations.filter(r => r.contractStatus === 'aprovado').length,
+        pendente: registrations.filter(r => r.contractStatus !== 'aprovado' && r.contractStatus !== 'desativado' && r.status !== 'desativado').length,
+        desativado: registrations.filter(r => r.contractStatus === 'desativado').length,
+    }), [registrations]);
+    const todasCategorias = reportGroups.flatMap(g => g.categories);
+    const nConfig = todasCategorias.filter(c => (categoryConfigs[c.id]?.length || 0) > 0).length;
     const getStudentCount = (regs: any[]) => regs.reduce((acc, r) => acc + (r.alunos?.length || 0), 0);
 
     const activeColumns = ALL_COLUMNS.filter(c => selectedColumns.includes(c.id));
@@ -279,7 +289,7 @@ export default function AdminReports({ registrations, plans, turmas = [] }: Admi
     };
 
     return (
-        <div className="animate-fade-in" style={{ marginTop: '20px' }}>
+        <div className="rl animate-fade-in">
 
             {/* ======= PLAN CONFIG MODAL ======= */}
             {configModal && (
@@ -405,183 +415,103 @@ export default function AdminReports({ registrations, plans, turmas = [] }: Admi
                 </div>
             )}
 
-            {/* ======= HEADER: FILTERS + COLUMNS BUTTON ======= */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontWeight: '800', fontSize: '0.8rem' }}>
-                        <Filter size={16} /> FILTRAR:
-                    </div>
-                    {[
-                        { id: 'all', label: 'TODOS' },
-                        { id: 'aprovado', label: 'APROVADOS' },
-                        { id: 'pendente', label: 'PENDENTES' },
-                        { id: 'desativado', label: 'DESATIVADOS' }
-                    ].map(opt => (
-                        <button key={opt.id} onClick={() => setStatusFilter(opt.id as any)} style={{
-                            padding: '6px 14px', borderRadius: '8px',
-                            border: statusFilter === opt.id ? '2px solid #00a63a' : '1px solid #e2e8f0',
-                            background: statusFilter === opt.id ? '#fef2f2' : '#fff',
-                            color: statusFilter === opt.id ? '#00a63a' : '#64748b',
-                            fontWeight: '700', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.2s'
-                        }}>{opt.label}</button>
+            <header className="rl-topo"><h1>Relatórios</h1><p>Consulte e exporte os cadastros de alunos por modalidade.</p></header>
+
+            {/* ======= FILTROS, BUSCA E COLUNAS ======= */}
+            <div className="rl-barra">
+                <div className="rl-seg" role="group" aria-label="Situação do cadastro">
+                    {([['all', 'Todos'], ['aprovado', 'Aprovados'], ['pendente', 'Pendentes'], ['desativado', 'Desativados']] as const).map(([id, rotulo]) => (
+                        <button key={id} type="button" className={statusFilter === id ? 'on' : ''} aria-pressed={statusFilter === id} onClick={() => setStatusFilter(id)}>{rotulo} <b>{contagem[id]}</b></button>
                     ))}
                 </div>
-
-                <button onClick={() => { setTempColumns([...selectedColumns]); setColumnsModal(true); }} style={{
-                    display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '10px',
-                    border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontWeight: '700',
-                    fontSize: '0.8rem', cursor: 'pointer', transition: 'all 0.2s'
-                }}>
-                    <Columns size={16} /> COLUNAS ({selectedColumns.length})
-                </button>
+                <label className="rl-busca"><Search size={15} /><input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar relatório…" aria-label="Buscar relatório" /></label>
+                <button type="button" className="rl-btn" onClick={() => { setTempColumns([...selectedColumns]); setColumnsModal(true); }}><Columns size={15} /> Colunas ({selectedColumns.length})</button>
             </div>
 
-            {/* ======= REPORT GROUPS ======= */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {reportGroups.map(group => {
-                    const isGroupExpanded = expandedGroup === group.title;
-                    return (
-                        <div key={group.title} style={{
-                            background: '#fff', borderRadius: '16px', overflow: 'hidden',
-                            boxShadow: '0 4px 15px rgba(0,0,0,0.06)',
-                            border: `1px solid ${isGroupExpanded ? group.color + '40' : '#f1f5f9'}`
-                        }}>
-                            <button onClick={() => setExpandedGroup(isGroupExpanded ? null : group.title)} style={{
-                                width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                padding: '16px 20px', background: isGroupExpanded ? group.color : '#fff',
-                                border: 'none', cursor: 'pointer', transition: 'all 0.2s'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <FileText size={18} color={isGroupExpanded ? '#fff' : group.color} />
-                                    <span style={{ fontWeight: '900', fontSize: '0.95rem', color: isGroupExpanded ? '#fff' : '#1e293b', letterSpacing: '0.5px' }}>{group.title}</span>
-                                    <span style={{ background: isGroupExpanded ? 'rgba(255,255,255,0.2)' : group.color + '15', color: isGroupExpanded ? '#fff' : group.color, padding: '2px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
-                                        {group.categories.length} relatórios
-                                    </span>
-                                </div>
-                                {isGroupExpanded ? <ChevronUp size={18} color="#fff" /> : <ChevronDown size={18} color="#94a3b8" />}
-                            </button>
+            <div className="rl-kpis">
+                <div className="azul"><small>Total de relatórios</small><b>{todasCategorias.length}</b></div>
+                <div className="verde"><small>Configurados</small><b>{nConfig}</b></div>
+                <div className="verm"><small>Não configurados</small><b>{todasCategorias.length - nConfig}</b></div>
+                <div className="cinza"><small>Cadastros</small><b>{filteredRegs.length}</b></div>
+            </div>
 
-                            {isGroupExpanded && (
-                                <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {group.categories.map(category => {
-                                        const hasConfig = (categoryConfigs[category.id]?.length || 0) > 0;
-                                        const data = getCategoryData(category.id);
-                                        const studentCount = getStudentCount(data);
-                                        const isCatExpanded = expandedCategory === category.id;
-                                        const configPlanCount = categoryConfigs[category.id]?.length || 0;
+            {/* ======= GRUPOS DE RELATÓRIOS ======= */}
+            {reportGroups.map(group => {
+                const q = busca.trim().toLowerCase();
+                const categorias = group.categories.filter(c => !q || (c.label + ' ' + group.title).toLowerCase().includes(q));
+                if (!categorias.length) return null;
+                const aberto = !recolhidos.includes(group.title);
+                return (
+                    <section key={group.title} className="rl-painel">
+                        <button type="button" className="rl-painel-top" aria-expanded={aberto} onClick={() => setRecolhidos(x => aberto ? [...x, group.title] : x.filter(t => t !== group.title))}>
+                            <FileText size={19} /><h2>{group.title.charAt(0) + group.title.slice(1).toLowerCase()}</h2><span className="rl-tag">{categorias.length} {categorias.length === 1 ? 'relatório' : 'relatórios'}</span>
+                            <span className="rl-seta">{aberto ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</span>
+                        </button>
+                        {aberto && (
+                            <div className="rl-lista">
+                                <div className="rl-cab"><span>Relatório</span><span>Situação</span><span className="n">Cadastros</span><span className="n">Alunos</span><span className="n">Ações</span></div>
+                                {categorias.map(category => {
+                                    const hasConfig = (categoryConfigs[category.id]?.length || 0) > 0;
+                                    const data = getCategoryData(category.id);
+                                    const studentCount = getStudentCount(data);
+                                    const isCatExpanded = expandedCategory === category.id;
+                                    return (
+                                        <div key={category.id} className={`rl-linha${isCatExpanded ? ' aberta' : ''}`}>
+                                            <div className="rl-row" onClick={() => setExpandedCategory(isCatExpanded ? null : category.id)}>
+                                                <span className="rl-nome"><i style={{ background: category.color }} />{category.label}</span>
+                                                <span><span className={`rl-sit ${hasConfig ? 'ok' : 'no'}`}>{hasConfig ? 'Configurado' : 'Não configurado'}</span></span>
+                                                <span className="n" data-r="Cadastros">{data.length}</span>
+                                                <span className="n" data-r="Alunos">{studentCount}</span>
+                                                <span className="rl-acoes">
+                                                    <button type="button" className="rl-btn" onClick={(e) => { e.stopPropagation(); openConfigModal(category.id); }}><Settings size={14} /> Configurar</button>
+                                                    <button type="button" className="rl-btn forte" disabled={!data.length} onClick={(e) => { e.stopPropagation(); exportCategoryPDF(category, data); }}><Download size={14} /> Gerar/Baixar</button>
+                                                    <span className="rl-seta" aria-hidden>{isCatExpanded ? <ChevronUp size={17} /> : <ChevronDown size={17} />}</span>
+                                                </span>
+                                            </div>
 
-                                        return (
-                                            <div key={category.id} style={{ borderRadius: '12px', border: '1px solid #f1f5f9', overflow: 'hidden', background: isCatExpanded ? '#fafbfc' : '#fff' }}>
-                                                {/* Category Header */}
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', cursor: 'pointer' }}
-                                                    onClick={() => setExpandedCategory(isCatExpanded ? null : category.id)}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: category.color }} />
-                                                        <span style={{ fontWeight: '700', color: '#334155', fontSize: '0.9rem' }}>{category.label}</span>
-                                                        {hasConfig ? (
-                                                            <span style={{ fontSize: '0.65rem', fontWeight: '700', color: '#64748b', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{configPlanCount} plano(s)</span>
-                                                        ) : (
-                                                            <span style={{ fontSize: '0.65rem', fontWeight: '700', color: '#f59e0b', background: '#fef3c7', padding: '2px 6px', borderRadius: '4px' }}>NÃO CONFIGURADO</span>
-                                                        )}
-                                                    </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                        <div style={{ textAlign: 'right' }}>
-                                                            <span style={{ fontWeight: '900', color: category.color, fontSize: '1.1rem' }}>{data.length}</span>
-                                                            <span style={{ color: '#94a3b8', fontSize: '0.75rem', marginLeft: '4px' }}>cadastros ({studentCount} alunos)</span>
-                                                        </div>
-                                                        <button onClick={(e) => { e.stopPropagation(); openConfigModal(category.id); }} title="Configurar planos" style={{
-                                                            display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', borderRadius: '6px',
-                                                            border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer'
-                                                        }}>
-                                                            <Settings size={12} /> ⚙
-                                                        </button>
-                                                        {data.length > 0 && (
-                                                            <button onClick={(e) => { e.stopPropagation(); exportCategoryPDF(category, data); }} title="Exportar PDF" style={{
-                                                                display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px',
-                                                                border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: '0.7rem', fontWeight: '700', cursor: 'pointer'
-                                                            }}>
-                                                                <Download size={12} /> PDF
-                                                            </button>
-                                                        )}
-                                                        {isCatExpanded ? <ChevronUp size={16} color="#94a3b8" /> : <ChevronDown size={16} color="#94a3b8" />}
-                                                    </div>
-                                                </div>
-
-                                                {/* Student Table */}
-                                                {isCatExpanded && data.length > 0 && (
-                                                    <div style={{ padding: '0 16px 16px', maxHeight: '400px', overflowY: 'auto' }}>
-                                                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                                                            <thead>
-                                                                <tr style={{ borderBottom: '2px solid #e2e8f0' }}>
-                                                                    <th style={{ textAlign: 'left', padding: '8px 6px', color: '#64748b', fontWeight: '700', fontSize: '0.7rem', textTransform: 'uppercase' }}>#</th>
-                                                                    <th style={{ textAlign: 'left', padding: '8px 6px', color: '#64748b', fontWeight: '700', fontSize: '0.7rem', textTransform: 'uppercase' }}>Foto</th>
-                                                                    {activeColumns.filter(c => c.id !== 'foto').map(col => (
-                                                                        <th key={col.id} style={{ textAlign: 'left', padding: '8px 6px', color: '#64748b', fontWeight: '700', fontSize: '0.7rem', textTransform: 'uppercase' }}>{col.label}</th>
-                                                                    ))}
-                                                                </tr>
-                                                            </thead>
+                                            {isCatExpanded && data.length > 0 && (
+                                                <div className="rl-previa">
+                                                    <div className="rl-previa-t"><b>Prévia do relatório</b><span className="rl-tag">{data.length} {data.length === 1 ? 'cadastro' : 'cadastros'}</span><small>{activeColumns.length} colunas</small></div>
+                                                    <div className="rl-previa-r">
+                                                        <table className="est-tab">
+                                                            <thead><tr><th>#</th><th data-sem-ordem>Foto</th>{activeColumns.filter(c => c.id !== 'foto').map(col => <th key={col.id}>{col.label}</th>)}</tr></thead>
                                                             <tbody>
-                                                                {data.map((reg: any, idx: number) => (
-                                                                    <tr key={reg.id} style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.15s' }}
-                                                                        onClick={() => window.location.href = `/admin/details/${reg.id}`}
-                                                                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f8fafc')}
-                                                                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                                                                        <td style={{ padding: '8px 6px', color: '#94a3b8', fontWeight: '600' }}>{idx + 1}</td>
-                                                                        <td style={{ padding: '4px 6px' }}>
-                                                                            {(() => {
-                                                                                const fotoUrl = reg.alunos?.[0]?.fotoUrl;
-                                                                                return fotoUrl
-                                                                                    ? <img src={fotoUrl} alt="" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
-                                                                                    : <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#f1f5f9' }} />;
-                                                                            })()}
-                                                                        </td>
-                                                                        {activeColumns.filter(c => c.id !== 'foto').map(col => {
-                                                                            const val = col.getValue(reg, plans, turmas);
-
-                                                                            if (col.id === 'status') {
-                                                                                return (
-                                                                                    <td key={col.id} style={{ padding: '8px 6px' }}>
-                                                                                        <span style={{
-                                                                                            display: 'inline-block', padding: '2px 8px', borderRadius: '6px',
-                                                                                            fontSize: '0.65rem', fontWeight: '800',
-                                                                                            background: val === 'APROVADO' ? '#dcfce7' : val === 'DESATIVADO' ? '#f1f5f9' : '#fef3c7',
-                                                                                            color: val === 'APROVADO' ? '#16a34a' : val === 'DESATIVADO' ? '#94a3b8' : '#d97706'
-                                                                                        }}>{val}</span>
-                                                                                    </td>
-                                                                                );
-                                                                            }
-                                                                            return <td key={col.id} style={{ padding: '8px 6px', fontWeight: col.id === 'aluno' ? '700' : '400', color: col.id === 'aluno' ? '#1e293b' : '#64748b' }}>{val}</td>;
-                                                                        })}
-                                                                    </tr>
-                                                                ))}
+                                                                {data.map((reg: any, idx: number) => {
+                                                                    const fotoUrl = reg.alunos?.[0]?.fotoUrl;
+                                                                    return (
+                                                                        <tr key={reg.id} onClick={() => { window.location.href = `/admin/details/${reg.id}`; }}>
+                                                                            <td>{idx + 1}</td>
+                                                                            <td>{fotoUrl ? <img className="rl-foto" src={fotoUrl} alt="" loading="lazy" /> : <span className="rl-foto" />}</td>
+                                                                            {activeColumns.filter(c => c.id !== 'foto').map(col => {
+                                                                                const val = col.getValue(reg, plans, turmas);
+                                                                                if (col.id === 'status') return <td key={col.id}><span className={`rl-st ${val === 'APROVADO' ? 'ok' : val === 'DESATIVADO' ? 'off' : 'pend'}`}>{val.charAt(0) + val.slice(1).toLowerCase()}</span></td>;
+                                                                                return <td key={col.id} className={col.id === 'aluno' ? 'forte' : ''}>{val}</td>;
+                                                                            })}
+                                                                        </tr>
+                                                                    );
+                                                                })}
                                                             </tbody>
                                                         </table>
                                                     </div>
-                                                )}
+                                                </div>
+                                            )}
 
-                                                {isCatExpanded && !hasConfig && (
-                                                    <div style={{ padding: '20px 16px', textAlign: 'center', color: '#f59e0b', fontSize: '0.85rem' }}>
-                                                        <p style={{ margin: 0, fontWeight: '700' }}>⚠ Configure quais planos pertencem a esta categoria.</p>
-                                                        <button onClick={() => openConfigModal(category.id)} style={{ marginTop: '8px', padding: '6px 16px', borderRadius: '8px', border: 'none', background: '#00a63a', color: '#fff', fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer' }}>
-                                                            Configurar Agora
-                                                        </button>
-                                                    </div>
-                                                )}
-
-                                                {isCatExpanded && hasConfig && data.length === 0 && (
-                                                    <div style={{ padding: '20px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
-                                                        Nenhum cadastro encontrado nesta categoria.
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
-            </div>
+                                            {isCatExpanded && !hasConfig && (
+                                                <div className="rl-vazio aviso">
+                                                    <p>Configure quais planos pertencem a este relatório.</p>
+                                                    <button type="button" className="rl-btn forte" onClick={() => openConfigModal(category.id)}>Configurar agora</button>
+                                                </div>
+                                            )}
+                                            {isCatExpanded && hasConfig && data.length === 0 && <div className="rl-vazio">Nenhum cadastro encontrado neste relatório.</div>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
+                );
+            })}
+            {reportGroups.length > 0 && !reportGroups.some(g => g.categories.some(c => !busca.trim() || (c.label + ' ' + g.title).toLowerCase().includes(busca.trim().toLowerCase()))) && <div className="rl-vazio">Nenhum relatório encontrado para "{busca}".</div>}
         </div>
     );
 }
