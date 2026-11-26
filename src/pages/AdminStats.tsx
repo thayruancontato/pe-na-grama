@@ -275,13 +275,16 @@ function Cobrar({ r, atraso, dias }: { r: any; atraso?: boolean; dias?: number }
     const escola = (window as any).__MARCA__?.nome || 'a escola';
     const aluno = r.alunos?.[0]?.nome || 'o aluno', resp = String(r.responsavel?.nome || '').trim().split(/\s+/)[0], valor = brl(r.financialPendingAmount);
     const texto = `Olá${resp ? ', ' + resp : ''}! Aqui é da ${escola}. ${atraso ? `A mensalidade de ${aluno} (${valor}) está em atraso${dias ? ` há ${dias} dias` : ''}.` : `A mensalidade de ${aluno} (${valor}) está em aberto.`}${r.financialInvoiceUrl ? ` Você pode pagar por este link: ${r.financialInvoiceUrl}` : ''} Qualquer dúvida, é só responder esta mensagem.`;
+    const trial = Boolean((window as any).__MARCA__?.controle?.valores?.teste_ativo);
     const wa = tel.length >= 10 ? `https://wa.me/${tel.startsWith('55') && tel.length >= 12 ? tel : '55' + tel}?text=${encodeURIComponent(texto)}` : '';
     return (
         <>
             <button type="button" className="est-btn est-cobrar" aria-haspopup="menu" aria-expanded={Boolean(pos)} onClick={(e) => { e.stopPropagation(); const b = e.currentTarget.getBoundingClientRect(); setPos(pos ? null : { x: Math.max(8, Math.min(b.right - 224, window.innerWidth - 232)), y: b.bottom + 6 }); }}>Cobrar <ChevronDown size={13} /></button>
             {pos && (
                 <div className="est-menu" style={{ left: pos.x, top: pos.y }} role="menu" onClick={(e) => e.stopPropagation()}>
-                    {wa
+                    {trial
+                        ? <button type="button" role="menuitem" className="trava" onClick={() => { setPos(null); (window as any).__pgModal?.planos(); }}><Lock size={16} /><span>WhatsApp<small>Disponível nos planos pagos</small></span><em>PLANO</em></button>
+                        : wa
                         ? <a role="menuitem" href={wa} target="_blank" rel="noreferrer" onClick={() => setPos(null)}><MessageCircle size={16} /><span>WhatsApp<small>Abre a conversa com a mensagem pronta</small></span></a>
                         : <span role="menuitem" aria-disabled="true" className="off"><MessageCircle size={16} /><span>WhatsApp<small>Sem telefone cadastrado</small></span></span>}
                     <span role="menuitem" aria-disabled="true" className="off"><Lock size={16} /><span>SMS<small>Envio por SMS</small></span><em>EM BREVE</em></span>

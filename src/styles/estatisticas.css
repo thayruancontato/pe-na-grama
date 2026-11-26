@@ -129,3 +129,7 @@
 .est-coluna.top i{box-shadow:inset 0 3px 0 #f4c20d}
 .est-coluna.top b::before{content:"°5";margin-right:3px;color:#d9a800;font-size:10px;vertical-align:1px}
 .est-coluna.top span{color:#1d2733;font-weight:700}
+
+.est-menu button.trava{border:0;background:none;font:inherit;font-size:13.5px;font-weight:700;color:#10213f;cursor:pointer;opacity:.78}
+.est-menu button.trava:hover{background:#fff6dc;opacity:1}
+.est-menu button.trava em{margin-left:auto;padding:2px 7px;border-radius:999px;background:#fff3d6;color:#8a6100;font-size:10px;font-style:normal;font-weight:800;letter-spacing:.04em}
