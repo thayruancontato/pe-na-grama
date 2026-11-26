@@ -11,7 +11,7 @@ const LOCK = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke
 const brl = (c: number) => 'R$ ' + Math.round((c || 0) / 100).toLocaleString('pt-BR');
 const cor = (x: unknown, pad: string) => (/^#[0-9a-f]{6}$/i.test(String(x || '')) ? String(x) : pad);
 
-export function instalarTeste(v: Valores) {
+export function instalarTeste(v: Valores, modo: 'teste' | 'ativo' = 'teste') {
     if ((window as any).__teste) return;
     (window as any).__teste = true;
     const pri = cor(v.cor_primaria, '#0f7a3a'), esc = cor(v.cor_escura, '#09245c');
@@ -19,7 +19,7 @@ export function instalarTeste(v: Valores) {
     const meiaNoite = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
     const restam = fim ? Math.max(0, Math.round((meiaNoite(fim) - meiaNoite(new Date())) / 864e5)) : DIAS_TESTE;
 
-    new Image().src = '/teste-foto.webp'; // já carrega a foto do modal, para ele abrir completo
+    if (modo === 'teste') new Image().src = '/teste-foto.webp'; // já carrega a foto do modal, para ele abrir completo
     const css = document.createElement('style');
     css.textContent = `
 .tb{--p:${pri};--e:${esc};position:sticky;top:0;z-index:1200;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:10px 24px;color:#fff;background:linear-gradient(100deg,var(--e),var(--p));box-shadow:0 4px 18px rgba(0,0,0,.18);font-family:inherit}
@@ -140,9 +140,10 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
     medeBarra();
     const naLogin = () => { const oculta = location.pathname.includes('/login') || !localStorage.getItem('pg_sys_token'); bar.style.display = oculta ? 'none' : ''; medeBarra(); };
     naLogin(); setInterval(naLogin, 700);
+    if (modo !== 'teste') { bar.remove(); document.documentElement.style.setProperty('--tb-h', '0px'); } // assinante: só os modais ficam disponíveis
 
     // ---- cadeados no menu ----
-    const marca = (raizDom: ParentNode) => raizDom.querySelectorAll?.('.sb-item, .sb-sub').forEach((b) => {
+    const marca = (raizDom: ParentNode) => modo === 'teste' && raizDom.querySelectorAll?.('.sb-item, .sb-sub').forEach((b) => {
         if (b.classList.contains('sb-bloq')) return;
         const nome = b.querySelector('.sb-label')?.textContent?.trim() || '';
         if (!BLOQUEADOS.includes(nome)) return;
@@ -173,7 +174,7 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
     const dinheiro = (c: number) => ((c || 0) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const dataBr = (iso?: string) => (iso ? iso.split('-').reverse().join('/') : '—');
     const mascaraDoc = (v: string) => { const d = v.replace(/\D/g, '').slice(0, 14); return d.length <= 11 ? d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2') : d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2'); };
-    function abrirPlanos(item?: string) {
+    function abrirPlanos(item?: string, tipo: 'planos' | 'proxima' = 'planos') {
         if (document.querySelector('.pm-fundo')) return;
         const fundo = document.createElement('div');
         fundo.className = 'pm-fundo';
@@ -253,21 +254,24 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
         };
         const telaPagamento = (a: any) => {
             clearInterval(timer);
-            topo('O Plano ' + seguro(a.plano) + ' é seu próximo passo', 'Pague a primeira fatura para liberar os recursos do seu plano.', 'Primeira fatura via Pix', false);
-            msg(`<div class="pm-pag"><div class="pm-pag-esq"><span class="rot">Valor da primeira fatura</span><div class="val">${dinheiro(a.valor)}</div><div class="venc">Vencimento: ${dataBr(a.vencimento)}</div><div class="pm-aguarda"><i></i>Aguardando pagamento</div><ol><li>Abra o app do seu banco.</li><li>Escolha Pix e escaneie o QR Code ou cole o código.</li><li>Pronto! Liberamos os recursos na hora.</li></ol></div><div class="pm-pag-dir"><b>Pague com Pix</b><div class="pm-qr">${a.imagem ? `<img src="${a.imagem}" alt="QR Code do Pix">` : '<p>Gerando o QR code…</p>'}</div><label for="pm-cod">Pix copia e cola</label><input id="pm-cod" readonly value="${seguro(a.codigo || '')}"><button type="button" class="pm-copia">Copiar código</button></div></div><div class="pm-rodape"><span>✓ Pagamento seguro</span><span>✓ Sem fidelidade</span><button type="button" class="pm-trocar">Trocar de plano</button></div>`);
+            const prox = Boolean(a.proxima);
+            if (prox) topo('Sua próxima fatura do plano ' + seguro(a.plano), a.atrasada ? 'Esta fatura está vencida. Pague para manter o plano ativo.' : 'Pague até o vencimento para manter o plano ativo.', a.atrasada ? 'Fatura vencida' : 'Próxima fatura via Pix', false);
+            else topo('O Plano ' + seguro(a.plano) + ' é seu próximo passo', 'Pague a primeira fatura para liberar os recursos do seu plano.', 'Primeira fatura via Pix', false);
+            msg(`<div class="pm-pag"><div class="pm-pag-esq"><span class="rot">${prox ? 'Valor da fatura' : 'Valor da primeira fatura'}</span><div class="val">${dinheiro(a.valor)}</div><div class="venc">Vencimento: ${dataBr(a.vencimento)}</div><div class="pm-aguarda"><i></i>Aguardando pagamento</div><ol><li>Abra o app do seu banco.</li><li>Escolha Pix e escaneie o QR Code ou cole o código.</li><li>${prox ? 'Pronto! Seu plano segue ativo.' : 'Pronto! Liberamos os recursos na hora.'}</li></ol></div><div class="pm-pag-dir"><b>Pague com Pix</b><div class="pm-qr">${a.imagem ? `<img src="${a.imagem}" alt="QR Code do Pix">` : '<p>Gerando o QR code…</p>'}</div><label for="pm-cod">Pix copia e cola</label><input id="pm-cod" readonly value="${seguro(a.codigo || '')}"><button type="button" class="pm-copia">Copiar código</button></div></div><div class="pm-rodape"><span>✓ Pagamento seguro</span><span>✓ Sem fidelidade</span>${prox ? '' : '<button type="button" class="pm-trocar">Trocar de plano</button>'}</div>`);
             const cod = corpo.querySelector('#pm-cod') as HTMLInputElement, bc = corpo.querySelector('.pm-copia') as HTMLButtonElement;
             bc.addEventListener('click', async () => {
                 if (!a.codigo) return;
                 try { await navigator.clipboard.writeText(a.codigo); } catch { cod.select(); document.execCommand('copy'); }
                 bc.textContent = '✓ Código copiado!'; bc.classList.add('ok'); setTimeout(() => { bc.textContent = 'Copiar código'; bc.classList.remove('ok'); }, 2500);
             });
-            corpo.querySelector('.pm-trocar')!.addEventListener('click', async () => {
+            corpo.querySelector('.pm-trocar')?.addEventListener('click', async () => {
                 if (!confirm('Trocar de plano cancela esta cobrança e cria outra. Continuar?')) return;
                 msg('<p class="pm-rod" style="padding:30px">Cancelando a cobrança…</p>');
                 await fetch('/sys/assinatura/trocar', { method: 'POST', headers: auth(), body: '{}' }).catch(() => undefined); telaPlanos();
             });
             timer = window.setInterval(async () => {
                 try {
+                    if (prox) { const d = await (await fetch('/sys/assinatura/proxima', { headers: auth(), cache: 'no-store' })).json(); if (!d.proxima || d.proxima.pid !== a.pid) telaPago(); return; }
                     const d = await (await fetch('/sys/assinatura', { headers: auth(), cache: 'no-store' })).json();
                     if (d.assinatura && d.assinatura.status === 'paga') telaPago();
                     else if (!d.assinatura) telaPlanos();
@@ -276,6 +280,16 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
             }, 6000);
         };
 
+        // ---- modo "próxima fatura" (assinante ativo): vai direto ao Pix da próxima cobrança
+        if (tipo === 'proxima') {
+            topo('Sua próxima fatura', 'Pague até o vencimento para manter o plano ativo.', 'Fatura via Pix', false);
+            fetch('/sys/public/planos').then((r) => r.json()).then((p) => { const nm = $t('.pm-nome'); if (nm && p.escola) nm.textContent = p.escola; }).catch(() => undefined);
+            fetch('/sys/assinatura/proxima', { headers: auth(), cache: 'no-store' }).then((r) => r.json()).then((d) => {
+                if (!d.proxima) { msg('<div class="pm-ok"><i>✓</i><h3>Nenhuma fatura em aberto</h3><p>Você está em dia. Quando a próxima fatura for gerada, ela aparece aqui.</p><button type="button" class="pm-fim">Fechar</button></div>'); corpo.querySelector('.pm-fim')?.addEventListener('click', fecha); return; }
+                telaPagamento({ ...d.proxima, proxima: true });
+            }).catch(() => msg('<p class="pm-rod" style="padding:30px">Não consegui carregar a fatura agora. Tente de novo em instantes.</p>'));
+            return;
+        }
         // ---- abertura: se já existe uma cobrança pendente, volta direto para o pagamento
         fetch('/sys/assinatura', { headers: auth(), cache: 'no-store' }).then((r) => r.json()).then((d) => {
             temDoc = Boolean(d.temDoc);
@@ -284,4 +298,5 @@ aside{top:var(--tb-h,0px)!important;height:calc(100vh - var(--tb-h,0px))!importa
             else telaPlanos();
         }).catch(telaPlanos);
     }
+    (window as any).__pgModal = { planos: (item?: string) => abrirPlanos(item), proxima: () => abrirPlanos(undefined, 'proxima') };
 }

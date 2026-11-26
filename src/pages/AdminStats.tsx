@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Printer, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { db } from '../firebase';
 import { planService } from '../utils/planService';
 import { expenseService } from '../utils/expenseService';
@@ -143,10 +143,6 @@ export default function AdminStats() {
                 <div>
                     <h1>Estatísticas</h1>
                     <p>Visão geral dos alunos, do financeiro e do crescimento da escola.</p>
-                </div>
-                <div className="est-acoes">
-                    <Link to="/admin/financeiro/relatorio" className="est-btn"><FileText size={14} /> Relatório financeiro</Link>
-                    <button className="est-btn" onClick={() => window.print()}><Printer size={14} /> Imprimir</button>
                 </div>
             </div>
 

@@ -1,5 +1,6 @@
 import { instalarCompacto } from '../lib/compacto';
 import { instalarTeste } from '../lib/teste';
+import { instalarPlano } from '../lib/plano';
 // Controle do dono (Central) aplicado no sistema da escola. O Worker injeta window.__MARCA__.controle = { valores, bloqueados }.
 // bloqueado(): módulo desligado (menu e página). O resto é visual: cores, avisos, rodapé, botão de WhatsApp, letras e animações.
 type Controle = { valores: Record<string, any>; bloqueados: string[] };
@@ -26,7 +27,8 @@ function aplicar() {
     if (ft) css.push(`h1, h2, h3, h4, h5, h6, [class*="title"], [class*="titulo"] { font-family: ${ft} !important; letter-spacing: 0 !important; }`);
     if (fb) css.push(`table, th, td, [class*="valor"], [class*="amount"] { font-family: ${fb} !important; }`);
     if (v.compacto !== false) instalarCompacto();
-    if (v.teste_ativo) instalarTeste(v);
+    instalarTeste(v, v.teste_ativo ? 'teste' : 'ativo');
+    instalarPlano(v);
     if (v.cantos_retos) css.push('*, *::before, *::after { border-radius: 0 !important; }');
     if (v.sem_animacoes) css.push('*, *::before, *::after { animation: none !important; transition: none !important; }');
     if (v.letra_grande) css.push('body { zoom: 1.12; }');

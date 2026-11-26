@@ -253,7 +253,7 @@ async function cancelarAssinatura(env, cfg, cid, a) {
 async function rotaAssinatura(req, env, host) {
   const s = await sessaoDoToken(req, env, host);
   if (!s || s.role !== 'admin') return erro('Faça login como administrador.', 401);
-  const c = await env.DB.prepare('SELECT id,escola,contato_nome,contato_tel,contato_email FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
+  const c = await env.DB.prepare('SELECT id,escola,contato_nome,contato_tel,contato_email,plano_nome,mensal,status FROM clientes WHERE url_sistema=?').bind('https://' + host).first();
   if (!c) return erro('Escola não encontrada.', 404);
   const cfg = await asaasCfg(env), m = req.method, caminho = new URL(req.url).pathname, chave = 'assin:' + c.id;
   const lido = await env.DB.prepare('SELECT v FROM settings WHERE k=?').bind(chave).first();
@@ -271,10 +271,29 @@ async function rotaAssinatura(req, env, host) {
     } catch { /* mostra o que já tem */ }
     return a;
   };
+  // próxima fatura em aberto da assinatura (a de menor vencimento), para o botão "Pagar próxima fatura"
+  const proximaDoAsaas = async () => {
+    if (!a || a.status !== 'paga' || !a.subId || !ok) return null;
+    try {
+      const l = await asaas(cfg, 'GET', '/subscriptions/' + a.subId + '/payments?limit=12');
+      const p = (l.data || []).filter((x) => ['PENDING', 'OVERDUE'].includes(x.status)).sort((x, y) => (x.dueDate < y.dueDate ? -1 : 1))[0];
+      if (!p) return null;
+      const dias = Math.round((new Date(p.dueDate + 'T12:00:00Z') - new Date(tz() + 'T12:00:00Z')) / 864e5);
+      return { pid: p.id, valor: Math.round(p.value * 100), vencimento: p.dueDate, dias, atrasada: p.status === 'OVERDUE' };
+    } catch { return null; }
+  };
+  if (m === 'GET' && caminho.endsWith('/proxima')) {
+    const p = await proximaDoAsaas();
+    if (!p) return J({ proxima: null });
+    let q = { imagem: '', codigo: '' };
+    try { const r = await asaas(cfg, 'GET', '/payments/' + p.pid + '/pixQrCode'); q = { imagem: r.encodedImage ? 'data:image/png;base64,' + r.encodedImage : '', codigo: r.payload || '' }; } catch { /* mostra sem QR */ }
+    return J({ proxima: { ...p, ...q, plano: a.plano } });
+  }
   if (m === 'GET') {
     const x = await atualiza();
+    const prox = await proximaDoAsaas();
     const temDoc = Boolean(await env.DB.prepare('SELECT 1 x FROM settings WHERE k=?').bind('doc:' + c.id).first());
-    return J({ disponivel: ok, temDoc, assinatura: x && (x.status === 'pendente' || x.status === 'paga') ? publicoAssin(x) : null });
+    return J({ disponivel: ok, temDoc, situacao: { status: c.status, plano: c.plano_nome, mensal: c.mensal }, proxima: prox ? { vencimento: prox.vencimento, valor: prox.valor, dias: prox.dias, atrasada: prox.atrasada } : null, assinatura: x && (x.status === 'pendente' || x.status === 'paga') ? publicoAssin(x) : null });
   }
   if (m !== 'POST') return erro('Método não permitido.', 405);
   let b = {}; try { b = await req.json(); } catch { /* corpo vazio */ }
