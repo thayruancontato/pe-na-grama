@@ -303,3 +303,8 @@ aside *::-webkit-scrollbar-thumb:hover { background: #ffffff80; background-clip:
 .login-refresh .al-lado .al-nota span { font-size: .78rem !important; color: #5b6772 !important; text-align: center !important; }
 .login-refresh .al-lado .al-nota span::before { display: none !important; }
 .login-refresh .al-lado button[type="submit"] { padding: 13px !important; font-size: 1rem !important; border-radius: 10px !important; }
+
+/* página inicial: botão principal maior, secundário menor e mais afastado */
+.landing-content .btn-start { padding: 18px 52px !important; min-width: min(320px, 100%); font-size: 1.15rem !important; letter-spacing: .04em; margin-bottom: 0 !important; }
+.landing-content .btn-student-access { margin-top: 26px !important; padding: 10px 22px !important; font-size: .82rem !important; }
+@media (max-width: 480px) { .landing-content .btn-start { width: 100%; padding: 17px 20px !important; } .landing-content .btn-student-access { width: 100%; } }
